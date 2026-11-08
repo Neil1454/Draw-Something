@@ -25,6 +25,7 @@ data class RoundOutcome(
     val wrongGuesses: Int,
     val skips: Int,
     val multiplier: Double,
+    val ruleBreaks: Int = 0,
 )
 
 data class GameState(
@@ -35,6 +36,10 @@ data class GameState(
     val round: Int = 0,
     val totalRounds: Int = 6,
     val roundSeconds: Int = 90,
+    /** Lowest word difficulty the host allowed (e.g. HARD = no easy or medium words). */
+    val minDifficulty: Difficulty = Difficulty.EASY,
+    val iAgreed: Boolean = false,       // I've agreed to the rules
+    val partnerAgreed: Boolean = false,
     val iAmDrawer: Boolean = false,
     val myScore: Int = 0,
     val theirScore: Int = 0,
@@ -45,9 +50,14 @@ data class GameState(
     val remainingSec: Int = 0,
     val skips: Int = 0,
     val wrongGuesses: Int = 0,
+    val ruleBreaks: Int = 0,           // rule breaks the drawer has agreed to this round
+    val reportsUsed: Int = 0,          // reports the guesser has sent this round
     val pendingGuess: String? = null,  // drawer: a guess waiting for my verdict
+    val pendingReport: RuleBreak? = null, // drawer: a rule-break report waiting for my answer
     val awaitingVerdict: Boolean = false, // guesser: sent a guess, waiting
+    val awaitingReport: Boolean = false,  // guesser: sent a report, waiting
     val declined: List<String> = emptyList(),
+    val note: String? = null,          // a short message to show (report outcomes)
     val outcome: RoundOutcome? = null,
     val history: List<RoundOutcome> = emptyList(),
     /** On the result screen: my partner has already tapped Next. */
@@ -97,22 +107,32 @@ class GameEngine(
     private fun iDrawIn(round: Int) = drawerIsHost(round) == isHost
     private val roundMs get() = state.roundSeconds * 1000L
 
-    // ------------------------------------------------------------------ game flow
+    // ------------------------------------------------------------------ rules + game flow
 
-    /** Host only: begin a fresh game. Can be called again for a rematch. */
-    fun hostStart(rounds: Int, seconds: Int) {
-        if (!isHost) return
-        hostDrawsFirst = random.nextBoolean()
-        send(Msg.Setup(rounds, seconds, hostDrawsFirst))
-        newGame(rounds, seconds)
+    /** "I agree to the rules." Both players must agree before the host can start. */
+    fun agreeRules() {
+        if (state.iAgreed) return
+        send(Msg.RulesAgreed)
+        update { copy(iAgreed = true) }
     }
 
-    private fun newGame(rounds: Int, seconds: Int) {
+    val canStart get() = isHost && state.phase.let { it == Phase.LOBBY || it == Phase.GAME_OVER } &&
+        state.iAgreed && state.partnerAgreed
+
+    /** Host only: begin a fresh game. Can be called again for a rematch. */
+    fun hostStart(rounds: Int, seconds: Int, minDifficulty: Difficulty = Difficulty.EASY) {
+        if (!canStart) return
+        hostDrawsFirst = random.nextBoolean()
+        send(Msg.Setup(rounds, seconds, hostDrawsFirst, minDifficulty.ordinal))
+        newGame(rounds, seconds, minDifficulty)
+    }
+
+    private fun newGame(rounds: Int, seconds: Int, minDifficulty: Difficulty) {
         usedWords.clear()
         iReadyRound = -1
         theyReadyRound = -1
         state = state.copy(
-            totalRounds = rounds, roundSeconds = seconds,
+            totalRounds = rounds, roundSeconds = seconds, minDifficulty = minDifficulty,
             myScore = 0, theirScore = 0, history = emptyList(), outcome = null,
         )
         beginRound(0)
@@ -127,11 +147,12 @@ class GameEngine(
             copy(
                 phase = if (iDraw) Phase.PICKING else Phase.WAITING_FOR_WORD,
                 round = round, iAmDrawer = iDraw,
-                options = if (iDraw) Words.pickOptions(random, usedWords) else emptyList(),
+                options = if (iDraw) Words.pickOptions(random, usedWords, minDifficulty) else emptyList(),
                 word = null, category = "", pattern = "", remainingSec = 0,
-                skips = 0, wrongGuesses = 0, pendingGuess = null,
-                awaitingVerdict = false, declined = emptyList(), outcome = null,
-                partnerReady = false,
+                skips = 0, wrongGuesses = 0, ruleBreaks = 0, reportsUsed = 0,
+                pendingGuess = null, pendingReport = null,
+                awaitingVerdict = false, awaitingReport = false, declined = emptyList(),
+                note = null, outcome = null, partnerReady = false,
             )
         }
         if (iDraw) send(Msg.Choosing(round))
@@ -146,7 +167,7 @@ class GameEngine(
     /** Drawer: "Surprise me". */
     fun chooseRandom() {
         if (state.phase != Phase.PICKING || !state.iAmDrawer) return
-        startDrawing(Words.random(random, usedWords))
+        startDrawing(Words.random(random, usedWords, state.minDifficulty))
     }
 
     private fun startDrawing(word: Word) {
@@ -160,7 +181,8 @@ class GameEngine(
         update {
             copy(
                 phase = Phase.DRAWING, word = word, category = word.category, pattern = pattern,
-                remainingSec = roundSeconds, wrongGuesses = 0, pendingGuess = null, declined = emptyList(),
+                remainingSec = roundSeconds, wrongGuesses = 0, pendingGuess = null, pendingReport = null,
+                declined = emptyList(),
             )
         }
         send(Msg.RoundStart(state.round, word.category, pattern))
@@ -176,8 +198,8 @@ class GameEngine(
         update {
             copy(
                 phase = Phase.PICKING, skips = skips + 1, word = null, category = "", pattern = "",
-                pendingGuess = null, declined = emptyList(), wrongGuesses = 0,
-                options = Words.pickOptions(random, usedWords),
+                pendingGuess = null, pendingReport = null, declined = emptyList(), wrongGuesses = 0,
+                options = Words.pickOptions(random, usedWords, minDifficulty),
             )
         }
     }
@@ -247,6 +269,7 @@ class GameEngine(
     fun judge(correct: Boolean) {
         val guess = state.pendingGuess ?: return
         if (state.phase != Phase.DRAWING || !state.iAmDrawer) return
+        if (state.pendingReport != null) return // answer the rule-break report first
         if (correct) {
             finishRound(true, pendingGuessElapsed)
         } else {
@@ -256,6 +279,47 @@ class GameEngine(
         }
     }
 
+    // ------------------------------------------------------------------ rule breaks
+
+    /** Guesser: "that drawing breaks a rule". The drawer must agree for it to count. */
+    fun reportRuleBreak(rule: RuleBreak) {
+        if (state.phase != Phase.GUESSING || state.iAmDrawer) return
+        if (state.awaitingReport || state.reportsUsed >= Rules.MAX_REPORTS_PER_ROUND) return
+        send(Msg.RuleReport(rule.name))
+        update { copy(awaitingReport = true, reportsUsed = reportsUsed + 1, note = null) }
+    }
+
+    /**
+     * Drawer: answer a report. Agreeing costs [Scoring.RULE_BREAK_PENALTY], clears the drawing
+     * (so it has to be redrawn without the offending part) and cancels any guess that was
+     * waiting, without a wrong-guess penalty for the guesser. Disagreeing costs nobody anything.
+     */
+    fun respondToReport(accept: Boolean) {
+        if (state.pendingReport == null || state.phase != Phase.DRAWING || !state.iAmDrawer) return
+        if (accept) {
+            active = null
+            outbox.clear()
+            board.clear()
+            send(Msg.Clear)
+            send(Msg.ReportResponse(true))
+            update {
+                copy(
+                    pendingReport = null, pendingGuess = null, ruleBreaks = ruleBreaks + 1,
+                    note = "Rule break agreed: −${Scoring.RULE_BREAK_PENALTY} points. Your drawing was cleared, so redraw it without that.",
+                )
+            }
+        } else {
+            send(Msg.ReportResponse(false))
+            update { copy(pendingReport = null) }
+        }
+    }
+
+    fun dismissNote() {
+        if (state.note != null) update { copy(note = null) }
+    }
+
+    // ------------------------------------------------------------------ round end
+
     private fun timeIsUp() = clock() - roundStartAt >= roundMs
 
     private fun finishRound(correct: Boolean, elapsedMs: Long) {
@@ -264,9 +328,10 @@ class GameEngine(
         val base = if (correct) Scoring.basePoints(elapsedMs, roundMs, mult) else 0
         val result = Msg.RoundResult(
             round = state.round, word = word.text, category = word.category, correct = correct,
-            drawerDelta = Scoring.drawerDelta(base, state.skips),
+            drawerDelta = Scoring.drawerDelta(base, state.skips, state.ruleBreaks),
             guesserDelta = if (correct) Scoring.guesserDelta(base, state.wrongGuesses) else 0,
-            elapsedMs = elapsedMs, wrongGuesses = state.wrongGuesses, skips = state.skips, multiplier = mult,
+            elapsedMs = elapsedMs, wrongGuesses = state.wrongGuesses, skips = state.skips,
+            multiplier = mult, breaks = state.ruleBreaks,
         )
         active = null
         outbox.clear()
@@ -280,14 +345,15 @@ class GameEngine(
         val theirDelta = if (iDraw) r.guesserDelta else r.drawerDelta
         val outcome = RoundOutcome(
             r.round, r.word, r.category, r.correct, iDraw, myDelta, theirDelta,
-            r.elapsedMs, r.wrongGuesses, r.skips, r.multiplier,
+            r.elapsedMs, r.wrongGuesses, r.skips, r.multiplier, r.breaks,
         )
         update {
             copy(
                 phase = Phase.RESULT, outcome = outcome, history = history + outcome,
                 myScore = (myScore + myDelta).coerceAtLeast(0),
                 theirScore = (theirScore + theirDelta).coerceAtLeast(0),
-                pendingGuess = null, awaitingVerdict = false, remainingSec = 0,
+                pendingGuess = null, pendingReport = null, awaitingVerdict = false, awaitingReport = false,
+                remainingSec = 0, note = null,
                 partnerReady = theyReadyRound == r.round,
             )
         }
@@ -321,7 +387,9 @@ class GameEngine(
         val remaining = (roundMs - (clock() - roundStartAt)).coerceAtLeast(0)
         val sec = ((remaining + 999) / 1000).toInt()
         if (sec != state.remainingSec) update { copy(remainingSec = sec) }
-        if (state.phase == Phase.DRAWING && remaining == 0L && state.pendingGuess == null) {
+        if (state.phase == Phase.DRAWING && remaining == 0L &&
+            state.pendingGuess == null && state.pendingReport == null
+        ) {
             finishRound(false, roundMs)
         }
     }
@@ -332,8 +400,11 @@ class GameEngine(
         when (msg) {
             is Msg.Setup -> if (!isHost) {
                 hostDrawsFirst = msg.hostDrawsFirst
-                newGame(msg.rounds, msg.seconds)
+                val min = Difficulty.values().getOrElse(msg.minDifficulty) { Difficulty.EASY }
+                newGame(msg.rounds, msg.seconds, min)
             }
+
+            Msg.RulesAgreed -> update { copy(partnerAgreed = true) }
 
             is Msg.Choosing -> {
                 val already = state.phase == Phase.WAITING_FOR_WORD && state.round == msg.round
@@ -347,7 +418,7 @@ class GameEngine(
                     copy(
                         phase = Phase.GUESSING, round = msg.round, iAmDrawer = false,
                         category = msg.category, pattern = msg.pattern, remainingSec = roundSeconds,
-                        awaitingVerdict = false, declined = emptyList(), wrongGuesses = 0,
+                        awaitingVerdict = false, awaitingReport = false, declined = emptyList(), wrongGuesses = 0,
                     )
                 }
             }
@@ -365,7 +436,7 @@ class GameEngine(
                 update {
                     copy(
                         phase = Phase.WAITING_FOR_WORD, skips = skips + 1, awaitingVerdict = false,
-                        declined = emptyList(), category = "", pattern = "",
+                        awaitingReport = false, declined = emptyList(), category = "", pattern = "",
                     )
                 }
             }
@@ -377,6 +448,24 @@ class GameEngine(
 
             is Msg.GuessDeclined -> if (state.phase == Phase.GUESSING) {
                 update { copy(awaitingVerdict = false, declined = declined + msg.text, wrongGuesses = wrongGuesses + 1) }
+            }
+
+            is Msg.RuleReport -> if (state.phase == Phase.DRAWING && state.iAmDrawer && state.pendingReport == null) {
+                val rule = RuleBreak.values().firstOrNull { it.name == msg.rule }
+                if (rule != null) update { copy(pendingReport = rule) }
+            }
+
+            is Msg.ReportResponse -> if (state.phase == Phase.GUESSING && state.awaitingReport) {
+                update {
+                    if (msg.accepted) {
+                        copy(
+                            awaitingReport = false, awaitingVerdict = false, ruleBreaks = ruleBreaks + 1,
+                            note = "$theirName agreed it broke a rule (−${Scoring.RULE_BREAK_PENALTY} for them). Their drawing was cleared, so watch for the redraw.",
+                        )
+                    } else {
+                        copy(awaitingReport = false, note = "$theirName didn't think that broke a rule. Keep guessing!")
+                    }
+                }
             }
 
             is Msg.RoundResult -> if (state.phase == Phase.GUESSING || state.phase == Phase.WAITING_FOR_WORD) {

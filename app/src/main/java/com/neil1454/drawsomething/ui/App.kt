@@ -27,7 +27,13 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
         Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice)
         Stage.HOSTING -> HostingScreen(ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice)
         Stage.SEARCHING -> SearchingScreen(ui, vm::requestJoin, vm::leave, vm::clearNotice)
-        Stage.LOBBY -> LobbyScreen(ui, onStart = { rounds, secs -> act { hostStart(rounds, secs) } }, onLeave = vm::leave)
+        Stage.LOBBY -> ui.game?.let { game ->
+            LobbyScreen(
+                ui, game, act,
+                onStart = { rounds, secs, min -> act { hostStart(rounds, secs, min) } },
+                onLeave = vm::leave,
+            )
+        }
         Stage.PLAYING -> {
             val game = ui.game
             val board = ui.board

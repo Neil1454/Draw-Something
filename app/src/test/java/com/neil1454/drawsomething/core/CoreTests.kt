@@ -32,6 +32,7 @@ class ScoringTest {
     @Test fun difficultyMultiplierApplies() {
         assertEquals(150, Scoring.basePoints(0, round, Difficulty.HARD.multiplier))
         assertEquals(125, Scoring.basePoints(0, round, Difficulty.MEDIUM.multiplier))
+        assertEquals(200, Scoring.basePoints(0, round, Difficulty.EXTREME.multiplier))
     }
 
     @Test fun penalties() {
@@ -39,6 +40,9 @@ class ScoringTest {
         assertEquals(90, Scoring.guesserDelta(100, 2))
         assertEquals(0, Scoring.guesserDelta(10, 9)) // never below zero for the round
         assertEquals(-30, Scoring.drawerDelta(0, 2)) // skipped twice, then timed out
+        assertEquals(80, Scoring.drawerDelta(100, 0, 1)) // one agreed rule break
+        assertEquals(45, Scoring.drawerDelta(100, 1, 2)) // skip + two rule breaks
+        assertTrue(Scoring.RULE_BREAK_PENALTY > Scoring.SKIP_PENALTY) // cheating costs more than skipping
     }
 }
 
@@ -67,7 +71,9 @@ class WordsTest {
     @Test fun wordsAreCleanAndUnique() {
         assertEquals(Words.all.size, Words.all.map { it.text }.toSet().size)
         Words.all.forEach { w -> assertTrue(w.text, w.text.all { it in 'a'..'z' || it == ' ' }) }
-        Difficulty.values().forEach { d -> assertTrue(Words.all.count { it.difficulty == d } >= 6) }
+        // Enough words at every level for a 10-round game with skips, even on "Extra hard only".
+        Difficulty.values().forEach { d -> assertTrue(d.name, Words.all.count { it.difficulty == d } >= 35) }
+        assertTrue(Words.all.size >= 250)
     }
 
     @Test fun fiveOptionsMixedDifficultyNoDuplicates() {
@@ -76,7 +82,35 @@ class WordsTest {
         assertEquals(5, opts.map { it.text }.toSet().size)
         assertEquals(2, opts.count { it.difficulty == Difficulty.EASY })
         assertEquals(2, opts.count { it.difficulty == Difficulty.MEDIUM })
-        assertEquals(1, opts.count { it.difficulty == Difficulty.HARD })
+        assertEquals(1, opts.count { it.difficulty >= Difficulty.HARD }) // sometimes extra hard
+    }
+
+    @Test fun minimumDifficultyExcludesEasierWords() {
+        for (min in Difficulty.values()) {
+            repeat(60) { seed ->
+                val opts = Words.pickOptions(Random(seed), emptySet(), min)
+                assertEquals(5, opts.size)
+                assertEquals(5, opts.map { it.text }.toSet().size)
+                assertTrue("$min: ${opts.map { it.text }}", opts.all { it.difficulty >= min })
+                assertTrue(Words.random(Random(seed), emptySet(), min).difficulty >= min)
+            }
+        }
+    }
+
+    @Test fun hardOptionsStillHaveASpread() {
+        val opts = Words.pickOptions(Random(3), emptySet(), Difficulty.HARD)
+        assertTrue(opts.any { it.difficulty == Difficulty.HARD })
+        assertTrue(opts.any { it.difficulty == Difficulty.EXTREME })
+    }
+
+    @Test fun extraHardOnlyNeverRunsOutOverALongGame() {
+        val used = mutableSetOf<String>()
+        repeat(30) { // 10 rounds with plenty of skips
+            val opts = Words.pickOptions(Random(it), used, Difficulty.EXTREME)
+            assertEquals(5, opts.size)
+            assertTrue(opts.all { o -> o.difficulty == Difficulty.EXTREME && o.text !in used })
+            used += opts.first().text
+        }
     }
 
     @Test fun usedWordsAreExcluded() {
@@ -101,9 +135,17 @@ class MsgTest {
             Msg.Setup(6, 90, true), Msg.Choosing(3), Msg.RoundStart(2, "Animal", "___"),
             Msg.StrokePart(4, 0xFFE53935.toInt(), 0.013f, listOf(0.1f, 0.25f, 0.5f, 1f)),
             Msg.Undo, Msg.Clear, Msg.Skipped, Msg.Guess("a tree"), Msg.GuessDeclined("bush"),
-            Msg.RoundResult(1, "tree", "Nature", true, 80, 75, 12_345L, 1, 0, 1.25), Msg.Ready(5),
+            Msg.RoundResult(1, "tree", "Nature", true, 80, 75, 12_345L, 1, 0, 1.25, 2), Msg.Ready(5),
+            Msg.Setup(8, 120, false, 3), Msg.RulesAgreed, Msg.RuleReport("TEXT"), Msg.ReportResponse(true),
         )
         all.forEach { assertEquals(it, roundTrip(it)) }
+    }
+
+    @Test fun olderMessagesWithoutNewFieldsStillDecode() {
+        val setup = Msg.decode("""{"t":"setup","rounds":4,"secs":90,"hostFirst":true}""".toByteArray())
+        assertEquals(Msg.Setup(4, 90, true, 0), setup)
+        val result = Msg.decode("""{"t":"result","r":0,"word":"a","cat":"b","ok":true,"dd":1,"gd":1,"ms":5,"wrong":0,"skips":0,"mult":1.0}""".toByteArray())
+        assertEquals(0, (result as Msg.RoundResult).breaks)
     }
 
     @Test fun garbageIsIgnored() {
@@ -137,9 +179,10 @@ class Pair2(seed: Int = 7) {
 }
 
 class GameFlowTest {
-    private fun start(rounds: Int = 4, secs: Int = 90): Pair2 {
+    private fun start(rounds: Int = 4, secs: Int = 90, min: Difficulty = Difficulty.EASY): Pair2 {
         val p = Pair2()
-        p.host.hostStart(rounds, secs)
+        p.host.agreeRules(); p.guest.agreeRules(); p.pump()
+        p.host.hostStart(rounds, secs, min)
         p.pump()
         return p
     }
@@ -349,6 +392,185 @@ class GameFlowTest {
         assertEquals(4, p.host.state.history.size)
         // Each player drew twice and guessed twice with identical speeds -> identical totals.
         assertEquals(p.host.state.myScore, p.host.state.theirScore)
+    }
+
+    // ---------------------------------------------------------------- rules + difficulty
+
+    @Test fun gameCannotStartUntilBothPlayersAgreeToTheRules() {
+        val p = Pair2()
+        p.host.hostStart(4, 90); p.pump()
+        assertEquals(Phase.LOBBY, p.host.state.phase)
+
+        p.host.agreeRules(); p.pump()
+        assertTrue(p.host.state.iAgreed)
+        assertTrue(p.guest.state.partnerAgreed)
+        assertFalse(p.guest.state.iAgreed)
+        p.host.hostStart(4, 90); p.pump()
+        assertEquals(Phase.LOBBY, p.host.state.phase) // guest hasn't agreed yet
+
+        p.guest.agreeRules(); p.pump()
+        assertTrue(p.host.state.partnerAgreed)
+        p.host.hostStart(4, 90); p.pump()
+        assertNotNull(p.drawer.state.options.firstOrNull())
+    }
+
+    @Test fun difficultySettingReachesBothPhonesAndShapesTheChoices() {
+        val p = start(rounds = 6, min = Difficulty.HARD)
+        assertEquals(Difficulty.HARD, p.host.state.minDifficulty)
+        assertEquals(Difficulty.HARD, p.guest.state.minDifficulty)
+        assertTrue(p.drawer.state.options.all { it.difficulty >= Difficulty.HARD })
+        // The guesser's phone will draw next round, so it must use the same setting.
+        val w = p.drawer.state.options.first()
+        p.drawer.chooseWord(w); p.pump()
+        p.guesser.submitGuess(w.text); p.pump()
+        p.drawer.judge(true); p.pump()
+        p.drawer.ready(); p.guesser.ready(); p.pump()
+        assertTrue(p.drawer.state.options.all { it.difficulty >= Difficulty.HARD })
+    }
+
+    @Test fun extraHardWordsScoreDouble() {
+        val p = start(min = Difficulty.EXTREME)
+        val w = p.drawer.state.options.first()
+        assertEquals(Difficulty.EXTREME, w.difficulty)
+        p.drawer.chooseWord(w); p.pump()
+        p.guesser.submitGuess(w.text); p.pump()
+        p.drawer.judge(true); p.pump()
+        assertEquals(200, p.drawer.state.myScore)
+        assertEquals(200, p.guesser.state.myScore)
+    }
+
+    @Test fun rematchKeepsOrChangesTheDifficulty() {
+        val p = start(rounds = 2, min = Difficulty.MEDIUM)
+        repeat(2) {
+            val w = p.drawer.state.options.first()
+            p.drawer.chooseWord(w); p.pump()
+            p.guesser.submitGuess(w.text); p.pump()
+            p.drawer.judge(true); p.pump()
+            p.drawer.ready(); p.guesser.ready(); p.pump()
+        }
+        p.host.hostStart(2, 90, Difficulty.EXTREME); p.pump()
+        assertEquals(Difficulty.EXTREME, p.guest.state.minDifficulty)
+        assertTrue(p.drawer.state.options.all { it.difficulty == Difficulty.EXTREME })
+    }
+
+    // ---------------------------------------------------------------- rule-break reports
+
+    private fun drawingRound(p: Pair2): Word {
+        val w = p.drawer.state.options.first { it.difficulty == Difficulty.EASY }
+        p.drawer.chooseWord(w); p.pump()
+        draw(p.drawer, p)
+        return w
+    }
+
+    @Test fun agreedRuleBreakPenalisesDrawerClearsDrawingAndDropsPendingGuess() {
+        val p = start()
+        val w = drawingRound(p)
+        p.advance(5_000)
+        p.guesser.submitGuess("tree"); p.pump() // a guess is waiting when the report arrives
+        p.guesser.reportRuleBreak(RuleBreak.TEXT); p.pump()
+        assertEquals(RuleBreak.TEXT, p.drawer.state.pendingReport)
+        assertTrue(p.guesser.state.awaitingReport)
+        p.drawer.judge(true); p.pump() // must answer the report first
+        assertEquals(Phase.DRAWING, p.drawer.state.phase)
+
+        p.drawer.respondToReport(true); p.pump()
+        assertNull(p.drawer.state.pendingReport)
+        assertNull(p.drawer.state.pendingGuess) // cancelled, no wrong-guess penalty
+        assertEquals(0, p.drawer.board.strokes.size)
+        assertEquals(0, p.guesser.board.strokes.size)
+        assertFalse(p.guesser.state.awaitingReport)
+        assertFalse(p.guesser.state.awaitingVerdict) // free to guess again
+        assertEquals(0, p.guesser.state.wrongGuesses)
+        assertEquals(1, p.drawer.state.ruleBreaks)
+        assertEquals(1, p.guesser.state.ruleBreaks)
+        assertNotNull(p.drawer.state.note)
+        assertNotNull(p.guesser.state.note)
+
+        // Redraw, then a correct guess: the drawer is charged the penalty.
+        draw(p.drawer, p)
+        p.advance(5_000)
+        p.guesser.submitGuess(w.text); p.pump()
+        p.drawer.judge(true); p.pump()
+        val base = Scoring.basePoints(10_000, 90_000, w.difficulty.multiplier)
+        assertEquals(base - Scoring.RULE_BREAK_PENALTY, p.drawer.state.myScore)
+        assertEquals(base, p.guesser.state.myScore) // the guesser isn't punished for the drawer's mistake
+        assertEquals(1, p.guesser.state.outcome?.ruleBreaks)
+        assertEquals(p.drawer.state.myScore, p.guesser.state.theirScore)
+    }
+
+    @Test fun disputedReportCostsNobodyAndKeepsTheDrawing() {
+        val p = start()
+        drawingRound(p)
+        p.guesser.reportRuleBreak(RuleBreak.LABEL); p.pump()
+        p.drawer.respondToReport(false); p.pump()
+        assertEquals(1, p.drawer.board.strokes.size)
+        assertEquals(1, p.guesser.board.strokes.size)
+        assertEquals(0, p.drawer.state.ruleBreaks)
+        assertFalse(p.guesser.state.awaitingReport)
+        assertNotNull(p.guesser.state.note)
+        assertNull(p.drawer.state.pendingReport)
+    }
+
+    @Test fun reportsAreLimitedAndOneAtATime() {
+        val p = start()
+        drawingRound(p)
+        p.guesser.reportRuleBreak(RuleBreak.TEXT)
+        p.guesser.reportRuleBreak(RuleBreak.TEXT) // ignored: first one still unanswered
+        p.pump()
+        p.drawer.respondToReport(false); p.pump()
+        repeat(5) {
+            p.guesser.reportRuleBreak(RuleBreak.HINTS); p.pump()
+            p.drawer.respondToReport(false); p.pump()
+        }
+        assertEquals(Rules.MAX_REPORTS_PER_ROUND, p.guesser.state.reportsUsed)
+        assertEquals(0, p.drawer.state.ruleBreaks)
+    }
+
+    @Test fun drawerCannotReportAndGuesserCannotAnswer() {
+        val p = start()
+        drawingRound(p)
+        p.drawer.reportRuleBreak(RuleBreak.TEXT); p.pump()
+        assertNull(p.guesser.state.pendingReport)
+        assertEquals(0, p.drawer.state.reportsUsed)
+        p.guesser.respondToReport(true); p.pump()
+        assertEquals(0, p.guesser.state.ruleBreaks)
+    }
+
+    @Test fun roundCannotTimeOutWhileAReportIsUnanswered() {
+        val p = start()
+        drawingRound(p)
+        p.advance(89_000)
+        p.guesser.reportRuleBreak(RuleBreak.SPELLING); p.pump()
+        p.advance(5_000)
+        assertEquals(Phase.DRAWING, p.drawer.state.phase)
+        p.drawer.respondToReport(true); p.pump()
+        p.advance(200)
+        assertEquals(Phase.RESULT, p.drawer.state.phase)
+        assertEquals(Phase.RESULT, p.guesser.state.phase)
+        // Timed out with one agreed rule break: nobody scores, and the drawer can't go below zero.
+        assertEquals(0, p.drawer.state.myScore)
+        assertEquals(1, p.guesser.state.outcome?.ruleBreaks)
+    }
+
+    @Test fun ruleBreaksAndReportsResetEachRound() {
+        val p = start()
+        val w = drawingRound(p)
+        p.guesser.reportRuleBreak(RuleBreak.TEXT); p.pump()
+        p.drawer.respondToReport(true); p.pump()
+        p.guesser.submitGuess(w.text); p.pump()
+        p.drawer.judge(true); p.pump()
+        p.drawer.ready(); p.guesser.ready(); p.pump()
+        assertEquals(0, p.drawer.state.ruleBreaks)
+        assertEquals(0, p.guesser.state.ruleBreaks)
+        assertEquals(0, p.guesser.state.reportsUsed)
+        assertNull(p.guesser.state.note)
+    }
+
+    @Test fun unknownRuleNamesAreIgnored() {
+        val p = start()
+        drawingRound(p)
+        p.drawer.onMessage(Msg.RuleReport("NOT_A_RULE"))
+        assertNull(p.drawer.state.pendingReport)
     }
 
     @Test fun partnerSeesWhenTheOtherPlayerIsReady() {

@@ -57,12 +57,15 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.neil1454.drawsomething.core.Difficulty
 import com.neil1454.drawsomething.core.GameEngine
 import com.neil1454.drawsomething.core.GameState
 import com.neil1454.drawsomething.core.GuessMatcher
 import com.neil1454.drawsomething.core.Palette
 import com.neil1454.drawsomething.core.Phase
 import com.neil1454.drawsomething.core.RoundOutcome
+import com.neil1454.drawsomething.core.RuleBreak
+import com.neil1454.drawsomething.core.Rules
 import com.neil1454.drawsomething.core.Scoring
 import com.neil1454.drawsomething.core.StrokeBoard
 import com.neil1454.drawsomething.core.Word
@@ -204,10 +207,11 @@ private fun WordCard(w: Word, onClick: () -> Unit) {
             Text(
                 "${w.difficulty.label}  ×${w.difficulty.multiplier}",
                 style = MaterialTheme.typography.labelLarge,
-                color = when (w.difficulty.multiplier) {
-                    1.0 -> MaterialTheme.colorScheme.tertiary
-                    1.25 -> MaterialTheme.colorScheme.secondary
-                    else -> MaterialTheme.colorScheme.error
+                color = when (w.difficulty) {
+                    Difficulty.EASY -> MaterialTheme.colorScheme.tertiary
+                    Difficulty.MEDIUM -> MaterialTheme.colorScheme.secondary
+                    Difficulty.HARD -> MaterialTheme.colorScheme.error
+                    Difficulty.EXTREME -> Color(0xFF8E24AA)
                 },
             )
         }
@@ -248,6 +252,7 @@ fun DrawScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
     var color by rememberSaveable { mutableIntStateOf(Palette.colors[0]) }
     var widthIdx by rememberSaveable { mutableIntStateOf(1) }
     var confirmSkip by remember { mutableStateOf(false) }
+    var showRules by remember { mutableStateOf(false) }
     val width = if (color == Palette.ERASER) max(Palette.widths[widthIdx], Palette.ERASER_MIN_WIDTH) else Palette.widths[widthIdx]
     val word = g.word
 
@@ -264,9 +269,13 @@ fun DrawScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                TextButton(onClick = { confirmSkip = true }) { Text("Skip (−${Scoring.SKIP_PENALTY})") }
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(onClick = { confirmSkip = true }) { Text("Skip (−${Scoring.SKIP_PENALTY})") }
+                    TextButton(onClick = { showRules = true }) { Text("📜 Rules") }
+                }
             }
             ScoreStrip(g)
+            g.note?.let { NoticeCard(it) { act { dismissNote() } } }
         },
         board = {
             SquareBoard(
@@ -276,7 +285,15 @@ fun DrawScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
                 onMove = { x, y -> act { extendStroke(x, y) } },
                 onEnd = { act { endStroke() } },
             )
-            g.pendingGuess?.let { guess ->
+            val report = g.pendingReport
+            val guess = g.pendingGuess
+            if (report != null) {
+                ReportCard(
+                    rule = report, theirName = g.theirName,
+                    onAnswer = { agree -> act { respondToReport(agree) } },
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp),
+                )
+            } else if (guess != null) {
                 JudgeCard(
                     guess = guess, word = word?.text.orEmpty(), theirName = g.theirName,
                     onJudge = { ok -> act { judge(ok) } },
@@ -293,6 +310,7 @@ fun DrawScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
         },
     )
 
+    if (showRules) RulesDialog { showRules = false }
     if (confirmSkip) {
         AlertDialog(
             onDismissRequest = { confirmSkip = false },
@@ -301,6 +319,28 @@ fun DrawScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
             confirmButton = { TextButton(onClick = { confirmSkip = false; act { skipWord() } }) { Text("Skip it") } },
             dismissButton = { TextButton(onClick = { confirmSkip = false }) { Text("Keep drawing") } },
         )
+    }
+}
+
+@Composable
+private fun ReportCard(rule: RuleBreak, theirName: String, onAnswer: (Boolean) -> Unit, modifier: Modifier) {
+    Card(
+        modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("⚑ $theirName reported a rule break", style = MaterialTheme.typography.labelLarge)
+            Text("“${rule.label}”", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                "If you agree, you lose ${Scoring.RULE_BREAK_PENALTY} points and your drawing is cleared.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = { onAnswer(false) }, Modifier.weight(1f).height(48.dp)) { Text("I disagree") }
+                Button(onClick = { onAnswer(true) }, Modifier.weight(1f).height(48.dp)) { Text("They're right") }
+            }
+        }
     }
 }
 
@@ -389,6 +429,8 @@ private fun Swatch(colour: Color, selected: Boolean, label: String, onClick: () 
 @Composable
 fun GuessScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
     var text by rememberSaveable { mutableStateOf("") }
+    var showRules by remember { mutableStateOf(false) }
+    var showReport by remember { mutableStateOf(false) }
     fun send() {
         if (text.isNotBlank() && !g.awaitingVerdict) {
             act { submitGuess(text) }
@@ -408,10 +450,22 @@ fun GuessScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showRules = true }) { Text("📜 Rules") }
+                Spacer(Modifier.weight(1f))
+                val left = Rules.MAX_REPORTS_PER_ROUND - g.reportsUsed
+                OutlinedButton(onClick = { showReport = true }, enabled = !g.awaitingReport && left > 0) {
+                    Text(if (g.awaitingReport) "Report sent…" else "⚑ Rule break ($left left)")
+                }
+            }
             ScoreStrip(g)
+            g.note?.let { NoticeCard(it) { act { dismissNote() } } }
         },
         board = { SquareBoard(board, version, Modifier.fillMaxSize()) },
         bottom = {
+            if (g.awaitingReport) {
+                Text("Waiting for ${g.theirName} to answer your rule-break report…", style = MaterialTheme.typography.bodyMedium)
+            }
             if (g.declined.isNotEmpty()) {
                 Text(
                     "Not quite: " + g.declined.joinToString(", "),
@@ -438,6 +492,32 @@ fun GuessScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
                 }
             }
         },
+    )
+    if (showRules) RulesDialog { showRules = false }
+    if (showReport) {
+        ReportDialog(
+            theirName = g.theirName,
+            onPick = { rule -> showReport = false; act { reportRuleBreak(rule) } },
+            onClose = { showReport = false },
+        )
+    }
+}
+
+@Composable
+private fun ReportDialog(theirName: String, onPick: (RuleBreak) -> Unit, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("⚑ Report a rule break") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("What did $theirName do? They'll be asked whether they agree.")
+                RuleBreak.values().forEach { rule ->
+                    OutlinedButton(onClick = { onPick(rule) }, Modifier.fillMaxWidth()) { Text(rule.label) }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
     )
 }
 
@@ -513,6 +593,9 @@ private fun OutcomeBreakdown(o: RoundOutcome, g: GameState) {
             if (o.skips > 0) {
                 Text("${o.skips} skipped word(s): −${Scoring.SKIP_PENALTY} each for the drawer", style = MaterialTheme.typography.bodySmall)
             }
+            if (o.ruleBreaks > 0) {
+                Text("${o.ruleBreaks} rule break(s): −${Scoring.RULE_BREAK_PENALTY} each for the drawer", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -548,7 +631,7 @@ fun GameOverScreen(g: GameState, act: Act, onLeave: () -> Unit) {
             }
             if (g.isHost) {
                 Button(
-                    onClick = { act { hostStart(g.totalRounds, g.roundSeconds) } },
+                    onClick = { act { hostStart(g.totalRounds, g.roundSeconds, g.minDifficulty) } },
                     Modifier.fillMaxWidth().height(52.dp),
                 ) { Text("Play again", fontSize = 18.sp) }
             } else {

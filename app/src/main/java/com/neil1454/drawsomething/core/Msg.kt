@@ -6,7 +6,16 @@ import org.json.JSONObject
 /** Everything the two phones say to each other. Small JSON messages. */
 sealed class Msg {
     /** Host starts (or restarts) a game. */
-    data class Setup(val rounds: Int, val seconds: Int, val hostDrawsFirst: Boolean) : Msg()
+    data class Setup(val rounds: Int, val seconds: Int, val hostDrawsFirst: Boolean, val minDifficulty: Int = 0) : Msg()
+
+    /** "I agree to the rules." */
+    data object RulesAgreed : Msg()
+
+    /** Guesser -> drawer: "that drawing breaks this rule" (a [RuleBreak] name). */
+    data class RuleReport(val rule: String) : Msg()
+
+    /** Drawer -> guesser: did they agree it was a rule break? */
+    data class ReportResponse(val accepted: Boolean) : Msg()
 
     /** The drawer is picking a word. */
     data class Choosing(val round: Int) : Msg()
@@ -36,6 +45,7 @@ sealed class Msg {
         val wrongGuesses: Int,
         val skips: Int,
         val multiplier: Double,
+        val breaks: Int = 0,
     ) : Msg()
 
     /** "I've seen the result, let's move on." */
@@ -47,6 +57,10 @@ sealed class Msg {
         val o = JSONObject()
         when (this) {
             is Setup -> o.put("t", "setup").put("rounds", rounds).put("secs", seconds).put("hostFirst", hostDrawsFirst)
+                .put("minDiff", minDifficulty)
+            RulesAgreed -> o.put("t", "agree")
+            is RuleReport -> o.put("t", "report").put("rule", rule)
+            is ReportResponse -> o.put("t", "reportReply").put("ok", accepted)
             is Choosing -> o.put("t", "choosing").put("r", round)
             is RoundStart -> o.put("t", "start").put("r", round).put("cat", category).put("pat", pattern)
             is StrokePart -> {
@@ -61,7 +75,7 @@ sealed class Msg {
             is GuessDeclined -> o.put("t", "declined").put("s", text)
             is RoundResult -> o.put("t", "result").put("r", round).put("word", word).put("cat", category)
                 .put("ok", correct).put("dd", drawerDelta).put("gd", guesserDelta).put("ms", elapsedMs)
-                .put("wrong", wrongGuesses).put("skips", skips).put("mult", multiplier)
+                .put("wrong", wrongGuesses).put("skips", skips).put("mult", multiplier).put("breaks", breaks)
             is Ready -> o.put("t", "ready").put("r", round)
         }
         return o
@@ -72,7 +86,10 @@ sealed class Msg {
         fun decode(bytes: ByteArray): Msg? = try {
             val o = JSONObject(String(bytes, Charsets.UTF_8))
             when (o.getString("t")) {
-                "setup" -> Setup(o.getInt("rounds"), o.getInt("secs"), o.getBoolean("hostFirst"))
+                "setup" -> Setup(o.getInt("rounds"), o.getInt("secs"), o.getBoolean("hostFirst"), o.optInt("minDiff", 0))
+                "agree" -> RulesAgreed
+                "report" -> RuleReport(o.getString("rule"))
+                "reportReply" -> ReportResponse(o.getBoolean("ok"))
                 "choosing" -> Choosing(o.getInt("r"))
                 "start" -> RoundStart(o.getInt("r"), o.getString("cat"), o.getString("pat"))
                 "stroke" -> {
@@ -87,7 +104,7 @@ sealed class Msg {
                 "result" -> RoundResult(
                     o.getInt("r"), o.getString("word"), o.getString("cat"), o.getBoolean("ok"),
                     o.getInt("dd"), o.getInt("gd"), o.getLong("ms"), o.getInt("wrong"),
-                    o.getInt("skips"), o.getDouble("mult"),
+                    o.getInt("skips"), o.getDouble("mult"), o.optInt("breaks", 0),
                 )
                 "ready" -> Ready(o.getInt("r"))
                 else -> null
