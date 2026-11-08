@@ -12,8 +12,19 @@ android {
         applicationId = "com.neil1454.drawsomething"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
+    }
+
+    // A fixed key, so a new version installs over the old one instead of needing an uninstall.
+    // This is a convenience key for sideloading, not a secret: it is committed to the repo.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

@@ -82,35 +82,60 @@ sealed class Msg {
     }
 
     companion object {
-        /** Returns null for anything unreadable, so a bad packet can never crash the game. */
+        /** Anything bigger than this is not a message from this game. */
+        const val MAX_BYTES = 64 * 1024
+        const val MAX_STROKE_VALUES = 4000 // x,y pairs in a single message
+        private const val MAX_TEXT = 40
+
+        private fun clean(s: String, max: Int) = s.filter { !it.isISOControl() }.take(max)
+        private fun unit(v: Double): Float = if (v.isNaN()) 0f else v.toFloat().coerceIn(0f, 1f)
+
+        /**
+         * Returns null for anything unreadable or implausible, so a damaged, hostile or
+         * buggy packet can never crash the game. Numbers are clamped and text is trimmed.
+         */
         fun decode(bytes: ByteArray): Msg? = try {
-            val o = JSONObject(String(bytes, Charsets.UTF_8))
-            when (o.getString("t")) {
-                "setup" -> Setup(o.getInt("rounds"), o.getInt("secs"), o.getBoolean("hostFirst"), o.optInt("minDiff", 0))
-                "agree" -> RulesAgreed
-                "report" -> RuleReport(o.getString("rule"))
-                "reportReply" -> ReportResponse(o.getBoolean("ok"))
-                "choosing" -> Choosing(o.getInt("r"))
-                "start" -> RoundStart(o.getInt("r"), o.getString("cat"), o.getString("pat"))
-                "stroke" -> {
-                    val arr = o.getJSONArray("p")
-                    StrokePart(o.getInt("id"), o.getInt("c"), o.getDouble("w").toFloat(), List(arr.length()) { arr.getDouble(it).toFloat() })
-                }
-                "undo" -> Undo
-                "clear" -> Clear
-                "skipped" -> Skipped
-                "guess" -> Guess(o.getString("s"))
-                "declined" -> GuessDeclined(o.getString("s"))
-                "result" -> RoundResult(
-                    o.getInt("r"), o.getString("word"), o.getString("cat"), o.getBoolean("ok"),
-                    o.getInt("dd"), o.getInt("gd"), o.getLong("ms"), o.getInt("wrong"),
-                    o.getInt("skips"), o.getDouble("mult"), o.optInt("breaks", 0),
-                )
-                "ready" -> Ready(o.getInt("r"))
-                else -> null
-            }
+            if (bytes.size > MAX_BYTES) null else decodeJson(JSONObject(String(bytes, Charsets.UTF_8)))
         } catch (e: Exception) {
             null
+        }
+
+        private fun decodeJson(o: JSONObject): Msg? = when (o.getString("t")) {
+            "setup" -> Setup(
+                o.getInt("rounds").coerceIn(2, 20), o.getInt("secs").coerceIn(30, 300),
+                o.getBoolean("hostFirst"), o.optInt("minDiff", 0).coerceIn(0, 3),
+            )
+            "agree" -> RulesAgreed
+            "report" -> RuleReport(clean(o.getString("rule"), 20))
+            "reportReply" -> ReportResponse(o.getBoolean("ok"))
+            "choosing" -> Choosing(o.getInt("r").coerceIn(0, 100))
+            "start" -> RoundStart(
+                o.getInt("r").coerceIn(0, 100), clean(o.getString("cat"), 30),
+                o.getString("pat").filter { it == '_' || it == ' ' }.take(MAX_TEXT),
+            )
+            "stroke" -> {
+                val arr = o.getJSONArray("p")
+                val n = minOf(arr.length(), MAX_STROKE_VALUES) and 1.inv() // whole x,y pairs only
+                StrokePart(
+                    o.getInt("id"), o.getInt("c"), o.getDouble("w").toFloat().coerceIn(0.002f, 0.08f),
+                    List(n) { unit(arr.getDouble(it)) },
+                )
+            }
+            "undo" -> Undo
+            "clear" -> Clear
+            "skipped" -> Skipped
+            "guess" -> Guess(clean(o.getString("s"), MAX_TEXT))
+            "declined" -> GuessDeclined(clean(o.getString("s"), MAX_TEXT))
+            "result" -> RoundResult(
+                o.getInt("r").coerceIn(0, 100), clean(o.getString("word"), MAX_TEXT), clean(o.getString("cat"), 30),
+                o.getBoolean("ok"), o.getInt("dd").coerceIn(-2000, 2000), o.getInt("gd").coerceIn(-2000, 2000),
+                o.getLong("ms").coerceIn(0, 600_000), o.getInt("wrong").coerceIn(0, 1000),
+                o.getInt("skips").coerceIn(0, 1000),
+                o.getDouble("mult").let { if (it.isNaN()) 1.0 else it.coerceIn(1.0, 3.0) },
+                o.optInt("breaks", 0).coerceIn(0, 1000),
+            )
+            "ready" -> Ready(o.getInt("r").coerceIn(0, 100))
+            else -> null
         }
     }
 }

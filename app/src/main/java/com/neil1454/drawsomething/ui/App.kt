@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neil1454.drawsomething.GameViewModel
@@ -18,15 +19,21 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
     val ui by vm.ui.collectAsStateWithLifecycle()
     val act: Act = { vm.game(it) }
     var confirmLeave by remember { mutableStateOf(false) }
+    var showSplash by rememberSaveable { mutableStateOf(true) }
 
     BackHandler(enabled = ui.stage != Stage.HOME) {
         if (ui.stage == Stage.PLAYING) confirmLeave = true else vm.leave()
     }
 
+    if (showSplash && ui.stage == Stage.HOME) {
+        SplashScreen { showSplash = false }
+        return
+    }
+
     when (ui.stage) {
         Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice)
         Stage.HOSTING -> HostingScreen(ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice)
-        Stage.SEARCHING -> SearchingScreen(ui, vm::requestJoin, vm::leave, vm::clearNotice)
+        Stage.SEARCHING -> SearchingScreen(ui, vm::requestJoin, vm::confirmPairing, vm::cancelPairing, vm::leave, vm::clearNotice)
         Stage.LOBBY -> ui.game?.let { game ->
             LobbyScreen(
                 ui, game, act,

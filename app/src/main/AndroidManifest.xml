@@ -21,8 +21,11 @@
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="tiramisu" />
 
+    <!-- The game never talks to the internet. Make sure no library can add this permission. -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="Draw Something"
         android:supportsRtl="true"

@@ -75,6 +75,30 @@ permissions (on Android 11 and older that means Location, which must also be swi
 Requirements: Android 8.0+ and Google Play services on both devices (standard on almost
 every phone/tablet; Amazon Fire tablets don't have it).
 
+## Security
+
+- **Encrypted, authenticated link.** Nearby Connections encrypts everything between the two
+  devices, and the connection is only made after a manual accept from **both** players.
+- **Pairing code.** When two devices connect, both screens show the same 4-digit code derived from
+  the encrypted handshake. Each player checks it matches before tapping **Codes match**. Someone
+  who isn't your partner, or something pretending to be them, can't produce a matching code.
+- **Door locked behind you.** The moment your partner is connected, the app stops advertising and
+  searching, rejects every other connection attempt, and only reads data from the one paired device.
+  While hosting, the host sees any extra requests (name + code) and can pick the right one or decline.
+  People without the app can't see or join anything at all.
+- **No internet permission.** The app doesn't request the INTERNET permission, so it can't send
+  anything off the device. It also keeps no account, location or contact data (only your name,
+  saved on your phone), and cloud backup is switched off.
+- **Defensive decoding.** Every incoming message is size-limited and range-checked (text length,
+  coordinates, scores, number of strokes), so a damaged or hostile packet can't crash the app or use
+  up memory. Unit tests cover this.
+- **Be aware.** The pairing check is only as good as the players: always compare the code. While you
+  are *hosting* (before your partner joins) your name is visible to other copies of this app nearby,
+  so host just before pairing. Scores are worked out by the drawer's phone and trusted by the
+  guesser's: fine for a friendly game, not cheat-proof.
+- **Signing key.** Builds are signed with a fixed key committed to the repo so updates install over
+  the old version. It is a convenience key for sideloading, not a secret.
+
 ## Building
 
 Open the project in Android Studio and run it, or:
@@ -105,7 +129,7 @@ identical picture.
 
 ## Status
 
-Version 1.0. Two players. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 1.1. Two players. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

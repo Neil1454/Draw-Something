@@ -24,12 +24,18 @@ enum class Stage { HOME, HOSTING, SEARCHING, LOBBY, PLAYING }
 
 data class NearbyHost(val id: String, val name: String)
 
+/** A device trying to pair, with the 4-digit code both screens must show. */
+data class PairRequest(val id: String, val name: String, val code: String)
+
 data class UiState(
     val stage: Stage = Stage.HOME,
     val name: String = "",
     val hosts: List<NearbyHost> = emptyList(),
-    val joinRequest: NearbyHost? = null,   // host side: someone wants to join
-    val connectingTo: String? = null,      // joiner side: waiting for the host to accept
+    val joinRequests: List<PairRequest> = emptyList(), // host side: devices asking to join
+    val connectingTo: String? = null,      // joiner side: name of the host we're connecting to
+    val pairing: PairRequest? = null,      // joiner side: code to compare with the host's screen
+    val pairingConfirmed: Boolean = false, // joiner side: I tapped "codes match"
+    val hostAccepted: String? = null,      // host side: name of the device I accepted
     val isHost: Boolean = false,
     val partnerName: String = "",
     val game: GameState? = null,
@@ -46,6 +52,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val transport = NearbyTransport(app) { onTransportEvent(it) }
     private var engine: GameEngine? = null
     private var tickJob: Job? = null
+    private var acceptedId: String? = null // host: the one device I accepted
 
     // ---------------------------------------------------------------- menu actions
 
@@ -82,20 +89,36 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun requestJoin(host: NearbyHost) {
-        _ui.update { it.copy(connectingTo = host.name) }
+        _ui.update { it.copy(connectingTo = host.name, pairing = null, pairingConfirmed = false) }
         transport.connect(host.id)
     }
 
-    fun acceptJoin() {
-        val req = _ui.value.joinRequest ?: return
-        transport.accept(req.id)
-        _ui.update { it.copy(joinRequest = null) }
+    /** Joiner: "the code on my screen matches the host's". */
+    fun confirmPairing() {
+        val p = _ui.value.pairing ?: return
+        transport.accept(p.id)
+        _ui.update { it.copy(pairingConfirmed = true) }
     }
 
-    fun declineJoin() {
-        val req = _ui.value.joinRequest ?: return
-        transport.reject(req.id)
-        _ui.update { it.copy(joinRequest = null) }
+    /** Joiner: the codes don't match (or I changed my mind). */
+    fun cancelPairing() {
+        _ui.value.pairing?.let { transport.reject(it.id) }
+        _ui.update { it.copy(pairing = null, pairingConfirmed = false, connectingTo = null) }
+    }
+
+    /** Host: accept the one device whose code matches, and turn everyone else away. */
+    fun acceptJoin(id: String) {
+        val s = _ui.value
+        val req = s.joinRequests.firstOrNull { it.id == id } ?: return
+        s.joinRequests.filter { it.id != id }.forEach { transport.reject(it.id) }
+        acceptedId = id
+        transport.accept(id)
+        _ui.update { it.copy(joinRequests = emptyList(), hostAccepted = req.name) }
+    }
+
+    fun declineJoin(id: String) {
+        transport.reject(id)
+        _ui.update { s -> s.copy(joinRequests = s.joinRequests.filter { it.id != id }) }
     }
 
     /** Back to the menu from anywhere (also disconnects). */
@@ -119,9 +142,39 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
             is TransportEvent.HostLost -> _ui.update { s -> s.copy(hosts = s.hosts.filter { it.id != e.id }) }
 
-            is TransportEvent.ConnectionRequest ->
-                if (e.incoming) _ui.update { it.copy(joinRequest = NearbyHost(e.id, e.name)) }
-                else transport.accept(e.id) // we asked to join; the host still has to say yes
+            is TransportEvent.ConnectionRequest -> {
+                val s = _ui.value
+                when {
+                    // Host: collect requests so the right one can be picked by name + code.
+                    e.incoming && s.stage == Stage.HOSTING && s.hostAccepted == null &&
+                        s.joinRequests.size < MAX_PENDING_REQUESTS ->
+                        _ui.update { it.copy(joinRequests = it.joinRequests.filter { r -> r.id != e.id } + PairRequest(e.id, e.name, e.code)) }
+                    // Joiner: show the code; nothing connects until the player confirms it matches.
+                    !e.incoming && s.stage == Stage.SEARCHING && s.connectingTo != null ->
+                        _ui.update { it.copy(pairing = PairRequest(e.id, e.name, e.code), pairingConfirmed = false) }
+                    // Anything else (not hosting, already accepted someone, too many): turned away.
+                    else -> transport.reject(e.id)
+                }
+            }
+
+            is TransportEvent.ConnectionFailed -> {
+                val s = _ui.value
+                val wasMine = s.pairing?.id == e.id
+                val acceptedFailed = e.id == acceptedId
+                if (acceptedFailed) acceptedId = null
+                _ui.update { st ->
+                    st.copy(
+                        joinRequests = st.joinRequests.filter { it.id != e.id },
+                        pairing = if (wasMine) null else st.pairing,
+                        pairingConfirmed = if (wasMine) false else st.pairingConfirmed,
+                        connectingTo = if (wasMine) null else st.connectingTo,
+                        hostAccepted = if (acceptedFailed) null else st.hostAccepted,
+                        notice = if (wasMine || acceptedFailed) {
+                            "That connection was declined or didn't work. Check Bluetooth/Wi-Fi are on and try again."
+                        } else st.notice,
+                    )
+                }
+            }
 
             is TransportEvent.Connected -> startSession(e.name)
 
@@ -136,7 +189,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
-            is TransportEvent.Failure -> _ui.update { it.copy(connectingTo = null, notice = e.message) }
+            is TransportEvent.Failure -> _ui.update { it.copy(connectingTo = null, pairing = null, pairingConfirmed = false, notice = e.message) }
 
             is TransportEvent.Received -> Msg.decode(e.bytes)?.let { engine?.onMessage(it) }
         }
@@ -163,7 +216,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         _ui.update {
             it.copy(
-                stage = Stage.LOBBY, partnerName = partner, joinRequest = null, connectingTo = null,
+                stage = Stage.LOBBY, partnerName = partner, joinRequests = emptyList(), connectingTo = null,
+                pairing = null, pairingConfirmed = false, hostAccepted = null,
                 hosts = emptyList(), notice = null, game = e.state, board = e.board, boardVersion = e.board.version,
             )
         }
@@ -181,6 +235,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun teardown() {
+        acceptedId = null
         tickJob?.cancel()
         tickJob = null
         engine?.onChange = {}
@@ -194,6 +249,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val MAX_NAME = 20
+        const val MAX_PENDING_REQUESTS = 5
         const val TICK_MS = 100L
     }
 }

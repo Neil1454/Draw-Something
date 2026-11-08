@@ -33,22 +33,30 @@ class StrokeData(val id: Int, val color: Int, val width: Float) {
  * tablet show exactly the same picture. Mutated on the main thread only.
  */
 class StrokeBoard {
+    companion object {
+        const val MAX_STROKES = 4_000
+        const val MAX_VALUES = 400_000
+    }
+
     val strokes = ArrayList<StrokeData>()
     var version = 0
         private set
+    private var totalValues = 0
 
     fun clear() {
         strokes.clear()
+        totalValues = 0
         version++
     }
 
     fun undo() {
-        if (strokes.isNotEmpty()) strokes.removeAt(strokes.lastIndex)
+        if (strokes.isNotEmpty()) strokes.removeAt(strokes.lastIndex).also { totalValues -= it.pts.size }
         version++
     }
 
     fun add(stroke: StrokeData) {
         strokes.add(stroke)
+        totalValues += stroke.pts.size
         version++
     }
 
@@ -58,6 +66,9 @@ class StrokeBoard {
 
     /** Applies a chunk of points received from the drawer. */
     fun applyPart(id: Int, color: Int, width: Float, points: List<Float>) {
+        // A misbehaving partner can't make us hold unlimited data.
+        if (strokes.size >= MAX_STROKES || totalValues + points.size > MAX_VALUES) return
+        totalValues += points.size
         val last = strokes.lastOrNull()
         val stroke = if (last != null && last.id == id) last else StrokeData(id, color, width).also { strokes.add(it) }
         stroke.pts.addAll(points)

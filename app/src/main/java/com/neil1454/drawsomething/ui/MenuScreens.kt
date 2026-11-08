@@ -153,10 +153,21 @@ fun HowToPlayDialog(onClose: () -> Unit) {
 }
 
 @Composable
+private fun PairingCode(code: String) {
+    Text(
+        code,
+        style = MaterialTheme.typography.displayMedium,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = 8.sp,
+        color = MaterialTheme.colorScheme.primary,
+    )
+}
+
+@Composable
 fun HostingScreen(
     ui: UiState,
-    onAccept: () -> Unit,
-    onDecline: () -> Unit,
+    onAccept: (String) -> Unit,
+    onDecline: (String) -> Unit,
     onCancel: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
@@ -169,20 +180,43 @@ fun HostingScreen(
             Spacer(Modifier.height(24.dp))
             Text("Hosting as ${ui.name}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             ui.notice?.let { NoticeCard(it, onDismissNotice) }
-            val req = ui.joinRequest
-            if (req == null) {
+            val accepted = ui.hostAccepted
+            if (accepted != null) {
+                CircularProgressIndicator()
+                Text("Connecting to $accepted…", textAlign = TextAlign.Center)
+            } else if (ui.joinRequests.isEmpty()) {
                 CircularProgressIndicator()
                 Text(
                     "Waiting for your partner…\nOn their device tap “Join a game” and pick your name.",
                     textAlign = TextAlign.Center,
                 )
+                Text(
+                    "🔒 Only you and your partner can play: you'll both check a pairing code before anything connects.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
             } else {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("${req.name} wants to join your game", style = MaterialTheme.typography.titleMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            OutlinedButton(onClick = onDecline, Modifier.weight(1f)) { Text("Decline") }
-                            Button(onClick = onAccept, Modifier.weight(1f)) { Text("Accept") }
+                ui.joinRequests.forEach { req ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text("${req.name} wants to join your game", style = MaterialTheme.typography.titleMedium)
+                            Text("Pairing code", style = MaterialTheme.typography.labelLarge)
+                            PairingCode(req.code)
+                            Text(
+                                "Only accept if this exact code is on ${req.name}'s screen too. " +
+                                    "If it isn't, or you don't know them, decline.",
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                OutlinedButton(onClick = { onDecline(req.id) }, Modifier.weight(1f)) { Text("Decline") }
+                                Button(onClick = { onAccept(req.id) }, Modifier.weight(1f)) { Text("Codes match") }
+                            }
                         }
                     }
                 }
@@ -196,6 +230,8 @@ fun HostingScreen(
 fun SearchingScreen(
     ui: UiState,
     onPick: (NearbyHost) -> Unit,
+    onConfirmPairing: () -> Unit,
+    onCancelPairing: () -> Unit,
     onCancel: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
@@ -208,10 +244,38 @@ fun SearchingScreen(
             Spacer(Modifier.height(24.dp))
             Text("Games nearby", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             ui.notice?.let { NoticeCard(it, onDismissNotice) }
+            val pairing = ui.pairing
             val waitingFor = ui.connectingTo
-            if (waitingFor != null) {
+            if (pairing != null) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(
+                        Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("Pairing with ${pairing.name}", style = MaterialTheme.typography.titleMedium)
+                        Text("Pairing code", style = MaterialTheme.typography.labelLarge)
+                        PairingCode(pairing.code)
+                        if (!ui.pairingConfirmed) {
+                            Text(
+                                "Check this exact code is showing on ${pairing.name}'s screen. " +
+                                    "If it isn't, cancel: you may have reached the wrong device.",
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                OutlinedButton(onClick = onCancelPairing, Modifier.weight(1f)) { Text("Cancel") }
+                                Button(onClick = onConfirmPairing, Modifier.weight(1f)) { Text("Codes match") }
+                            }
+                        } else {
+                            CircularProgressIndicator(Modifier.size(28.dp))
+                            Text("Waiting for ${pairing.name} to accept…", textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+            } else if (waitingFor != null) {
                 CircularProgressIndicator()
-                Text("Waiting for $waitingFor to accept…")
+                Text("Contacting $waitingFor…")
             } else {
                 if (ui.hosts.isEmpty()) {
                     CircularProgressIndicator(Modifier.size(32.dp))

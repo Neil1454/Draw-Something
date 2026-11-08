@@ -1,9 +1,12 @@
 name: Android build
 
 on:
-  push:
+  push:            # every branch, and version tags such as v1.1.0
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write  # needed to publish a release when a version tag is pushed
 
 jobs:
   build:
@@ -22,3 +25,13 @@ jobs:
         with:
           name: draw-something-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish release (version tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK="DrawSomething-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          gh release create "$GITHUB_REF_NAME" "$APK" \
+            --title "Draw Something ${GITHUB_REF_NAME}" \
+            --notes "Download **${APK}** below on your Android phone or tablet and open it to install (allow installs from your browser or Files app when asked). Install it on both devices. Made by Neil Sampson."

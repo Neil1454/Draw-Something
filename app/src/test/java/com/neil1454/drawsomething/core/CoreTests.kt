@@ -148,6 +148,42 @@ class MsgTest {
         assertEquals(0, (result as Msg.RoundResult).breaks)
     }
 
+    @Test fun hostileOrDamagedMessagesAreClampedOrRejected() {
+        fun d(json: String) = Msg.decode(json.toByteArray())
+        // oversized packet
+        assertNull(Msg.decode(ByteArray(Msg.MAX_BYTES + 1) { 'a'.code.toByte() }))
+        // coordinates outside the canvas are clamped, odd trailing value dropped, width limited
+        val stroke = d("""{"t":"stroke","id":1,"c":0,"w":9.0,"p":[-5,0.5,7,2,0.3]}""") as Msg.StrokePart
+        assertEquals(listOf(0f, 0.5f, 1f, 1f), stroke.pts)
+        assertEquals(0.08f, stroke.width)
+        // a stroke message can't carry an unbounded number of points
+        val many = (0 until 12_000).joinToString(",") { "0.5" }
+        val big = d("""{"t":"stroke","id":1,"c":0,"w":0.01,"p":[$many]}""") as Msg.StrokePart
+        assertTrue(big.pts.size <= Msg.MAX_STROKE_VALUES)
+        // text is trimmed and stripped of control characters; pattern may only hold _ and spaces
+        val g = d("""{"t":"guess","s":"${"x".repeat(500)}\u0000y"}""") as Msg.Guess
+        assertTrue(g.text.length <= 40 && g.text.none { it.isISOControl() })
+        val start = d("""{"t":"start","r":0,"cat":"Animal","pat":"__ <script>__"}""") as Msg.RoundStart
+        assertEquals("__ __", start.pattern)
+        // absurd settings and scores are clamped
+        assertEquals(Msg.Setup(20, 300, true, 3), d("""{"t":"setup","rounds":9999,"secs":99999,"hostFirst":true,"minDiff":77}"""))
+        val r = d("""{"t":"result","r":0,"word":"a","cat":"b","ok":true,"dd":999999,"gd":-999999,"ms":-5,"wrong":0,"skips":0,"mult":99.0}""") as Msg.RoundResult
+        assertEquals(2000, r.drawerDelta); assertEquals(-2000, r.guesserDelta)
+        assertEquals(0L, r.elapsedMs); assertEquals(3.0, r.multiplier, 0.0)
+    }
+
+    @Test fun boardRefusesToGrowWithoutLimit() {
+        val b = StrokeBoard()
+        val chunk = List(Msg.MAX_STROKE_VALUES) { 0.5f }
+        repeat(200) { b.applyPart(1, 0, 0.01f, chunk) } // 800,000 values offered
+        assertTrue(b.strokes.sumOf { it.pts.size } <= StrokeBoard.MAX_VALUES)
+        repeat(StrokeBoard.MAX_STROKES + 500) { b.applyPart(it + 10, 0, 0.01f, listOf(0.1f, 0.1f)) }
+        assertTrue(b.strokes.size <= StrokeBoard.MAX_STROKES)
+        b.clear()
+        b.applyPart(1, 0, 0.01f, chunk) // usable again after a clear
+        assertEquals(1, b.strokes.size)
+    }
+
     @Test fun garbageIsIgnored() {
         assertNull(Msg.decode("not json".toByteArray()))
         assertNull(Msg.decode("""{"t":"nope"}""".toByteArray()))
