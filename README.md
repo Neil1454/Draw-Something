@@ -1,5 +1,7 @@
 # Draw Something
 
+*Created by Neil Sampson.*
+
 A two-player drawing and guessing game for Android phones and tablets. One of you draws a
 word, the other watches it appear live and tries to guess it. **It works with no internet at
 all**, so you can play on a plane, because the two devices talk to each other directly over
@@ -80,3 +82,7 @@ identical picture.
 
 Version 1.0. Two players. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
+
+## Credits
+
+Designed and created by **Neil Sampson**. © Neil Sampson.

@@ -40,6 +40,8 @@ import com.neil1454.drawsomething.NearbyHost
 import com.neil1454.drawsomething.UiState
 import com.neil1454.drawsomething.core.Scoring
 
+const val CREATOR = "Neil Sampson"
+
 @Composable
 fun NoticeCard(text: String, onDismiss: (() -> Unit)? = null) {
     Card(
@@ -82,6 +84,12 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                "Made by $CREATOR",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary,
+            )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = ui.name,
@@ -101,6 +109,11 @@ fun HomeScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
+            )
+            Text(
+                "© $CREATOR",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -128,6 +141,7 @@ fun HowToPlayDialog(onClose: () -> Unit) {
                 Text("• Each wrong guess the drawer rejects costs the guesser ${Scoring.WRONG_GUESS_PENALTY}.")
                 Text("• Skipping a word costs the drawer ${Scoring.SKIP_PENALTY}.")
                 Text("• Run out of time and nobody scores. Roles swap every round so it's always even.")
+                Text("Draw Something was created by $CREATOR.", fontWeight = FontWeight.Bold)
             }
         },
     )
