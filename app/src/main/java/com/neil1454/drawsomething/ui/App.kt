@@ -12,6 +12,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neil1454.drawsomething.GameViewModel
+import com.neil1454.drawsomething.core.MinesPhase
+import com.neil1454.drawsomething.core.SeaPhase
 import com.neil1454.drawsomething.Stage
 
 @Composable
@@ -37,14 +39,41 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
         Stage.LOBBY -> ui.game?.let { game ->
             LobbyScreen(
                 ui, game, act,
-                onStart = { rounds, secs, min -> act { hostStart(rounds, secs, min) } },
+                onPickGame = vm::pickGame,
+                onStartDraw = vm::startDraw,
+                onStartMines = vm::startMines,
+                onStartSea = vm::startSea,
                 onLeave = vm::leave,
             )
         }
         Stage.PLAYING -> {
             val game = ui.game
             val board = ui.board
-            if (game != null && board != null) GameRoot(game, board, ui.boardVersion, act, vm::leave)
+            val mines = ui.mines
+            val sea = ui.sea
+            when {
+                mines != null && mines.phase != MinesPhase.LOBBY ->
+                    MinesScreen(
+                        mines, { vm.mines(it) },
+                        onPlayAgain = { vm.startMines(mines.size) },
+                        onBackToGames = vm::backToGames,
+                        onLeave = vm::leave,
+                    )
+                sea != null && sea.phase != SeaPhase.LOBBY ->
+                    SeaRoot(
+                        sea, { vm.sea(it) },
+                        onPlayAgain = { vm.startSea(sea.size) },
+                        onBackToGames = vm::backToGames,
+                        onLeave = vm::leave,
+                    )
+                game != null && board != null ->
+                    GameRoot(
+                        game, board, ui.boardVersion, act,
+                        onPlayAgain = { vm.startDraw(game.totalRounds, game.roundSeconds, game.minDifficulty) },
+                        onBackToGames = vm::backToGames,
+                        onLeave = vm::leave,
+                    )
+            }
         }
     }
 

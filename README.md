@@ -2,12 +2,44 @@
 
 *Created by Neil Sampson.*
 
-A two-player drawing and guessing game for Android phones and tablets. One of you draws a
-word, the other watches it appear live and tries to guess it. **It works with no internet at
-all**, so you can play on a plane, because the two devices talk to each other directly over
-Bluetooth and/or Wi-Fi.
+Three two-player games for Android phones and tablets, played directly between your two devices.
+**It works with no internet at all**, so you can play on a plane, because the devices talk to
+each other over Bluetooth and/or Wi-Fi. After you pair, the host picks any game from the lobby,
+and you can switch games without reconnecting.
 
-## How a game works
+| Game | What it is |
+|---|---|
+| 🎨 **Draw Something** | One draws a word, the other watches it appear live and guesses. Fast guesses score big. |
+| 💣 **Bomb Find** | Minesweeper for two. Take turns clearing a shared minefield, dodge bombs, grab power-ups. |
+| 🚢 **Sea Battle** | Battleships. Hide your fleet, hunt theirs. Hit a ship and fire again. |
+
+## Bomb Find (minesweeper for two)
+
+A shared grid (6×6, 8×8, 10×10 or 12×12). You **take turns** tapping a square; a number tells you how
+many bombs touch it. Your first square is always safe.
+
+- **Safe square:** +10 each. An empty square opens its neighbours too, so a lucky open scores a lot.
+- **Bomb:** −25 (never below 0) and your turn ends. The game carries on.
+- **Hidden power-ups** fire when you reveal them: 🎁 Bonus (+30), 🛡️ Shield (blocks your next bomb, +10),
+  ✨ Double (your next reveal scores double), ⏩ Extra turn, 🧲 Steal (take 20 points from your opponent),
+  📡 Radar (flags a hidden bomb for both of you).
+- The game ends when every safe square is open. Highest score wins.
+
+The host's phone holds the real minefield and referees every move; the other phone is only ever sent
+what has been revealed, so there is nothing to peek at.
+
+## Sea Battle (battleships)
+
+Each player has a hidden fleet (4 ships on 8×8, 5 on 10×10), placed for you with a **Shuffle** button.
+Take turns firing at the other player's grid:
+
+- 🎯 **Shot:** one square. **A hit means you fire again.**
+- 📡 **Radar (once):** counts the ship squares in a 3×3 area. Uses your turn.
+- 💥 **Cluster bomb (once):** hits a plus-shaped area of 5 squares. Uses your turn.
+
+Sink every enemy ship to win. Fleets never leave your phone: each phone answers the other's shots.
+
+## How Draw Something works
 
 1. **Everyone types their name** and one player taps **Host a game**. The other taps **Join a
    game**, picks the host from the list, and the host taps **Accept**. That's the whole setup.
@@ -129,7 +161,7 @@ identical picture.
 
 ## Status
 
-Version 1.1. Two players. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 1.2. Two players. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

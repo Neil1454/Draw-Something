@@ -100,7 +100,7 @@ sealed class Msg {
             null
         }
 
-        private fun decodeJson(o: JSONObject): Msg? = when (o.getString("t")) {
+        internal fun decodeJson(o: JSONObject): Msg? = when (o.getString("t")) {
             "setup" -> Setup(
                 o.getInt("rounds").coerceIn(2, 20), o.getInt("secs").coerceIn(30, 300),
                 o.getBoolean("hostFirst"), o.optInt("minDiff", 0).coerceIn(0, 3),

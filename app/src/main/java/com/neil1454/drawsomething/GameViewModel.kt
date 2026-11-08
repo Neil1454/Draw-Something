@@ -5,10 +5,24 @@ import android.content.Context
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.neil1454.drawsomething.core.Difficulty
 import com.neil1454.drawsomething.core.GameEngine
+import com.neil1454.drawsomething.core.GameKind
 import com.neil1454.drawsomething.core.GameState
+import com.neil1454.drawsomething.core.LobbyMsg
+import com.neil1454.drawsomething.core.MineMsg
+import com.neil1454.drawsomething.core.MineSize
+import com.neil1454.drawsomething.core.MinesEngine
+import com.neil1454.drawsomething.core.MinesPhase
+import com.neil1454.drawsomething.core.MinesState
 import com.neil1454.drawsomething.core.Msg
+import com.neil1454.drawsomething.core.Packet
 import com.neil1454.drawsomething.core.Phase
+import com.neil1454.drawsomething.core.SeaEngine
+import com.neil1454.drawsomething.core.SeaMsg
+import com.neil1454.drawsomething.core.SeaSize
+import com.neil1454.drawsomething.core.SeaPhase
+import com.neil1454.drawsomething.core.SeaState
 import com.neil1454.drawsomething.core.StrokeBoard
 import com.neil1454.drawsomething.net.NearbyTransport
 import com.neil1454.drawsomething.net.TransportEvent
@@ -38,7 +52,10 @@ data class UiState(
     val hostAccepted: String? = null,      // host side: name of the device I accepted
     val isHost: Boolean = false,
     val partnerName: String = "",
-    val game: GameState? = null,
+    val lobbyGame: GameKind = GameKind.DRAW, // the game the host has picked in the lobby
+    val game: GameState? = null,             // Draw Something
+    val mines: MinesState? = null,           // Bomb Find
+    val sea: SeaState? = null,               // Sea Battle
     val board: StrokeBoard? = null,
     val boardVersion: Int = 0,
     val notice: String? = null,
@@ -51,6 +68,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private val transport = NearbyTransport(app) { onTransportEvent(it) }
     private var engine: GameEngine? = null
+    private var minesEngine: MinesEngine? = null
+    private var seaEngine: SeaEngine? = null
     private var tickJob: Job? = null
     private var acceptedId: String? = null // host: the one device I accepted
 
@@ -127,9 +146,51 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { UiState(name = it.name) }
     }
 
-    /** Run something on the game engine (draw, guess, judge...). */
+    /** Run something on the Draw Something engine (draw, guess, judge...). */
     fun game(block: GameEngine.() -> Unit) {
         engine?.block()
+    }
+
+    /** Run something on the Bomb Find engine. */
+    fun mines(block: MinesEngine.() -> Unit) {
+        minesEngine?.block()
+    }
+
+    /** Run something on the Sea Battle engine. */
+    fun sea(block: SeaEngine.() -> Unit) {
+        seaEngine?.block()
+    }
+
+    // Starting one game sends the others back to the lobby, so only one is ever on screen.
+
+    fun startDraw(rounds: Int, seconds: Int, minDifficulty: Difficulty) {
+        minesEngine?.backToLobby(); seaEngine?.backToLobby()
+        engine?.hostStart(rounds, seconds, minDifficulty)
+    }
+
+    fun startMines(size: MineSize) {
+        engine?.backToLobby(); seaEngine?.backToLobby()
+        minesEngine?.start(size)
+    }
+
+    fun startSea(size: SeaSize) {
+        engine?.backToLobby(); minesEngine?.backToLobby()
+        seaEngine?.start(size)
+    }
+
+    /** Host: choose which game to play; the partner's lobby follows. */
+    fun pickGame(kind: GameKind) {
+        if (!_ui.value.isHost) return
+        _ui.update { it.copy(lobbyGame = kind) }
+        transport.send(LobbyMsg.encodePick(kind))
+    }
+
+    /** After any game: back to the lobby (still connected) to pick again. */
+    fun backToGames() {
+        engine?.backToLobby()
+        minesEngine?.backToLobby()
+        seaEngine?.backToLobby()
+        publishAll()
     }
 
     // ---------------------------------------------------------------- connection events
@@ -191,7 +252,22 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
             is TransportEvent.Failure -> _ui.update { it.copy(connectingTo = null, pairing = null, pairingConfirmed = false, notice = e.message) }
 
-            is TransportEvent.Received -> Msg.decode(e.bytes)?.let { engine?.onMessage(it) }
+            is TransportEvent.Received -> when (val p = Packet.decode(e.bytes)) {
+                is Packet.Lobby -> _ui.update { it.copy(lobbyGame = p.game) }
+                is Packet.Draw -> {
+                    if (p.msg is Msg.Setup) { minesEngine?.backToLobby(); seaEngine?.backToLobby() }
+                    engine?.onMessage(p.msg)
+                }
+                is Packet.Mines -> {
+                    if (p.msg is MineMsg.Setup) { engine?.backToLobby(); seaEngine?.backToLobby() }
+                    minesEngine?.onMessage(p.msg)
+                }
+                is Packet.Sea -> {
+                    if (p.msg is SeaMsg.Setup) { engine?.backToLobby(); minesEngine?.backToLobby() }
+                    seaEngine?.onMessage(p.msg)
+                }
+                null -> Unit
+            }
         }
     }
 
@@ -206,7 +282,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             clock = { SystemClock.elapsedRealtime() },
         )
         engine = e
-        e.onChange = { publish(e) }
+        e.onChange = { publishAll() }
+        val m = MinesEngine(s.name.trim(), partner, s.isHost, { transport.send(it.encode()) })
+        m.onChange = { publishAll() }
+        minesEngine = m
+        val sb = SeaEngine(s.name.trim(), partner, s.isHost, { transport.send(it.encode()) })
+        sb.onChange = { publishAll() }
+        seaEngine = sb
         tickJob?.cancel()
         tickJob = viewModelScope.launch {
             while (isActive) {
@@ -218,19 +300,29 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 stage = Stage.LOBBY, partnerName = partner, joinRequests = emptyList(), connectingTo = null,
                 pairing = null, pairingConfirmed = false, hostAccepted = null,
-                hosts = emptyList(), notice = null, game = e.state, board = e.board, boardVersion = e.board.version,
+                hosts = emptyList(), notice = null, lobbyGame = GameKind.DRAW,
+                game = e.state, mines = m.state, sea = sb.state, board = e.board, boardVersion = e.board.version,
             )
         }
     }
 
-    private fun publish(e: GameEngine) {
+    /** Copy every engine's state into the UI. We are "playing" if any game is under way. */
+    private fun publishAll() {
+        val d = engine ?: return
+        val m = minesEngine
+        val sb = seaEngine
         _ui.update {
-            if (it.stage != Stage.LOBBY && it.stage != Stage.PLAYING) it
-            else it.copy(
-                stage = if (e.state.phase == Phase.LOBBY) Stage.LOBBY else Stage.PLAYING,
-                game = e.state,
-                boardVersion = e.board.version,
-            )
+            if (it.stage != Stage.LOBBY && it.stage != Stage.PLAYING) {
+                it
+            } else {
+                val playing = d.state.phase != Phase.LOBBY ||
+                    (m != null && m.state.phase != MinesPhase.LOBBY) ||
+                    (sb != null && sb.state.phase != SeaPhase.LOBBY)
+                it.copy(
+                    stage = if (playing) Stage.PLAYING else Stage.LOBBY,
+                    game = d.state, mines = m?.state, sea = sb?.state, boardVersion = d.board.version,
+                )
+            }
         }
     }
 
@@ -240,6 +332,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         tickJob = null
         engine?.onChange = {}
         engine = null
+        minesEngine?.onChange = {}
+        minesEngine = null
+        seaEngine?.onChange = {}
+        seaEngine = null
         transport.stopAll()
     }
 

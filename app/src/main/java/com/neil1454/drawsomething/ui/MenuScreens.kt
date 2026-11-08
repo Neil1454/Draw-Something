@@ -2,6 +2,7 @@
 
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -40,6 +41,9 @@ import com.neil1454.drawsomething.NearbyHost
 import com.neil1454.drawsomething.UiState
 import com.neil1454.drawsomething.core.Difficulty
 import com.neil1454.drawsomething.core.GameEngine
+import com.neil1454.drawsomething.core.GameKind
+import com.neil1454.drawsomething.core.MineSize
+import com.neil1454.drawsomething.core.SeaSize
 import com.neil1454.drawsomething.core.GameState
 import com.neil1454.drawsomething.core.Rules
 import com.neil1454.drawsomething.core.Scoring
@@ -84,7 +88,7 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
             )
             Text(
-                "Draw it. Guess it. Two players, no internet needed.",
+                "Three games for two players. No internet needed.",
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -331,93 +335,199 @@ private val DifficultyChoices = listOf(
 )
 
 @Composable
+private fun GameCard(kind: GameKind, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+        border = if (selected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+            else MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(kind.emoji, fontSize = 32.sp)
+            Column(Modifier.weight(1f)) {
+                Text(kind.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(kind.blurb, style = MaterialTheme.typography.bodySmall)
+            }
+            if (selected) Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 fun LobbyScreen(
     ui: UiState,
     game: GameState,
     act: (GameEngine.() -> Unit) -> Unit,
-    onStart: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
+    onPickGame: (GameKind) -> Unit,
+    onStartDraw: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
+    onStartMines: (MineSize) -> Unit,
+    onStartSea: (SeaSize) -> Unit,
     onLeave: () -> Unit,
 ) {
-    var rounds by rememberSaveable { mutableStateOf(6) }
-    var seconds by rememberSaveable { mutableStateOf(90) }
-    var diffIdx by rememberSaveable { mutableStateOf(0) }
-    val bothAgreed = game.iAgreed && game.partnerAgreed
     Page {
         Column(
             Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Spacer(Modifier.height(16.dp))
-            Text("🤝", fontSize = 48.sp)
+            Spacer(Modifier.height(8.dp))
             Text(
-                "${ui.name}  ×  ${ui.partnerName}",
+                "🤝  ${ui.name}  ×  ${ui.partnerName}",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
-            Text("Connected!", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            Text("Connected! Your link is private and encrypted.", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
 
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("📜 Rules", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    RulesList()
-                    Button(
-                        onClick = { act { agreeRules() } },
-                        enabled = !game.iAgreed,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                    ) { Text(if (game.iAgreed) "✓ You agreed" else "I agree to the rules") }
-                    Text(
-                        if (game.partnerAgreed) "✓ ${ui.partnerName} agreed" else "Waiting for ${ui.partnerName} to agree…",
-                        color = if (game.partnerAgreed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            Text(
+                if (ui.isHost) "Choose a game" else "${ui.partnerName} is choosing the game…",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            GameKind.values().forEach { kind ->
+                GameCard(kind, selected = ui.lobbyGame == kind, enabled = ui.isHost) { onPickGame(kind) }
             }
 
-            if (ui.isHost) {
-                Text("Rounds (you each draw half)", style = MaterialTheme.typography.titleSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(4, 6, 8, 10).forEach { n ->
-                        FilterChip(selected = rounds == n, onClick = { rounds = n }, label = { Text("$n") })
-                    }
-                }
-                Text("Time per drawing", style = MaterialTheme.typography.titleSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(60, 90, 120).forEach { n ->
-                        FilterChip(selected = seconds == n, onClick = { seconds = n }, label = { Text("${n}s") })
-                    }
-                }
-                Text("Words to draw", style = MaterialTheme.typography.titleSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DifficultyChoices.forEachIndexed { i, (_, label) ->
-                        FilterChip(selected = diffIdx == i, onClick = { diffIdx = i }, label = { Text(label) })
-                    }
-                }
-                Text(
-                    when (DifficultyChoices[diffIdx].first) {
-                        Difficulty.EASY -> "A mix of easy to hard, with the odd extra-hard one."
-                        Difficulty.MEDIUM -> "No easy words. Medium, hard and extra hard."
-                        Difficulty.HARD -> "Hard and extra-hard words only."
-                        Difficulty.EXTREME -> "Extra hard only: scenes, actions and ideas. Worth double points!"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Button(
-                    onClick = { onStart(rounds, seconds, DifficultyChoices[diffIdx].first) },
-                    enabled = bothAgreed,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                ) { Text(if (bothAgreed) "Start game" else "Waiting for everyone to agree…", fontSize = 18.sp) }
-            } else {
-                CircularProgressIndicator(Modifier.size(32.dp))
-                Text(
-                    if (bothAgreed) "Waiting for ${ui.partnerName} to start the game…"
-                    else "Agree to the rules, then ${ui.partnerName} can start.",
-                    textAlign = TextAlign.Center,
-                )
+            when (ui.lobbyGame) {
+                GameKind.DRAW -> DrawLobby(ui, game, act, onStartDraw)
+                GameKind.MINES -> MinesLobby(ui, onStartMines)
+                GameKind.SEA -> SeaLobby(ui, onStartSea)
             }
             TextButton(onClick = onLeave) { Text("Leave") }
+        }
+    }
+}
+
+@Composable
+private fun HostOnlyWaiting(ui: UiState, text: String) {
+    CircularProgressIndicator(Modifier.size(28.dp))
+    Text(text.replace("{name}", ui.partnerName), textAlign = TextAlign.Center)
+}
+
+@Composable
+private fun DrawLobby(
+    ui: UiState,
+    game: GameState,
+    act: (GameEngine.() -> Unit) -> Unit,
+    onStart: (Int, Int, Difficulty) -> Unit,
+) {
+    var rounds by rememberSaveable { mutableStateOf(6) }
+    var seconds by rememberSaveable { mutableStateOf(90) }
+    var diffIdx by rememberSaveable { mutableStateOf(0) }
+    val bothAgreed = game.iAgreed && game.partnerAgreed
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("📜 Rules", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                RulesList()
+                Button(
+                    onClick = { act { agreeRules() } },
+                    enabled = !game.iAgreed,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) { Text(if (game.iAgreed) "✓ You agreed" else "I agree to the rules") }
+                Text(
+                    if (game.partnerAgreed) "✓ ${ui.partnerName} agreed" else "Waiting for ${ui.partnerName} to agree…",
+                    color = if (game.partnerAgreed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (ui.isHost) {
+            Text("Rounds (you each draw half)", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(4, 6, 8, 10).forEach { n ->
+                    FilterChip(selected = rounds == n, onClick = { rounds = n }, label = { Text("$n") })
+                }
+            }
+            Text("Time per drawing", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(60, 90, 120).forEach { n ->
+                    FilterChip(selected = seconds == n, onClick = { seconds = n }, label = { Text("${n}s") })
+                }
+            }
+            Text("Words to draw", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DifficultyChoices.forEachIndexed { i, (_, label) ->
+                    FilterChip(selected = diffIdx == i, onClick = { diffIdx = i }, label = { Text(label) })
+                }
+            }
+            Text(
+                when (DifficultyChoices[diffIdx].first) {
+                    Difficulty.EASY -> "A mix of easy to hard, with the odd extra-hard one."
+                    Difficulty.MEDIUM -> "No easy words. Medium, hard and extra hard."
+                    Difficulty.HARD -> "Hard and extra-hard words only."
+                    Difficulty.EXTREME -> "Extra hard only: scenes, actions and ideas. Worth double points!"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Button(
+                onClick = { onStart(rounds, seconds, DifficultyChoices[diffIdx].first) },
+                enabled = bothAgreed,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+            ) { Text(if (bothAgreed) "Start game" else "Waiting for everyone to agree…", fontSize = 18.sp) }
+        } else {
+            HostOnlyWaiting(
+                ui,
+                if (bothAgreed) "Waiting for {name} to start the game…" else "Agree to the rules, then {name} can start.",
+            )
+        }
+    }
+}
+
+@Composable
+private fun MinesLobby(ui: UiState, onStart: (MineSize) -> Unit) {
+    var sizeIdx by rememberSaveable { mutableStateOf(1) }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) { MinesHelp() }
+        }
+        if (ui.isHost) {
+            Text("Grid size", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MineSize.values().forEachIndexed { i, size ->
+                    FilterChip(selected = sizeIdx == i, onClick = { sizeIdx = i }, label = { Text(size.label.substringBefore(' ') + "\n" + size.label.substringAfter(' ')) })
+                }
+            }
+            val size = MineSize.values()[sizeIdx]
+            Text(
+                "${size.w}×${size.h} grid · ${size.mines} bombs · ${size.items} power-ups",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = { onStart(size) }, Modifier.fillMaxWidth().height(56.dp)) { Text("Start Bomb Find", fontSize = 18.sp) }
+        } else {
+            HostOnlyWaiting(ui, "Waiting for {name} to start the game…")
+        }
+    }
+}
+
+@Composable
+private fun SeaLobby(ui: UiState, onStart: (SeaSize) -> Unit) {
+    var sizeIdx by rememberSaveable { mutableStateOf(1) }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) { SeaHelp() }
+        }
+        if (ui.isHost) {
+            Text("Sea size", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SeaSize.values().forEachIndexed { i, size ->
+                    FilterChip(selected = sizeIdx == i, onClick = { sizeIdx = i }, label = { Text(size.label) })
+                }
+            }
+            val size = SeaSize.values()[sizeIdx]
+            Text(
+                "${size.fleet.size} ships each: " + size.fleet.joinToString(", ") { "$it long" },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = { onStart(size) }, Modifier.fillMaxWidth().height(56.dp)) { Text("Start Sea Battle", fontSize = 18.sp) }
+        } else {
+            HostOnlyWaiting(ui, "Waiting for {name} to start the game…")
         }
     }
 }

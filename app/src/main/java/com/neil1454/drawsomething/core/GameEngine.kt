@@ -116,6 +116,14 @@ class GameEngine(
         update { copy(iAgreed = true) }
     }
 
+    /** After a game: return to the lobby (still connected, rules still agreed) to pick any game. */
+    fun backToLobby() {
+        board.clear()
+        active = null
+        outbox.clear()
+        update { copy(phase = Phase.LOBBY, note = null, pendingGuess = null, pendingReport = null) }
+    }
+
     val canStart get() = isHost && state.phase.let { it == Phase.LOBBY || it == Phase.GAME_OVER } &&
         state.iAgreed && state.partnerAgreed
 

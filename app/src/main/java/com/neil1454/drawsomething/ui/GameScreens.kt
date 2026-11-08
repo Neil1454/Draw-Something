@@ -131,7 +131,7 @@ fun TimerBar(g: GameState) {
  * Landscape/tablet: board on the left, [top] and [bottom] stacked in a side panel.
  */
 @Composable
-private fun TwoPane(
+internal fun TwoPane(
     top: @Composable ColumnScope.() -> Unit,
     board: @Composable BoxScope.() -> Unit,
     bottom: @Composable ColumnScope.() -> Unit,
@@ -161,14 +161,22 @@ private fun TwoPane(
 // ============================================================================ routing
 
 @Composable
-fun GameRoot(g: GameState, board: StrokeBoard, version: Int, act: Act, onLeave: () -> Unit) {
+fun GameRoot(
+    g: GameState,
+    board: StrokeBoard,
+    version: Int,
+    act: Act,
+    onPlayAgain: () -> Unit,
+    onBackToGames: () -> Unit,
+    onLeave: () -> Unit,
+) {
     when (g.phase) {
         Phase.PICKING -> PickScreen(g, act)
         Phase.WAITING_FOR_WORD -> WaitingScreen(g)
         Phase.DRAWING -> DrawScreen(g, board, version, act)
         Phase.GUESSING -> GuessScreen(g, board, version, act)
         Phase.RESULT -> ResultScreen(g, board, version, act)
-        Phase.GAME_OVER -> GameOverScreen(g, act, onLeave)
+        Phase.GAME_OVER -> GameOverScreen(g, onPlayAgain, onBackToGames, onLeave)
         Phase.LOBBY -> Unit
     }
 }
@@ -603,7 +611,7 @@ private fun OutcomeBreakdown(o: RoundOutcome, g: GameState) {
 // ============================================================================ game over
 
 @Composable
-fun GameOverScreen(g: GameState, act: Act, onLeave: () -> Unit) {
+fun GameOverScreen(g: GameState, onPlayAgain: () -> Unit, onBackToGames: () -> Unit, onLeave: () -> Unit) {
     val title = when {
         g.myScore > g.theirScore -> "🏆 You win!"
         g.myScore < g.theirScore -> "🏆 ${g.theirName} wins!"
@@ -631,13 +639,14 @@ fun GameOverScreen(g: GameState, act: Act, onLeave: () -> Unit) {
             }
             if (g.isHost) {
                 Button(
-                    onClick = { act { hostStart(g.totalRounds, g.roundSeconds, g.minDifficulty) } },
+                    onClick = onPlayAgain,
                     Modifier.fillMaxWidth().height(52.dp),
                 ) { Text("Play again", fontSize = 18.sp) }
             } else {
                 Text("${g.theirName} can start a rematch…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = onLeave) { Text("Back to menu") }
+            TextButton(onClick = onBackToGames) { Text("Choose another game") }
+            TextButton(onClick = onLeave) { Text("Leave") }
         }
     }
 }
