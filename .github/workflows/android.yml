@@ -20,6 +20,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Unit tests and debug APK
         run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
+      - name: Check the APK is signed with the committed key
+        # Android only installs an update over an app signed with the SAME key, so make
+        # sure every build uses the key committed in app/debug.keystore.
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          ACTUAL=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}')
+          EXPECTED=$(keytool -list -v -keystore app/debug.keystore -storepass android -alias androiddebugkey | grep -m1 'SHA256:' | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')
+          echo "APK signing certificate SHA-256: $ACTUAL"
+          echo "Committed key SHA-256:           $EXPECTED"
+          test -n "$ACTUAL" && [ "$ACTUAL" = "$EXPECTED" ]
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
