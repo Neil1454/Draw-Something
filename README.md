@@ -1,8 +1,10 @@
-# Draw Something
+# Neil & Teri's Time Killer Games
+
+*Ideal for those long flights where internet is miles away.* ✈️
 
 *Created by Neil Sampson.*
 
-Three two-player games for Android phones and tablets, played directly between your two devices.
+Neil & Teri's Time Killer Games is three two-player games for Android phones and tablets, played directly between your two devices.
 **It works with no internet at all**, so you can play on a plane, because the devices talk to
 each other over Bluetooth and/or Wi-Fi. After you pair, the host picks any game from the lobby,
 and you can switch games without reconnecting.

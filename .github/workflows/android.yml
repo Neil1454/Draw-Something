@@ -32,12 +32,12 @@ jobs:
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           TAG="v${VERSION}"
-          APK="DrawSomething-${TAG}.apk"
+          APK="TimeKillerGames-${TAG}.apk"
           cp app/build/outputs/apk/debug/app-debug.apk "$APK"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
           else
             gh release create "$TAG" "$APK" --target "$GITHUB_SHA" \
-              --title "Draw Something ${TAG}" \
-              --notes "Download **${APK}** below on your Android phone or tablet and open it to install (allow installs from your browser or Files app when asked). Install it on both devices. Made by Neil Sampson."
+              --title "Neil & Teri's Time Killer Games ${TAG}" \
+              --notes "Download **${APK}** below on your Android phone or tablet and open it to install (allow installs from your browser or Files app when asked). Install it on both devices. Ideal for long flights: no internet needed. Made by Neil Sampson."
           fi

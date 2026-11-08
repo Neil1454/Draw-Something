@@ -26,8 +26,8 @@ class MainActivity : ComponentActivity() {
                 action?.invoke()
             } else {
                 vm.showNotice(
-                    "Draw Something needs the Nearby/Bluetooth permissions to find your partner. " +
-                        "Allow them when asked, or enable them in Settings > Apps > Draw Something.",
+                    "This app needs the Nearby/Bluetooth permissions to find your partner. " +
+                        "Allow them when asked, or enable them in Settings > Apps > Neil & Teri's Time Killer Games.",
                 )
             }
         }

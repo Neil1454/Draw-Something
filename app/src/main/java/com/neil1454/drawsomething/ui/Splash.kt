@@ -42,10 +42,10 @@ fun SplashScreen(onDone: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("🎨", fontSize = 72.sp)
+            Text("🎮", fontSize = 72.sp)
             Text(
-                "Draw Something",
-                style = MaterialTheme.typography.displaySmall,
+                APP_NAME,
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -56,7 +56,14 @@ fun SplashScreen(onDone: () -> Unit) {
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
             )
-            Spacer(Modifier.height(20.dp))
+            Text(
+                APP_TAGLINE,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(16.dp))
             Text(
                 "✈️ Made to keep us busy on the 4-hour flight",
                 style = MaterialTheme.typography.titleMedium,

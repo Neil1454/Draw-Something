@@ -49,6 +49,8 @@ import com.neil1454.drawsomething.core.Rules
 import com.neil1454.drawsomething.core.Scoring
 
 const val CREATOR = "Neil Sampson"
+const val APP_NAME = "Neil & Teri's Time Killer Games"
+const val APP_TAGLINE = "Ideal for those long flights where internet is miles away."
 
 @Composable
 fun NoticeCard(text: String, onDismiss: (() -> Unit)? = null) {
@@ -79,16 +81,23 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Spacer(Modifier.height(24.dp))
-            Text("🎨", fontSize = 64.sp)
+            Text("🎮", fontSize = 64.sp)
             Text(
-                "Draw Something",
+                APP_NAME,
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
             )
             Text(
+                "✈️ $APP_TAGLINE",
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
                 "Three games for two players. No internet needed.",
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -150,7 +159,7 @@ fun HowToPlayDialog(onClose: () -> Unit) {
                 Text("• Skipping a word costs the drawer ${Scoring.SKIP_PENALTY}.")
                 Text("• Breaking a rule (like writing text) costs the drawer ${Scoring.RULE_BREAK_PENALTY} once they agree to a report.")
                 Text("• Run out of time and nobody scores. Roles swap every round so it's always even.")
-                Text("Draw Something was created by $CREATOR.", fontWeight = FontWeight.Bold)
+                Text("$APP_NAME was created by $CREATOR.", fontWeight = FontWeight.Bold)
             }
         },
     )
