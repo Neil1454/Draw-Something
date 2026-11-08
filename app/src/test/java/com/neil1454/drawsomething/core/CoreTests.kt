@@ -351,6 +351,37 @@ class GameFlowTest {
         assertEquals(p.host.state.myScore, p.host.state.theirScore)
     }
 
+    @Test fun partnerSeesWhenTheOtherPlayerIsReady() {
+        val p = start(rounds = 4)
+        val w = p.drawer.state.options.first()
+        p.drawer.chooseWord(w); p.pump()
+        p.guesser.submitGuess(w.text); p.pump()
+        p.drawer.judge(true); p.pump()
+        assertFalse(p.drawer.state.partnerReady)
+        assertFalse(p.guesser.state.partnerReady)
+
+        p.guesser.ready(); p.pump()
+        assertTrue(p.drawer.state.partnerReady)   // drawer is told the guesser is waiting
+        assertFalse(p.guesser.state.partnerReady) // ...but not the other way round
+        assertEquals(Phase.RESULT, p.drawer.state.phase)
+
+        p.drawer.ready(); p.pump()
+        // New round: the flag must not leak into it, nor into the next result screen.
+        assertFalse(p.drawer.state.partnerReady)
+        assertFalse(p.guesser.state.partnerReady)
+    }
+
+    @Test fun readyArrivingBeforeTheResultIsStillShown() {
+        val p = start(rounds = 4)
+        val w = p.drawer.state.options.first()
+        p.drawer.chooseWord(w); p.pump()
+        p.guesser.submitGuess(w.text); p.pump()
+        // Simulate the partner's Ready overtaking the result message.
+        p.guesser.onMessage(Msg.Ready(0))
+        p.drawer.judge(true); p.pump()
+        assertTrue(p.guesser.state.partnerReady)
+    }
+
     @Test fun rematchResetsEverything() {
         val p = start(rounds = 2)
         repeat(2) {

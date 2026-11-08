@@ -461,6 +461,18 @@ fun ResultScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
         bottom = {
             OutcomeBreakdown(o, g)
             ScoreStrip(g)
+            if (g.partnerReady && !pressed) {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f)),
+                ) {
+                    Text(
+                        "👋 ${g.theirName} is ready " + if (last) "to see the final scores." else "for the next round.",
+                        Modifier.padding(12.dp),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
             Button(
                 onClick = { pressed = true; act { ready() } },
                 enabled = !pressed,
@@ -470,6 +482,7 @@ fun ResultScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
                     when {
                         pressed -> "Waiting for ${g.theirName}…"
                         last -> "See final scores"
+                        g.partnerReady -> "Start next round"
                         else -> "Next round"
                     },
                     fontSize = 18.sp,

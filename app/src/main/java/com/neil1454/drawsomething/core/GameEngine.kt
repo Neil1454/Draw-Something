@@ -50,6 +50,8 @@ data class GameState(
     val declined: List<String> = emptyList(),
     val outcome: RoundOutcome? = null,
     val history: List<RoundOutcome> = emptyList(),
+    /** On the result screen: my partner has already tapped Next. */
+    val partnerReady: Boolean = false,
 )
 
 /**
@@ -129,6 +131,7 @@ class GameEngine(
                 word = null, category = "", pattern = "", remainingSec = 0,
                 skips = 0, wrongGuesses = 0, pendingGuess = null,
                 awaitingVerdict = false, declined = emptyList(), outcome = null,
+                partnerReady = false,
             )
         }
         if (iDraw) send(Msg.Choosing(round))
@@ -285,6 +288,7 @@ class GameEngine(
                 myScore = (myScore + myDelta).coerceAtLeast(0),
                 theirScore = (theirScore + theirDelta).coerceAtLeast(0),
                 pendingGuess = null, awaitingVerdict = false, remainingSec = 0,
+                partnerReady = theyReadyRound == r.round,
             )
         }
     }
@@ -381,6 +385,7 @@ class GameEngine(
 
             is Msg.Ready -> {
                 theyReadyRound = msg.round
+                if (state.phase == Phase.RESULT && state.round == msg.round) update { copy(partnerReady = true) }
                 maybeAdvance()
             }
         }
