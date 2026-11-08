@@ -41,6 +41,15 @@ data class NearbyHost(val id: String, val name: String)
 /** A device trying to pair, with the 4-digit code both screens must show. */
 data class PairRequest(val id: String, val name: String, val code: String)
 
+/** The host's game setup. Kept in the view model so it survives from the waiting screen into the lobby. */
+data class LobbySettings(
+    val rounds: Int = 6,
+    val seconds: Int = 90,
+    val difficulty: Int = 0, // index into the lobby's difficulty choices
+    val minesSize: Int = 1,  // index into MineSize.values()
+    val seaSize: Int = 1,    // index into SeaSize.values()
+)
+
 data class UiState(
     val stage: Stage = Stage.HOME,
     val name: String = "",
@@ -52,7 +61,8 @@ data class UiState(
     val hostAccepted: String? = null,      // host side: name of the device I accepted
     val isHost: Boolean = false,
     val partnerName: String = "",
-    val lobbyGame: GameKind = GameKind.DRAW, // the game the host has picked in the lobby
+    val lobbyGame: GameKind = GameKind.DRAW, // the game the host has picked (before or after pairing)
+    val settings: LobbySettings = LobbySettings(),
     val game: GameState? = null,             // Draw Something
     val mines: MinesState? = null,           // Bomb Find
     val sea: SeaState? = null,               // Sea Battle
@@ -178,12 +188,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         seaEngine?.start(size)
     }
 
-    /** Host: choose which game to play; the partner's lobby follows. */
+    /** Host: choose which game to play. Works before anyone has joined; the partner follows once paired. */
     fun pickGame(kind: GameKind) {
         if (!_ui.value.isHost) return
         _ui.update { it.copy(lobbyGame = kind) }
-        transport.send(LobbyMsg.encodePick(kind))
+        transport.send(LobbyMsg.encodePick(kind)) // does nothing until a partner is connected
     }
+
+    fun setSettings(settings: LobbySettings) = _ui.update { it.copy(settings = settings) }
 
     /** After any game: back to the lobby (still connected) to pick again. */
     fun backToGames() {
@@ -300,10 +312,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 stage = Stage.LOBBY, partnerName = partner, joinRequests = emptyList(), connectingTo = null,
                 pairing = null, pairingConfirmed = false, hostAccepted = null,
-                hosts = emptyList(), notice = null, lobbyGame = GameKind.DRAW,
+                hosts = emptyList(), notice = null,
                 game = e.state, mines = m.state, sea = sb.state, board = e.board, boardVersion = e.board.version,
             )
         }
+        // The host may already have picked a game while waiting: let the partner's lobby show it.
+        if (s.isHost) transport.send(LobbyMsg.encodePick(_ui.value.lobbyGame))
     }
 
     /** Copy every engine's state into the UI. We are "playing" if any game is under way. */

@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.neil1454.drawsomething.LobbySettings
 import com.neil1454.drawsomething.NearbyHost
 import com.neil1454.drawsomething.UiState
 import com.neil1454.drawsomething.core.Difficulty
@@ -183,6 +184,7 @@ fun HostingScreen(
     onDecline: (String) -> Unit,
     onCancel: () -> Unit,
     onDismissNotice: () -> Unit,
+    browse: @Composable () -> Unit,
 ) {
     Page {
         Column(
@@ -235,6 +237,8 @@ fun HostingScreen(
                 }
             }
             TextButton(onClick = onCancel) { Text("Cancel") }
+            BrowseHeader("While you wait, pick your game and set it up")
+            browse()
         }
     }
 }
@@ -247,6 +251,7 @@ fun SearchingScreen(
     onCancelPairing: () -> Unit,
     onCancel: () -> Unit,
     onDismissNotice: () -> Unit,
+    browse: @Composable () -> Unit,
 ) {
     Page {
         Column(
@@ -304,7 +309,17 @@ fun SearchingScreen(
                 }
             }
             TextButton(onClick = onCancel) { Text("Cancel") }
+            BrowseHeader("While you search, have a look at the games")
+            browse()
         }
+    }
+}
+
+@Composable
+private fun BrowseHeader(text: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text("🎮", fontSize = 28.sp)
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     }
 }
 
@@ -366,12 +381,74 @@ private fun GameCard(kind: GameKind, selected: Boolean, enabled: Boolean, onClic
     }
 }
 
+/**
+ * The game picker plus the selected game's rules and setup. Used on the waiting screens (so you can
+ * browse and prepare before anyone has joined: [game] is null) and in the lobby once paired.
+ *
+ * - Host: can pick a game and set it up at any time; Start unlocks once paired (and, for Draw
+ *   Something, once both players have agreed to the rules).
+ * - Joiner before pairing: can look through every game's rules and how-to-play.
+ * - Joiner once paired: sees the host's pick.
+ */
+@Composable
+fun GameBrowser(
+    ui: UiState,
+    game: GameState?,
+    act: (GameEngine.() -> Unit) -> Unit,
+    selected: GameKind,
+    canPick: Boolean,
+    onSelect: (GameKind) -> Unit,
+    onSettings: (LobbySettings) -> Unit,
+    onStartDraw: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
+    onStartMines: (MineSize) -> Unit,
+    onStartSea: (SeaSize) -> Unit,
+) {
+    val connected = game != null
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        GameKind.values().forEach { kind ->
+            GameCard(kind, selected = selected == kind, enabled = canPick) { onSelect(kind) }
+        }
+        when (selected) {
+            GameKind.DRAW -> DrawLobby(ui, game, act, onSettings, onStartDraw)
+            GameKind.MINES -> MinesLobby(ui, connected, onSettings, onStartMines)
+            GameKind.SEA -> SeaLobby(ui, connected, onSettings, onStartSea)
+        }
+    }
+}
+
+/** What the waiting screens show: the host's own pick, or (for a joiner) whatever they feel like reading. */
+@Composable
+fun BrowseGames(
+    ui: UiState,
+    onPickGame: (GameKind) -> Unit,
+    onSettings: (LobbySettings) -> Unit,
+) {
+    var viewGame by rememberSaveable { mutableStateOf(GameKind.DRAW) }
+    GameBrowser(
+        ui = ui,
+        game = null,
+        act = {},
+        selected = if (ui.isHost) ui.lobbyGame else viewGame,
+        canPick = true,
+        onSelect = { if (ui.isHost) onPickGame(it) else viewGame = it },
+        onSettings = onSettings,
+        onStartDraw = { _, _, _ -> },
+        onStartMines = {},
+        onStartSea = {},
+    )
+}
+
 @Composable
 fun LobbyScreen(
     ui: UiState,
     game: GameState,
     act: (GameEngine.() -> Unit) -> Unit,
     onPickGame: (GameKind) -> Unit,
+    onSettings: (LobbySettings) -> Unit,
     onStartDraw: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
     onStartMines: (MineSize) -> Unit,
     onStartSea: (SeaSize) -> Unit,
@@ -391,27 +468,23 @@ fun LobbyScreen(
                 textAlign = TextAlign.Center,
             )
             Text("Connected! Your link is private and encrypted.", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-
             Text(
                 if (ui.isHost) "Choose a game" else "${ui.partnerName} is choosing the game…",
                 style = MaterialTheme.typography.titleMedium,
             )
-            GameKind.values().forEach { kind ->
-                GameCard(kind, selected = ui.lobbyGame == kind, enabled = ui.isHost) { onPickGame(kind) }
-            }
-
-            when (ui.lobbyGame) {
-                GameKind.DRAW -> DrawLobby(ui, game, act, onStartDraw)
-                GameKind.MINES -> MinesLobby(ui, onStartMines)
-                GameKind.SEA -> SeaLobby(ui, onStartSea)
-            }
+            GameBrowser(
+                ui = ui, game = game, act = act,
+                selected = ui.lobbyGame, canPick = ui.isHost, onSelect = onPickGame,
+                onSettings = onSettings,
+                onStartDraw = onStartDraw, onStartMines = onStartMines, onStartSea = onStartSea,
+            )
             TextButton(onClick = onLeave) { Text("Leave") }
         }
     }
 }
 
 @Composable
-private fun HostOnlyWaiting(ui: UiState, text: String) {
+private fun WaitingForHost(ui: UiState, text: String) {
     CircularProgressIndicator(Modifier.size(28.dp))
     Text(text.replace("{name}", ui.partnerName), textAlign = TextAlign.Center)
 }
@@ -419,51 +492,58 @@ private fun HostOnlyWaiting(ui: UiState, text: String) {
 @Composable
 private fun DrawLobby(
     ui: UiState,
-    game: GameState,
+    game: GameState?,
     act: (GameEngine.() -> Unit) -> Unit,
+    onSettings: (LobbySettings) -> Unit,
     onStart: (Int, Int, Difficulty) -> Unit,
 ) {
-    var rounds by rememberSaveable { mutableStateOf(6) }
-    var seconds by rememberSaveable { mutableStateOf(90) }
-    var diffIdx by rememberSaveable { mutableStateOf(0) }
-    val bothAgreed = game.iAgreed && game.partnerAgreed
+    val set = ui.settings
+    val bothAgreed = game != null && game.iAgreed && game.partnerAgreed
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("📜 Rules", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 RulesList()
-                Button(
-                    onClick = { act { agreeRules() } },
-                    enabled = !game.iAgreed,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) { Text(if (game.iAgreed) "✓ You agreed" else "I agree to the rules") }
-                Text(
-                    if (game.partnerAgreed) "✓ ${ui.partnerName} agreed" else "Waiting for ${ui.partnerName} to agree…",
-                    color = if (game.partnerAgreed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (game == null) {
+                    Text(
+                        "Once you're connected you'll both tap “I agree” before the game starts.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Button(
+                        onClick = { act { agreeRules() } },
+                        enabled = !game.iAgreed,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) { Text(if (game.iAgreed) "✓ You agreed" else "I agree to the rules") }
+                    Text(
+                        if (game.partnerAgreed) "✓ ${ui.partnerName} agreed" else "Waiting for ${ui.partnerName} to agree…",
+                        color = if (game.partnerAgreed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         if (ui.isHost) {
             Text("Rounds (you each draw half)", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(4, 6, 8, 10).forEach { n ->
-                    FilterChip(selected = rounds == n, onClick = { rounds = n }, label = { Text("$n") })
+                    FilterChip(selected = set.rounds == n, onClick = { onSettings(set.copy(rounds = n)) }, label = { Text("$n") })
                 }
             }
             Text("Time per drawing", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(60, 90, 120).forEach { n ->
-                    FilterChip(selected = seconds == n, onClick = { seconds = n }, label = { Text("${n}s") })
+                    FilterChip(selected = set.seconds == n, onClick = { onSettings(set.copy(seconds = n)) }, label = { Text("${n}s") })
                 }
             }
             Text("Words to draw", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DifficultyChoices.forEachIndexed { i, (_, label) ->
-                    FilterChip(selected = diffIdx == i, onClick = { diffIdx = i }, label = { Text(label) })
+                    FilterChip(selected = set.difficulty == i, onClick = { onSettings(set.copy(difficulty = i)) }, label = { Text(label) })
                 }
             }
             Text(
-                when (DifficultyChoices[diffIdx].first) {
+                when (DifficultyChoices[set.difficulty].first) {
                     Difficulty.EASY -> "A mix of easy to hard, with the odd extra-hard one."
                     Difficulty.MEDIUM -> "No easy words. Medium, hard and extra hard."
                     Difficulty.HARD -> "Hard and extra-hard words only."
@@ -474,12 +554,21 @@ private fun DrawLobby(
                 textAlign = TextAlign.Center,
             )
             Button(
-                onClick = { onStart(rounds, seconds, DifficultyChoices[diffIdx].first) },
+                onClick = { onStart(set.rounds, set.seconds, DifficultyChoices[set.difficulty].first) },
                 enabled = bothAgreed,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-            ) { Text(if (bothAgreed) "Start game" else "Waiting for everyone to agree…", fontSize = 18.sp) }
-        } else {
-            HostOnlyWaiting(
+            ) {
+                Text(
+                    when {
+                        game == null -> "Start (waiting for your partner…)"
+                        bothAgreed -> "Start game"
+                        else -> "Waiting for everyone to agree…"
+                    },
+                    fontSize = 18.sp,
+                )
+            }
+        } else if (game != null) {
+            WaitingForHost(
                 ui,
                 if (bothAgreed) "Waiting for {name} to start the game…" else "Agree to the rules, then {name} can start.",
             )
@@ -488,8 +577,8 @@ private fun DrawLobby(
 }
 
 @Composable
-private fun MinesLobby(ui: UiState, onStart: (MineSize) -> Unit) {
-    var sizeIdx by rememberSaveable { mutableStateOf(1) }
+private fun MinesLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (MineSize) -> Unit) {
+    val set = ui.settings
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp)) { MinesHelp() }
@@ -498,25 +587,31 @@ private fun MinesLobby(ui: UiState, onStart: (MineSize) -> Unit) {
             Text("Grid size", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MineSize.values().forEachIndexed { i, size ->
-                    FilterChip(selected = sizeIdx == i, onClick = { sizeIdx = i }, label = { Text(size.label.substringBefore(' ') + "\n" + size.label.substringAfter(' ')) })
+                    FilterChip(
+                        selected = set.minesSize == i,
+                        onClick = { onSettings(set.copy(minesSize = i)) },
+                        label = { Text(size.label.substringBefore(' ') + "\n" + size.label.substringAfter(' ')) },
+                    )
                 }
             }
-            val size = MineSize.values()[sizeIdx]
+            val size = MineSize.values()[set.minesSize]
             Text(
                 "${size.w}×${size.h} grid · ${size.mines} bombs · ${size.items} power-ups",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = { onStart(size) }, Modifier.fillMaxWidth().height(56.dp)) { Text("Start Bomb Find", fontSize = 18.sp) }
-        } else {
-            HostOnlyWaiting(ui, "Waiting for {name} to start the game…")
+            Button(onClick = { onStart(size) }, enabled = connected, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text(if (connected) "Start Bomb Find" else "Start (waiting for your partner…)", fontSize = 18.sp)
+            }
+        } else if (connected) {
+            WaitingForHost(ui, "Waiting for {name} to start the game…")
         }
     }
 }
 
 @Composable
-private fun SeaLobby(ui: UiState, onStart: (SeaSize) -> Unit) {
-    var sizeIdx by rememberSaveable { mutableStateOf(1) }
+private fun SeaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (SeaSize) -> Unit) {
+    val set = ui.settings
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp)) { SeaHelp() }
@@ -525,18 +620,20 @@ private fun SeaLobby(ui: UiState, onStart: (SeaSize) -> Unit) {
             Text("Sea size", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SeaSize.values().forEachIndexed { i, size ->
-                    FilterChip(selected = sizeIdx == i, onClick = { sizeIdx = i }, label = { Text(size.label) })
+                    FilterChip(selected = set.seaSize == i, onClick = { onSettings(set.copy(seaSize = i)) }, label = { Text(size.label) })
                 }
             }
-            val size = SeaSize.values()[sizeIdx]
+            val size = SeaSize.values()[set.seaSize]
             Text(
                 "${size.fleet.size} ships each: " + size.fleet.joinToString(", ") { "$it long" },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = { onStart(size) }, Modifier.fillMaxWidth().height(56.dp)) { Text("Start Sea Battle", fontSize = 18.sp) }
-        } else {
-            HostOnlyWaiting(ui, "Waiting for {name} to start the game…")
+            Button(onClick = { onStart(size) }, enabled = connected, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text(if (connected) "Start Sea Battle" else "Start (waiting for your partner…)", fontSize = 18.sp)
+            }
+        } else if (connected) {
+            WaitingForHost(ui, "Waiting for {name} to start the game…")
         }
     }
 }

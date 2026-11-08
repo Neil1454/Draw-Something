@@ -34,12 +34,19 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
 
     when (ui.stage) {
         Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice)
-        Stage.HOSTING -> HostingScreen(ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice)
-        Stage.SEARCHING -> SearchingScreen(ui, vm::requestJoin, vm::confirmPairing, vm::cancelPairing, vm::leave, vm::clearNotice)
+        Stage.HOSTING -> HostingScreen(
+            ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice,
+            browse = { BrowseGames(ui, vm::pickGame, vm::setSettings) },
+        )
+        Stage.SEARCHING -> SearchingScreen(
+            ui, vm::requestJoin, vm::confirmPairing, vm::cancelPairing, vm::leave, vm::clearNotice,
+            browse = { BrowseGames(ui, vm::pickGame, vm::setSettings) },
+        )
         Stage.LOBBY -> ui.game?.let { game ->
             LobbyScreen(
                 ui, game, act,
                 onPickGame = vm::pickGame,
+                onSettings = vm::setSettings,
                 onStartDraw = vm::startDraw,
                 onStartMines = vm::startMines,
                 onStartSea = vm::startSea,
