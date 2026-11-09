@@ -78,6 +78,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    // The Nearby library drags in a very old Fragment; pin a current one so permission requests behave.
+    implementation("androidx.fragment:fragment:1.8.5")
 
     // Offline phone-to-phone play over Bluetooth + Wi-Fi (no internet needed).
     implementation("com.google.android.gms:play-services-nearby:19.3.0")
