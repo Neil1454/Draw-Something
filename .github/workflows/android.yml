@@ -37,6 +37,10 @@ jobs:
             echo "Signing with the PRIVATE release key."
             KS="$RELEASE_KEYSTORE_FILE"; PASS="$RELEASE_KEYSTORE_PASSWORD"; ALIAS="$RELEASE_KEY_ALIAS"
           else
+            if [ "$GITHUB_REF" = "refs/heads/main" ] && [ "$GITHUB_EVENT_NAME" = "push" ]; then
+              echo "::error::Release builds on main must be signed with the private key (RELEASE_* secrets missing)."
+              exit 1
+            fi
             echo "No private key available here: signing with the public convenience key."
             KS=app/debug.keystore; PASS=android; ALIAS=androiddebugkey
           fi
