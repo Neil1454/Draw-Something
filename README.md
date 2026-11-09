@@ -4,7 +4,7 @@
 
 *Created by Neil Sampson.*
 
-Neil & Teri's Time Killer Games is three two-player games for Android phones and tablets, played directly between your two devices.
+Neil & Teri's Time Killer Games is eight two-player games for Android phones and tablets, played directly between your two devices.
 **It works with no internet at all**, so you can play on a plane, because the devices talk to
 each other over Bluetooth and/or Wi-Fi. After you pair, the host picks any game from the lobby,
 and you can switch games without reconnecting.
@@ -141,8 +141,15 @@ every phone/tablet; Amazon Fire tablets don't have it).
   are *hosting* (before your partner joins) your name is visible to other copies of this app nearby,
   so host just before pairing. Scores are worked out by the drawer's phone and trusted by the
   guesser's: fine for a friendly game, not cheat-proof.
-- **Signing key.** Builds are signed with a fixed key committed to the repo so updates install over
-  the old version. It is a convenience key for sideloading, not a secret.
+- **Signing key.** Android only installs an update that is signed with the same key as the installed
+  copy. By default builds use a convenience key committed to this repo (so anyone can build the
+  project). That key is public, so for a real release a *private* key can be stored as GitHub secrets
+  (`RELEASE_KEYSTORE_B64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`).
+  The build uses it automatically, and only for builds of `main`: branches and pull requests (including
+  from forks) never see it. Switching keys means each phone must uninstall once, because Android treats it
+  as a different publisher.
+- **Release builds.** Released APKs are proper release builds (not debuggable), checked in CI to be signed
+  with the intended key. The build robot has read-only access except in the one job that publishes a release.
 
 ## Updating
 

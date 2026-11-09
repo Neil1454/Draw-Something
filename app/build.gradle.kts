@@ -17,19 +17,39 @@ android {
     }
 
     // A fixed key, so a new version installs over the old one instead of needing an uninstall.
-    // This is a convenience key for sideloading, not a secret: it is committed to the repo.
     signingConfigs {
+        // The convenience key committed to the repo. It is NOT secret (anyone can read it), so it is
+        // only the fallback; the real release key comes from the RELEASE_* settings below.
         getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // The release key. When the build robot has a private key stored as GitHub secrets it passes
+        // them in as RELEASE_KEYSTORE_FILE / _PASSWORD / KEY_ALIAS / KEY_PASSWORD. Without them we fall
+        // back to the committed key so the project still builds anywhere.
+        create("release") {
+            val keystore = System.getenv("RELEASE_KEYSTORE_FILE")
+            if (keystore != null && java.io.File(keystore).exists()) {
+                storeFile = java.io.File(keystore)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            } else {
+                storeFile = file("debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            isDebuggable = false // a released app must not be inspectable with developer tools
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
