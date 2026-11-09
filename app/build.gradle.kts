@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -31,8 +33,8 @@ android {
         // back to the committed key so the project still builds anywhere.
         create("release") {
             val keystore = System.getenv("RELEASE_KEYSTORE_FILE")
-            if (keystore != null && java.io.File(keystore).exists()) {
-                storeFile = java.io.File(keystore)
+            if (keystore != null && File(keystore).exists()) {
+                storeFile = File(keystore)
                 storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("RELEASE_KEY_ALIAS")
                 keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
