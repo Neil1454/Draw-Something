@@ -259,6 +259,33 @@ class MinesTest {
         }
     }
 
+    @Test fun everyMoveCarriesWhatChangedSoScreensCanAnimateIt() {
+        val p = MinesPair.plainStart()
+        // the first move opened several squares, all reported as fresh
+        assertEquals(1, p.host.state.moves)
+        assertEquals(p.host.state.moves, p.client.state.moves)
+        val opened = p.host.state.view.indices.filter { p.host.state.view[it] != '.' }
+        assertEquals(opened.sorted(), p.host.state.fresh.sorted())
+        assertEquals(p.host.state.fresh, p.client.state.fresh)
+        assertEquals(p.center, p.host.state.notes.first().cell)
+
+        val bomb = p.host.secretMines().first()
+        p.play(p.host.secretSafe().first { p.adj(it) > 0 && p.host.secretItem(it) == null })
+        assertEquals(2, p.host.state.moves)
+        p.play(bomb)
+        assertEquals(3, p.client.state.moves)
+        assertEquals(listOf(bomb), p.host.state.fresh)
+        assertEquals(bomb, p.client.state.notes.first { it.kind == "boom" }.cell)
+    }
+
+    @Test fun movesCounterRestartsOnRematch() {
+        val p = MinesPair(21, MineSize.SMALL)
+        p.play(p.center)
+        p.host.start(MineSize.SMALL); p.pump()
+        assertEquals(0, p.client.state.moves)
+        assertTrue(p.client.state.fresh.isEmpty())
+    }
+
     @Test fun rematchStartsFresh() {
         val p = MinesPair(12, MineSize.SMALL)
         p.play(p.center)

@@ -45,7 +45,7 @@ object MineRules {
 }
 
 /** Something that happened on a move. Kinds: safe, safe2 (doubled), boom, block, item_<code>. */
-data class MineEvent(val kind: String, val byHost: Boolean, val value: Int = 0, val count: Int = 0)
+data class MineEvent(val kind: String, val byHost: Boolean, val value: Int = 0, val count: Int = 0, val cell: Int = -1)
 
 sealed class MineMsg {
     /** Host starts (or restarts) Bomb Find. */
@@ -69,6 +69,8 @@ sealed class MineMsg {
         val safeLeft: Int,
         val minesLeft: Int,
         val events: List<MineEvent>,
+        val moves: Int = 0,                  // counts up with every move, so screens can animate each one once
+        val fresh: List<Int> = emptyList(),  // squares that changed on this move
     ) : MineMsg()
 
     fun encode(): ByteArray = toJson().toString().toByteArray(Charsets.UTF_8)
@@ -78,8 +80,10 @@ sealed class MineMsg {
         is Pick -> JSONObject().put("t", "m_pick").put("x", x).put("y", y)
         is State -> {
             val ev = JSONArray()
-            events.forEach { ev.put(JSONObject().put("k", it.kind).put("h", it.byHost).put("v", it.value).put("c", it.count)) }
-            JSONObject().put("t", "m_state").put("view", view).put("items", items)
+            events.forEach {
+                ev.put(JSONObject().put("k", it.kind).put("h", it.byHost).put("v", it.value).put("c", it.count).put("ce", it.cell))
+            }
+            JSONObject().put("t", "m_state").put("mv", moves).put("fresh", JSONArray(fresh)).put("view", view).put("items", items)
                 .put("hs", hostScore).put("cs", clientScore).put("ht", hostTurn)
                 .put("hsh", hostShield).put("csh", clientShield).put("hd", hostDouble).put("cd", clientDouble)
                 .put("over", over).put("left", safeLeft).put("mines", minesLeft).put("ev", ev)
@@ -110,13 +114,19 @@ sealed class MineMsg {
                             MineEvent(
                                 e.getString("k").filter { c -> c.isLetterOrDigit() || c == '_' }.take(12),
                                 e.getBoolean("h"), e.getInt("v").coerceIn(-5000, 5000), e.getInt("c").coerceIn(0, 1000),
+                                e.optInt("ce", -1).coerceIn(-1, MAX_CELLS - 1),
                             )
+                        }
+                        val freshArr = o.optJSONArray("fresh")
+                        val fresh = if (freshArr == null) emptyList() else List(minOf(freshArr.length(), 200)) {
+                            freshArr.getInt(it).coerceIn(0, MAX_CELLS - 1)
                         }
                         State(
                             view, items, o.getInt("hs").coerceIn(0, 100_000), o.getInt("cs").coerceIn(0, 100_000),
                             o.getBoolean("ht"), o.getBoolean("hsh"), o.getBoolean("csh"),
                             o.getBoolean("hd"), o.getBoolean("cd"), o.getBoolean("over"),
                             o.getInt("left").coerceIn(0, MAX_CELLS), o.getInt("mines").coerceIn(0, MAX_CELLS), events,
+                            o.optInt("mv", 0).coerceIn(0, 1_000_000), fresh,
                         )
                     }
                 }
@@ -131,7 +141,7 @@ sealed class MineMsg {
 enum class MinesPhase { LOBBY, PLAYING, OVER }
 
 /** An event from my own point of view. */
-data class MineNote(val byMe: Boolean, val kind: String, val value: Int, val count: Int)
+data class MineNote(val byMe: Boolean, val kind: String, val value: Int, val count: Int, val cell: Int = -1)
 
 data class MinesState(
     val isHost: Boolean,
@@ -151,6 +161,10 @@ data class MinesState(
     val safeLeft: Int = 0,
     val minesLeft: Int = 0,
     val notes: List<MineNote> = emptyList(),
+    /** Counts up with every move; animate when it changes. */
+    val moves: Int = 0,
+    /** Squares that changed on the latest move (opened, exploded, shield-blocked). */
+    val fresh: List<Int> = emptyList(),
 )
 
 /**
@@ -189,6 +203,7 @@ class MinesEngine(
     private var hostTurn = true
     private var revealedSafe = 0
     private var spentMines = 0 // exploded + defused
+    private var moveNo = 0
 
     // ------------------------------------------------------------------ starting
 
@@ -214,9 +229,11 @@ class MinesEngine(
         hostTurn = hostFirst
         revealedSafe = 0
         spentMines = 0
+        moveNo = 0
         update {
             copy(
                 phase = MinesPhase.PLAYING, size = newSize, view = ".".repeat(n), items = ".".repeat(n),
+                moves = 0, fresh = emptyList(),
                 myScore = 0, theirScore = 0, myTurn = hostFirst,
                 myShield = false, theirShield = false, myDouble = false, theirDouble = false,
                 safeLeft = n - newSize.mines, minesLeft = newSize.mines, notes = emptyList(),
@@ -229,6 +246,7 @@ class MinesEngine(
         update {
             copy(
                 phase = MinesPhase.PLAYING, size = newSize, view = ".".repeat(n), items = ".".repeat(n),
+                moves = 0, fresh = emptyList(),
                 myScore = 0, theirScore = 0, myTurn = !hostFirst,
                 myShield = false, theirShield = false, myDouble = false, theirDouble = false,
                 safeLeft = n - newSize.mines, minesLeft = newSize.mines, notes = emptyList(),
@@ -323,6 +341,7 @@ class MinesEngine(
         val a = if (byHost) 0 else 1
         val o = 1 - a
         val events = ArrayList<MineEvent>()
+        val fresh = ArrayList<Int>()
         var extraTurn = false
 
         if (mines[i]) {
@@ -331,13 +350,15 @@ class MinesEngine(
                 defused[i] = true
                 spentMines++
                 score[a] += MineRules.DEFUSE_BONUS
-                events += MineEvent("block", byHost, MineRules.DEFUSE_BONUS)
+                events += MineEvent("block", byHost, MineRules.DEFUSE_BONUS, 0, i)
+                fresh += i
             } else {
                 exploded[i] = true
                 spentMines++
                 val penalty = minOf(score[a], MineRules.MINE_PENALTY)
                 score[a] -= penalty
-                events += MineEvent("boom", byHost, penalty)
+                events += MineEvent("boom", byHost, penalty, 0, i)
+                fresh += i
             }
         } else {
             val opened = flood(i)
@@ -349,36 +370,42 @@ class MinesEngine(
                 doubled[a] = false
             }
             score[a] += points
-            events += MineEvent(if (wasDoubled) "safe2" else "safe", byHost, points, opened.size)
+            events += MineEvent(if (wasDoubled) "safe2" else "safe", byHost, points, opened.size, i)
+            fresh += opened
 
             for (cell in opened) {
                 when (itemAt[cell] ?: continue) {
                     MineItem.BONUS -> {
                         score[a] += MineRules.BONUS_POINTS
-                        events += MineEvent("item_B", byHost, MineRules.BONUS_POINTS)
+                        events += MineEvent("item_B", byHost, MineRules.BONUS_POINTS, 0, cell)
                     }
                     MineItem.SHIELD -> {
                         shield[a] = true
-                        events += MineEvent("item_S", byHost)
+                        events += MineEvent("item_S", byHost, 0, 0, cell)
                     }
                     MineItem.DOUBLE -> {
                         doubled[a] = true
-                        events += MineEvent("item_D", byHost)
+                        events += MineEvent("item_D", byHost, 0, 0, cell)
                     }
                     MineItem.EXTRA -> {
                         extraTurn = true
-                        events += MineEvent("item_E", byHost)
+                        events += MineEvent("item_E", byHost, 0, 0, cell)
                     }
                     MineItem.STEAL -> {
                         val taken = minOf(score[o], MineRules.STEAL_POINTS)
                         score[o] -= taken
                         score[a] += taken
-                        events += MineEvent("item_T", byHost, taken)
+                        events += MineEvent("item_T", byHost, taken, 0, cell)
                     }
                     MineItem.RADAR -> {
                         val hidden = mines.indices.filter { mines[it] && !exploded[it] && !defused[it] && !flagged[it] }
-                        if (hidden.isNotEmpty()) flagged[hidden.random(random)] = true
-                        events += MineEvent("item_R", byHost)
+                        var flaggedCell = -1
+                        if (hidden.isNotEmpty()) {
+                            flaggedCell = hidden.random(random)
+                            flagged[flaggedCell] = true
+                            fresh += flaggedCell
+                        }
+                        events += MineEvent("item_R", byHost, 0, 0, flaggedCell.takeIf { it >= 0 } ?: cell)
                     }
                 }
             }
@@ -386,10 +413,10 @@ class MinesEngine(
 
         val over = revealedSafe >= totalSafe()
         if (!extraTurn) hostTurn = !hostTurn
-        broadcast(over, events)
+        broadcast(over, events, fresh)
     }
 
-    private fun broadcast(over: Boolean, events: List<MineEvent>) {
+    private fun broadcast(over: Boolean, events: List<MineEvent>, fresh: List<Int>) {
         val n = size.w * size.h
         val view = StringBuilder(n)
         val items = StringBuilder(n)
@@ -409,6 +436,7 @@ class MinesEngine(
         val msg = MineMsg.State(
             view.toString(), items.toString(), score[0], score[1], hostTurn, shield[0], shield[1],
             doubled[0], doubled[1], over, totalSafe() - revealedSafe, size.mines - spentMines, events,
+            ++moveNo, fresh.distinct().take(200),
         )
         send(msg)
         applyState(msg)
@@ -430,7 +458,8 @@ class MinesEngine(
                 myDouble = if (isHost) m.hostDouble else m.clientDouble,
                 theirDouble = if (isHost) m.clientDouble else m.hostDouble,
                 safeLeft = m.safeLeft, minesLeft = m.minesLeft,
-                notes = m.events.map { MineNote(it.byHost == isHost, it.kind, it.value, it.count) },
+                notes = m.events.map { MineNote(it.byHost == isHost, it.kind, it.value, it.count, it.cell) },
+                moves = m.moves, fresh = m.fresh,
             )
         }
     }
