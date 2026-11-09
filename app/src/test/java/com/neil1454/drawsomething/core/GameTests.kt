@@ -529,6 +529,39 @@ class SeaTest {
         }
     }
 
+    @Test fun shotsReportWhatToAnimateOnBothPhones() {
+        val p = SeaPair(14).battle()
+        val a = p.shooter
+        val b = p.target
+        assertEquals(0, a.state.moves)
+        val shipCell = b.fleetCells().first().first()
+        a.fire(shipCell % b.state.size.w, shipCell / b.state.size.w); p.pump()
+        assertEquals(1, a.state.moves)
+        assertEquals(1, b.state.moves)
+        assertEquals(listOf(SeaFx(false, shipCell, hit = true, sunk = false)), a.state.fx) // on THEIR board
+        assertEquals(listOf(SeaFx(true, shipCell, hit = true, sunk = false)), b.state.fx)  // on MY board
+
+        // a bomb reports every square in the pattern, a radar reports its centre
+        a.selectWeapon(SeaWeapon.BOMB)
+        a.fire(0, 0); p.pump()
+        assertTrue(a.state.fx.size >= 3 && a.state.fx.all { !it.mine && !it.radar })
+        assertEquals(a.state.fx.map { it.cell }, b.state.fx.map { it.cell })
+        b.selectWeapon(SeaWeapon.RADAR)
+        b.fire(4, 4); p.pump()
+        assertTrue(b.state.fx.single().radar && !b.state.fx.single().mine)
+        assertTrue(a.state.fx.single().radar && a.state.fx.single().mine)
+    }
+
+    @Test fun sinkingMarksEveryShipSquareAsSunkInTheEffects() {
+        val p = SeaPair(15).battle()
+        val a = p.shooter
+        val b = p.target
+        val ship = b.fleetCells().minByOrNull { it.size }!!
+        ship.forEach { c -> a.fire(c % b.state.size.w, c / b.state.size.w); p.pump() }
+        assertTrue(a.state.fx.single().sunk) // the last shot sank it
+        assertTrue(b.state.fx.single().sunk)
+    }
+
     @Test fun rematchResetsAndPartnerCannotStart() {
         val p = SeaPair(8, SeaSize.QUICK).battle()
         p.client.start(SeaSize.CLASSIC); p.pump()

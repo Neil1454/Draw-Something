@@ -82,6 +82,9 @@ sealed class SeaMsg {
 
 enum class SeaPhase { LOBBY, PLACING, BATTLE, OVER }
 
+/** One thing that happened on the latest shot, for the screen to animate. [mine] = on MY board. */
+data class SeaFx(val mine: Boolean, val cell: Int, val hit: Boolean, val sunk: Boolean, val radar: Boolean = false)
+
 data class SeaState(
     val isHost: Boolean,
     val myName: String,
@@ -108,6 +111,9 @@ data class SeaState(
     val radarY: Int = -1,
     val radarCount: Int = -1,
     val iWon: Boolean? = null,
+    /** Counts up with every shot (either direction); animate when it changes. */
+    val moves: Int = 0,
+    val fx: List<SeaFx> = emptyList(),
 )
 
 class SeaEngine(
@@ -153,7 +159,7 @@ class SeaEngine(
                 iAmReady = false, theyAreReady = false, myTurn = false,
                 radarLeft = true, bombLeft = true, weapon = SeaWeapon.SHOT, awaiting = false,
                 shots = 0, hits = 0, theirShipsLeft = size.fleet.size, note = null,
-                radarX = -1, radarY = -1, radarCount = -1, iWon = null,
+                radarX = -1, radarY = -1, radarCount = -1, iWon = null, moves = 0, fx = emptyList(),
             )
         }
         placeFleet()
@@ -329,8 +335,17 @@ class SeaEngine(
         val over = shipsLeft == 0
         send(SeaMsg.Result(weapon.name, m.x, m.y, out, sunkCells, sunkNow, radar, over))
         val shooterAgain = weapon == SeaWeapon.SHOT && anyHit && !over
+        val effects = ArrayList<SeaFx>()
+        var k = 0
+        while (k + 2 < out.size) {
+            val cell = out[k + 1] * s.size.w + out[k]
+            effects += SeaFx(mine = true, cell = cell, hit = out[k + 2] == 1, sunk = cell in sunkCells)
+            k += 3
+        }
+        if (weapon == SeaWeapon.RADAR) effects += SeaFx(true, m.y * s.size.w + m.x, hit = false, sunk = false, radar = true)
         update {
             copy(
+                moves = moves + 1, fx = effects,
                 myGrid = buildMyGrid(), myShipsLeft = shipsLeft,
                 myTurn = !shooterAgain && !over,
                 phase = if (over) SeaPhase.OVER else phase,
@@ -376,8 +391,23 @@ class SeaEngine(
         val weapon = SeaWeapon.valueOf(m.weapon)
         val again = weapon == SeaWeapon.SHOT && anyHit && !m.over
         val left = (s.theirShipsLeft - m.sunkCount).coerceAtLeast(0)
+        val effects = ArrayList<SeaFx>()
+        var k = 0
+        while (k + 2 < m.cells.size) {
+            val cx = m.cells[k]
+            val cy = m.cells[k + 1]
+            if (cx < s.size.w && cy < s.size.h) {
+                val cell = cy * s.size.w + cx
+                effects += SeaFx(mine = false, cell = cell, hit = m.cells[k + 2] == 1, sunk = cell in m.sunk)
+            }
+            k += 3
+        }
+        if (weapon == SeaWeapon.RADAR && m.x < s.size.w && m.y < s.size.h) {
+            effects += SeaFx(false, m.y * s.size.w + m.x, hit = false, sunk = false, radar = true)
+        }
         update {
             copy(
+                moves = moves + 1, fx = effects,
                 enemyGrid = String(grid), awaiting = false,
                 shots = shots + m.cells.size / 3, hits = hits + hitCount, theirShipsLeft = left,
                 myTurn = again,
