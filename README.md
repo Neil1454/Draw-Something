@@ -14,7 +14,7 @@ and you can switch games without reconnecting.
 | 🎨 **Draw Something** | One draws a word, the other watches it appear live and guesses. Fast guesses score big. |
 | 💣 **Bomb Find** | Minesweeper for two. Take turns clearing a shared minefield, dodge bombs, grab power-ups. |
 | 🚢 **Sea Battle** | Battleships. Hide your fleet, hunt theirs. Hit a ship and fire again. |
-| 🔴 **Drop Four** | Connect Four. Optional power discs: a bomb that blasts its neighbours, and a double drop. |
+| 🔴 **Drop Four** | The classic four-in-a-row (Connect Four style). Full-screen board, slide-and-release to drop, glowing winning line, three colour themes, optional power discs (bomb and double drop). |
 | 🃏 **Memory Match** | Flip cards, find pairs, build streaks. Four card themes, three board sizes. |
 | ⚡ **Quick Draw** | A reflex duel: tap first when the screen turns green. Optional fake-out decoys. |
 | 🎲 **Lucky Dice** | Push your luck: keep rolling, bank it before you bust. One or two dice. |
@@ -168,7 +168,7 @@ identical picture.
 
 ## Status
 
-Version 1.3. Two players, eight games. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 1.4. Two players, eight games. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

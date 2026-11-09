@@ -120,7 +120,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
     val again: () -> Unit = {
         val set = ui.settings
         val options = when (engine.kind) {
-            GameKind.DROP -> JSONObject().put("size", set.dropSize).put("power", set.dropPower)
+            GameKind.DROP -> JSONObject().put("size", set.dropSize).put("power", set.dropPower).put("theme", set.dropTheme)
             GameKind.MEMORY -> JSONObject().put("size", set.memorySize).put("theme", set.memoryTheme)
             GameKind.QUICK -> JSONObject().put("match", set.quickMatch).put("fake", set.quickFake)
             GameKind.DICE -> JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)

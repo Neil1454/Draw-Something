@@ -26,6 +26,8 @@ data class DropState(
     val h: Int = 6,
     val connect: Int = 4,
     val power: Boolean = false,
+    /** Disc colour theme: 0 classic, 1 neon, 2 sunset (cosmetic). */
+    val theme: Int = 0,
     /** Row by row from the top: '.' empty, '1' host's disc, '2' partner's disc. */
     val grid: String = "",
     val myDisc: Char = '1',
@@ -61,6 +63,7 @@ class DropEngine(
     private var h = 6
     private var connect = 4
     private var power = false
+    private var theme = 0
     private var grid = IntArray(0)
     private var turn = 1 // 1 = host, 2 = partner
     private val bombs = BooleanArray(3)
@@ -75,6 +78,7 @@ class DropEngine(
         val size = DropSize.values()[opts.optInt("size", 0).coerceIn(0, DropSize.values().size - 1)]
         w = size.w; h = size.h; connect = size.connect
         power = opts.optBoolean("power", false)
+        theme = opts.optInt("theme", 0).coerceIn(0, 2)
         grid = IntArray(w * h)
         turn = if (random.nextBoolean()) 1 else 2
         bombs.fill(power); doubles.fill(power)
@@ -175,7 +179,7 @@ class DropEngine(
     override fun hostSnapshot(): JSONObject {
         val sb = StringBuilder(w * h)
         for (v in grid) sb.append(if (v == 0) '.' else ('0' + v))
-        return JSONObject().put("w", w).put("h", h).put("n", connect).put("pw", power)
+        return JSONObject().put("w", w).put("h", h).put("n", connect).put("pw", power).put("th", theme)
             .put("g", sb.toString()).put("turn", turn).put("res", result)
             .put("line", JSONArray(line)).put("last", last).put("rem", JSONArray(removed))
             .put("b1", bombs[1]).put("b2", bombs[2]).put("d1", doubles[1]).put("d2", doubles[2]).put("mv", moves)
@@ -192,6 +196,7 @@ class DropEngine(
         state = state.copy(
             phase = if (res == 0) GPhase.PLAYING else GPhase.OVER,
             w = nw, h = nh, connect = s.getInt("n").coerceIn(3, 8), power = s.getBoolean("pw"),
+            theme = s.optInt("th", 0).coerceIn(0, 2),
             grid = g, myTurn = res == 0 && t == me,
             result = when (res) { 0 -> 0; 3 -> 3; me -> 1; else -> 2 },
             line = s.ints("line", 12).filter { it in 0 until nw * nh },

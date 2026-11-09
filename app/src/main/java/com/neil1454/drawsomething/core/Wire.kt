@@ -7,7 +7,7 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     DRAW("Draw Something", "🎨", "One draws, the other guesses. Fast guesses score big."),
     MINES("Bomb Find", "💣", "Take turns clearing a minefield. Dodge bombs, grab power-ups."),
     SEA("Sea Battle", "🚢", "Hide your fleet, hunt theirs. Hit a ship and fire again."),
-    DROP("Drop Four", "🔴", "Drop discs, connect four. Power discs blow things up."),
+    DROP("Drop Four", "🔴", "The classic four-in-a-row. Drop discs, block, win. Power discs blow things up."),
     MEMORY("Memory Match", "🃏", "Flip cards, find pairs, build streaks."),
     QUICK("Quick Draw", "⚡", "Wait for it… then tap first. Don't fall for the fake-out."),
     DICE("Lucky Dice", "🎲", "Push your luck. Bank it or bust."),

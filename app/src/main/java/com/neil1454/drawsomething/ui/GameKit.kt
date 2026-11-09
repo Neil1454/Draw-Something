@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +47,7 @@ fun PlayerPill(
     modifier: Modifier = Modifier,
     extra: String = "",
     unit: String = "",
+    dot: Color? = null,
 ) {
     val shown by animateIntAsState(score ?: 0, tween(600), label = "pill")
     val shape = RoundedCornerShape(18.dp)
@@ -57,6 +60,9 @@ fun PlayerPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (dot != null) {
+            Box(Modifier.size(24.dp).clip(CircleShape).background(dot).border(2.dp, Color.White.copy(alpha = 0.7f), CircleShape))
+        }
         Column(Modifier.weight(1f)) {
             Text(name, fontSize = if (score == null) 16.sp else 12.sp, maxLines = 1, fontWeight = if (score == null) FontWeight.Bold else FontWeight.Normal, color = Color.White.copy(alpha = 0.9f))
             if (score != null) Text("$shown$unit", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White)

@@ -58,6 +58,7 @@ data class LobbySettings(
     val seaSize: Int = 1,    // index into SeaSize.values()
     val dropSize: Int = 0,
     val dropPower: Boolean = false,
+    val dropTheme: Int = 0,
     val memorySize: Int = 0,
     val memoryTheme: Int = 0,
     val quickMatch: Int = 1,

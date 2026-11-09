@@ -705,8 +705,9 @@ private fun DropLobby(ui: UiState, connected: Boolean, onSettings: (LobbySetting
     SyncLobby(ui, connected, GameKind.DROP, { DropHelp() }, {
         ChipRow("Board", DropSize.values().map { it.label.substringBefore(" ·") }, set.dropSize) { onSettings(set.copy(dropSize = it)) }
         Text(DropSize.values()[set.dropSize].label.substringAfter("· "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow("Disc colours", listOf("Classic 🔴🟡", "Neon 🩷🩵", "Sunset 🟠🟣"), set.dropTheme) { onSettings(set.copy(dropTheme = it)) }
         ToggleChip("💣 Power discs (bomb and double)", set.dropPower) { onSettings(set.copy(dropPower = it)) }
-    }) { onStart(GameKind.DROP, JSONObject().put("size", set.dropSize).put("power", set.dropPower)) }
+    }) { onStart(GameKind.DROP, JSONObject().put("size", set.dropSize).put("power", set.dropPower).put("theme", set.dropTheme)) }
 }
 
 @Composable

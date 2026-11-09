@@ -180,6 +180,18 @@ class DropTest {
         assertTrue(a.state.myTurn)
     }
 
+    @Test fun colourThemeReachesBothPhonesAndIsClamped() {
+        for (t in 0..2) {
+            val p = SyncPair({ n, o, h, sd, r, c -> DropEngine(n, o, h, sd, r, c) }, 4)
+            p.host.start(JSONObject().put("theme", t)); p.pump()
+            assertEquals(t, p.host.state.theme)
+            assertEquals(t, p.client.state.theme)
+        }
+        val q = SyncPair({ n, o, h, sd, r, c -> DropEngine(n, o, h, sd, r, c) }, 4)
+        q.host.start(JSONObject().put("theme", 99)); q.pump()
+        assertEquals(2, q.client.state.theme)
+    }
+
     @Test fun rematchResets() {
         val p = pair()
         p.play(0); p.play(0); p.play(1); p.play(1); p.play(2); p.play(2); p.play(3)
