@@ -86,14 +86,14 @@ fun SplashScreen(onDone: () -> Unit) {
                 textAlign = TextAlign.Center,
             )
             Text(
-                "☀️ Benidorm  ·  Tenerife  ·  Cape Verde 🌴",
+                "☀️ Holiday mode: on 🌴",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Funk.Cyan,
                 textAlign = TextAlign.Center,
             )
             Text(
-                "Sketch pads ready. Holiday mode: on.",
+                "Sketch pads ready.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center,
