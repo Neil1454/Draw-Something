@@ -2,7 +2,13 @@
 
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +48,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,7 +58,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -83,28 +93,24 @@ private fun signed(n: Int) = if (n > 0) "+$n" else "$n"
 fun ScoreStrip(g: GameState) {
     val drawingPhase = g.phase in setOf(Phase.PICKING, Phase.DRAWING, Phase.WAITING_FOR_WORD, Phase.GUESSING)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ScoreChip("You", g.myScore, drawingPhase && g.iAmDrawer, Modifier.weight(1f))
-        ScoreChip(g.theirName, g.theirScore, drawingPhase && !g.iAmDrawer, Modifier.weight(1f))
+        ScoreChip("You", g.myScore, drawingPhase && g.iAmDrawer, Funk.Lime, Modifier.weight(1f))
+        ScoreChip(g.theirName, g.theirScore, drawingPhase && !g.iAmDrawer, Funk.Cyan, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun ScoreChip(name: String, score: Int, drawing: Boolean, modifier: Modifier) {
-    Card(
-        modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = if (drawing) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-            else MaterialTheme.colorScheme.surfaceVariant,
-        ),
+private fun ScoreChip(name: String, score: Int, drawing: Boolean, accent: Color, modifier: Modifier) {
+    val shown by animateIntAsState(score, tween(600), label = "score")
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier
+            .clip(shape)
+            .background(Brush.horizontalGradient(listOf(accent.copy(alpha = if (drawing) 0.5f else 0.2f), Color(0x55000000))))
+            .border(if (drawing) 2.5.dp else 1.dp, accent.copy(alpha = if (drawing) 1f else 0.4f), shape)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-            Text(
-                (if (drawing) "✏️ " else "") + name,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-            )
-            Text("$score", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        }
+        Text((if (drawing) "✏️ " else "") + name, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        Text("$shown", fontSize = 22.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -112,17 +118,34 @@ private fun ScoreChip(name: String, score: Int, drawing: Boolean, modifier: Modi
 fun TimerBar(g: GameState) {
     val total = max(1, g.roundSeconds).toFloat()
     val fraction by animateFloatAsState((g.remainingSec / total).coerceIn(0f, 1f), label = "timer")
+    val urgent = g.remainingSec <= 10 && (g.phase == Phase.DRAWING || g.phase == Phase.GUESSING)
+    val pulse = rememberInfiniteTransition(label = "tick")
+    val beat by pulse.animateFloat(1f, if (urgent) 1.28f else 1f, infiniteRepeatable(tween(450), RepeatMode.Reverse), label = "beat")
+    val colour = when {
+        fraction > 0.5f -> Funk.Lime
+        fraction > 0.25f -> Funk.Sun
+        else -> Funk.Red
+    }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Round ${g.round + 1} of ${g.totalRounds}", style = MaterialTheme.typography.labelLarge)
             Text(
                 "⏱ ${g.remainingSec}s",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (g.remainingSec <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                Modifier.graphicsLayer {
+                    scaleX = beat
+                    scaleY = beat
+                },
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = colour,
             )
         }
-        LinearProgressIndicator(progress = { fraction }, Modifier.fillMaxWidth())
+        Box(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)).background(Color(0x33FFFFFF))) {
+            Box(
+                Modifier.fillMaxHeight().fillMaxWidth(fraction).clip(RoundedCornerShape(6.dp))
+                    .background(Brush.horizontalGradient(listOf(colour, colour.copy(alpha = 0.65f)))),
+            )
+        }
     }
 }
 
@@ -189,11 +212,9 @@ fun PickScreen(g: GameState, act: Act) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ScoreStrip(g)
             Text("Round ${g.round + 1} of ${g.totalRounds} · your turn to draw", style = MaterialTheme.typography.labelLarge)
-            Text("Pick something to draw", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            GradientText("Pick something to draw", fontSize = 28.sp)
             g.options.forEach { w -> WordCard(w) { act { chooseWord(w) } } }
-            Button(onClick = { act { chooseRandom() } }, Modifier.fillMaxWidth().height(52.dp)) {
-                Text("🎲 Surprise me", fontSize = 18.sp)
-            }
+            FunkyButton("🎲  Surprise me", { act { chooseRandom() } }, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Pink), fontSize = 20.sp)
             Text(
                 "Harder words score more. Once you've picked, skipping costs you ${Scoring.SKIP_PENALTY} points." +
                     if (g.skips > 0) "\nSkipped so far this round: ${g.skips}" else "",
@@ -206,22 +227,25 @@ fun PickScreen(g: GameState, act: Act) {
 
 @Composable
 private fun WordCard(w: Word, onClick: () -> Unit) {
-    Card(onClick = onClick, Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(w.text.cap(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(w.category, style = MaterialTheme.typography.bodySmall)
-            }
-            Text(
-                "${w.difficulty.label}  ×${w.difficulty.multiplier}",
-                style = MaterialTheme.typography.labelLarge,
-                color = when (w.difficulty) {
-                    Difficulty.EASY -> MaterialTheme.colorScheme.tertiary
-                    Difficulty.MEDIUM -> MaterialTheme.colorScheme.secondary
-                    Difficulty.HARD -> MaterialTheme.colorScheme.error
-                    Difficulty.EXTREME -> Color(0xFF8E24AA)
-                },
-            )
+    val colours = when (w.difficulty) {
+        Difficulty.EASY -> listOf(Funk.Mint, Funk.Cyan)
+        Difficulty.MEDIUM -> listOf(Funk.Sun, Funk.Orange)
+        Difficulty.HARD -> listOf(Funk.Pink, Funk.Red)
+        Difficulty.EXTREME -> listOf(Funk.Violet, Funk.Pink)
+    }
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(shape).background(Brush.horizontalGradient(colours))
+            .border(2.dp, Color.White.copy(alpha = 0.4f), shape).clickable(onClick = onClick).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(w.text.cap(), fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(w.category, fontSize = 13.sp, color = Color.White.copy(alpha = 0.92f))
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(w.difficulty.label, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+            Text("×${w.difficulty.multiplier}", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White)
         }
     }
 }
@@ -268,14 +292,9 @@ fun DrawScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
         top = {
             TimerBar(g)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Draw this (${word?.category.orEmpty()})", style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        word?.text.orEmpty().uppercase(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("DRAW THIS · ${word?.category.orEmpty()}", style = MaterialTheme.typography.labelMedium, color = Funk.Cyan)
+                    GradientText(word?.text.orEmpty().uppercase(), fontSize = 30.sp)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     TextButton(onClick = { confirmSkip = true }) { Text("Skip (−${Scoring.SKIP_PENALTY})") }
@@ -345,8 +364,8 @@ private fun ReportCard(rule: RuleBreak, theirName: String, onAnswer: (Boolean) -
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = { onAnswer(false) }, Modifier.weight(1f).height(48.dp)) { Text("I disagree") }
-                Button(onClick = { onAnswer(true) }, Modifier.weight(1f).height(48.dp)) { Text("They're right") }
+                FunkyButton("I disagree", { onAnswer(false) }, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), fontSize = 15.sp)
+                FunkyButton("They're right", { onAnswer(true) }, Modifier.weight(1f), listOf(Funk.Pink, Funk.Red), fontSize = 15.sp)
             }
         }
     }
@@ -367,8 +386,8 @@ private fun JudgeCard(guess: String, word: String, theirName: String, onJudge: (
             if (match) Text("✔ Matches your word", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
             else if (close) Text("Very close. Your call.", color = MaterialTheme.colorScheme.secondary)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = { onJudge(false) }, Modifier.weight(1f).height(48.dp)) { Text("✗ Not quite") }
-                Button(onClick = { onJudge(true) }, Modifier.weight(1f).height(48.dp)) { Text("✓ Correct!") }
+                FunkyButton("✗ Not quite", { onJudge(false) }, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), fontSize = 15.sp)
+                FunkyButton("✓ Correct!", { onJudge(true) }, Modifier.weight(1f), listOf(Funk.Mint, Funk.Lime), fontSize = 15.sp)
             }
         }
     }
@@ -415,14 +434,19 @@ private fun DrawTools(
 
 @Composable
 private fun Swatch(colour: Color, selected: Boolean, label: String, onClick: () -> Unit) {
+    val pop by animateFloatAsState(if (selected) 1.22f else 1f, label = "swatch")
     Box(
         Modifier
             .size(38.dp)
+            .graphicsLayer {
+                scaleX = pop
+                scaleY = pop
+            }
             .clip(CircleShape)
             .background(colour)
             .border(
-                if (selected) 3.dp else 1.dp,
-                if (selected) MaterialTheme.colorScheme.primary else Color(0x33000000),
+                if (selected) 3.5.dp else 1.5.dp,
+                if (selected) Color.White else Color.White.copy(alpha = 0.35f),
                 CircleShape,
             )
             .clickable(onClick = onClick),
@@ -534,16 +558,41 @@ private fun ReportDialog(theirName: String, onPick: (RuleBreak) -> Unit, onClose
 @Composable
 fun ResultScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
     val o = g.outcome ?: return
+    val popups = remember { mutableStateListOf<Popup>() }
+    var confetti by remember { mutableIntStateOf(0) }
+    LaunchedEffect(o.round, g.history.size) {
+        popups.clear()
+        popups.add(
+            Popup(
+                System.nanoTime(),
+                if (o.myDelta >= 0) "+${o.myDelta}" else "${o.myDelta}",
+                if (o.myDelta >= 0) Funk.Lime else Funk.Red,
+                0.5f, 0.35f,
+            ),
+        )
+        if (o.correct) confetti++
+    }
+    Box(Modifier.fillMaxSize()) {
+        ResultContent(g, board, version, act)
+        ConfettiBurst(confetti)
+        PopupLayer(popups, { id -> popups.removeAll { it.id == id } })
+    }
+}
+
+@Composable
+private fun ResultContent(g: GameState, board: StrokeBoard, version: Int, act: Act) {
+    val o = g.outcome ?: return
     var pressed by remember(g.round) { mutableStateOf(false) }
     val last = g.round + 1 >= g.totalRounds
     TwoPane(
         top = {
-            Text(
-                if (o.correct) "✅ Got it!" else "⏱ Time's up!",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+            GradientText(
+                if (o.correct) "✅ GOT IT!" else "⏱ TIME'S UP!",
+                fontSize = 30.sp,
+                colors = if (o.correct) listOf(Funk.Lime, Funk.Mint, Funk.Cyan) else listOf(Funk.Sun, Funk.Orange, Funk.Red),
             )
-            Text("The word was ${o.word.uppercase()}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Text("The word was", style = MaterialTheme.typography.labelMedium)
+            GradientText(o.word.uppercase(), fontSize = 28.sp)
         },
         board = { SquareBoard(board, version, Modifier.fillMaxSize()) },
         bottom = {
@@ -561,21 +610,18 @@ fun ResultScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
                     )
                 }
             }
-            Button(
-                onClick = { pressed = true; act { ready() } },
+            FunkyButton(
+                when {
+                    pressed -> "Waiting for ${g.theirName}…"
+                    last -> "🏁  See final scores"
+                    g.partnerReady -> "▶  Start next round"
+                    else -> "▶  Next round"
+                },
+                { pressed = true; act { ready() } },
+                Modifier.fillMaxWidth(),
+                listOf(Funk.Mint, Funk.Cyan),
                 enabled = !pressed,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) {
-                Text(
-                    when {
-                        pressed -> "Waiting for ${g.theirName}…"
-                        last -> "See final scores"
-                        g.partnerReady -> "Start next round"
-                        else -> "Next round"
-                    },
-                    fontSize = 18.sp,
-                )
-            }
+            )
         },
     )
 }
@@ -612,10 +658,20 @@ private fun OutcomeBreakdown(o: RoundOutcome, g: GameState) {
 
 @Composable
 fun GameOverScreen(g: GameState, onPlayAgain: () -> Unit, onBackToGames: () -> Unit, onLeave: () -> Unit) {
+    var confetti by remember { mutableIntStateOf(0) }
+    LaunchedEffect(g.myScore > g.theirScore) { if (g.myScore > g.theirScore) confetti++ }
+    Box(Modifier.fillMaxSize()) {
+        GameOverContent(g, onPlayAgain, onBackToGames, onLeave)
+        ConfettiBurst(confetti)
+    }
+}
+
+@Composable
+private fun GameOverContent(g: GameState, onPlayAgain: () -> Unit, onBackToGames: () -> Unit, onLeave: () -> Unit) {
     val title = when {
-        g.myScore > g.theirScore -> "🏆 You win!"
-        g.myScore < g.theirScore -> "🏆 ${g.theirName} wins!"
-        else -> "🤝 It's a draw!"
+        g.myScore > g.theirScore -> "🏆 YOU WIN!"
+        g.myScore < g.theirScore -> "🏆 ${g.theirName.uppercase()} WINS!"
+        else -> "🤝 IT'S A DRAW!"
     }
     Page {
         Column(
@@ -624,7 +680,7 @@ fun GameOverScreen(g: GameState, onPlayAgain: () -> Unit, onBackToGames: () -> U
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Spacer(Modifier.height(16.dp))
-            Text(title, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            GradientText(title, fontSize = 38.sp)
             ScoreStrip(g)
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -638,14 +694,11 @@ fun GameOverScreen(g: GameState, onPlayAgain: () -> Unit, onBackToGames: () -> U
                 }
             }
             if (g.isHost) {
-                Button(
-                    onClick = onPlayAgain,
-                    Modifier.fillMaxWidth().height(52.dp),
-                ) { Text("Play again", fontSize = 18.sp) }
+                FunkyButton("🔁  Play again", onPlayAgain, Modifier.fillMaxWidth(), listOf(Funk.Pink, Funk.Orange))
             } else {
                 Text("${g.theirName} can start a rematch…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = onBackToGames) { Text("Choose another game") }
+            FunkyButton("🎮  Choose another game", onBackToGames, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Blue))
             TextButton(onClick = onLeave) { Text("Leave") }
         }
     }

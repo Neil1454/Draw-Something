@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -59,7 +60,7 @@ fun SquareBoard(
                 .size(side)
                 .clip(shape)
                 .background(Color.White)
-                .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), shape)
+                .border(4.dp, Brush.linearGradient(listOf(Funk.Pink, Funk.Sun, Funk.Cyan)), shape)
                 .pointerInput(canDraw) {
                     if (!canDraw) return@pointerInput
                     awaitEachGesture {
