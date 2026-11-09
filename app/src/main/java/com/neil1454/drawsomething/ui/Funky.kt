@@ -142,6 +142,11 @@ fun GameKind.colors(): List<Color> = when (this) {
     GameKind.DRAW -> listOf(Funk.Pink, Funk.Orange)
     GameKind.MINES -> listOf(Funk.Orange, Funk.Red)
     GameKind.SEA -> listOf(Funk.Cyan, Funk.Blue)
+    GameKind.DROP -> listOf(Funk.Red, Color(0xFFE6A100))
+    GameKind.MEMORY -> listOf(Funk.Violet, Funk.Pink)
+    GameKind.QUICK -> listOf(Color(0xFF7BD100), Color(0xFF1FA85A))
+    GameKind.DICE -> listOf(Funk.Mint, Color(0xFF0E8F9F))
+    GameKind.FLIP -> listOf(Color(0xFF4B35B0), Funk.Blue)
 }
 
 @Composable

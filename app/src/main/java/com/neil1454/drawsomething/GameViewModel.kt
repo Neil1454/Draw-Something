@@ -6,6 +6,14 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.neil1454.drawsomething.core.Difficulty
+import com.neil1454.drawsomething.core.DiceEngine
+import com.neil1454.drawsomething.core.DropEngine
+import com.neil1454.drawsomething.core.FlipEngine
+import com.neil1454.drawsomething.core.GMsg
+import com.neil1454.drawsomething.core.MemoryEngine
+import com.neil1454.drawsomething.core.QuickEngine
+import com.neil1454.drawsomething.core.SyncEngine
+import org.json.JSONObject
 import com.neil1454.drawsomething.core.GameEngine
 import com.neil1454.drawsomething.core.GameKind
 import com.neil1454.drawsomething.core.GameState
@@ -48,6 +56,15 @@ data class LobbySettings(
     val difficulty: Int = 0, // index into the lobby's difficulty choices
     val minesSize: Int = 1,  // index into MineSize.values()
     val seaSize: Int = 1,    // index into SeaSize.values()
+    val dropSize: Int = 0,
+    val dropPower: Boolean = false,
+    val memorySize: Int = 0,
+    val memoryTheme: Int = 0,
+    val quickMatch: Int = 1,
+    val quickFake: Boolean = true,
+    val diceTarget: Int = 1,
+    val diceTwo: Boolean = false,
+    val flipSize: Int = 0,
 )
 
 data class UiState(
@@ -66,6 +83,8 @@ data class UiState(
     val game: GameState? = null,             // Draw Something
     val mines: MinesState? = null,           // Bomb Find
     val sea: SeaState? = null,               // Sea Battle
+    val syncEngines: Map<GameKind, SyncEngine> = emptyMap(), // Drop Four, Memory Match, Quick Draw, Lucky Dice, Flip Fight
+    val sync: Map<GameKind, Any> = emptyMap(),               // their latest states (changes when anything changes)
     val board: StrokeBoard? = null,
     val boardVersion: Int = 0,
     val notice: String? = null,
@@ -80,6 +99,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private var engine: GameEngine? = null
     private var minesEngine: MinesEngine? = null
     private var seaEngine: SeaEngine? = null
+    private var syncEngines: Map<GameKind, SyncEngine> = emptyMap()
     private var tickJob: Job? = null
     private var acceptedId: String? = null // host: the one device I accepted
 
@@ -173,19 +193,32 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // Starting one game sends the others back to the lobby, so only one is ever on screen.
 
+    private fun resetOthers(keep: GameKind) {
+        if (keep != GameKind.DRAW) engine?.backToLobby()
+        if (keep != GameKind.MINES) minesEngine?.backToLobby()
+        if (keep != GameKind.SEA) seaEngine?.backToLobby()
+        syncEngines.forEach { (k, e) -> if (k != keep) e.backToLobby() }
+    }
+
     fun startDraw(rounds: Int, seconds: Int, minDifficulty: Difficulty) {
-        minesEngine?.backToLobby(); seaEngine?.backToLobby()
+        resetOthers(GameKind.DRAW)
         engine?.hostStart(rounds, seconds, minDifficulty)
     }
 
     fun startMines(size: MineSize) {
-        engine?.backToLobby(); seaEngine?.backToLobby()
+        resetOthers(GameKind.MINES)
         minesEngine?.start(size)
     }
 
     fun startSea(size: SeaSize) {
-        engine?.backToLobby(); minesEngine?.backToLobby()
+        resetOthers(GameKind.SEA)
         seaEngine?.start(size)
+    }
+
+    /** Start one of the turn-based games (Drop Four, Memory Match, Quick Draw, Lucky Dice, Flip Fight). */
+    fun startSync(kind: GameKind, options: JSONObject) {
+        resetOthers(kind)
+        syncEngines[kind]?.start(options)
     }
 
     /** Host: choose which game to play. Works before anyone has joined; the partner follows once paired. */
@@ -202,6 +235,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         engine?.backToLobby()
         minesEngine?.backToLobby()
         seaEngine?.backToLobby()
+        syncEngines.values.forEach { it.backToLobby() }
         publishAll()
     }
 
@@ -267,16 +301,23 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             is TransportEvent.Received -> when (val p = Packet.decode(e.bytes)) {
                 is Packet.Lobby -> _ui.update { it.copy(lobbyGame = p.game) }
                 is Packet.Draw -> {
-                    if (p.msg is Msg.Setup) { minesEngine?.backToLobby(); seaEngine?.backToLobby() }
+                    if (p.msg is Msg.Setup) resetOthers(GameKind.DRAW)
                     engine?.onMessage(p.msg)
                 }
                 is Packet.Mines -> {
-                    if (p.msg is MineMsg.Setup) { engine?.backToLobby(); seaEngine?.backToLobby() }
+                    if (p.msg is MineMsg.Setup) resetOthers(GameKind.MINES)
                     minesEngine?.onMessage(p.msg)
                 }
                 is Packet.Sea -> {
-                    if (p.msg is SeaMsg.Setup) { engine?.backToLobby(); minesEngine?.backToLobby() }
+                    if (p.msg is SeaMsg.Setup) resetOthers(GameKind.SEA)
                     seaEngine?.onMessage(p.msg)
+                }
+                is Packet.Sync -> {
+                    val kind = GameKind.values().firstOrNull { it.name == p.msg.game }
+                    if (kind != null) {
+                        if (p.msg is GMsg.Setup) resetOthers(kind)
+                        syncEngines[kind]?.onMessage(p.msg)
+                    }
                 }
                 null -> Unit
             }
@@ -301,11 +342,25 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val sb = SeaEngine(s.name.trim(), partner, s.isHost, { transport.send(it.encode()) })
         sb.onChange = { publishAll() }
         seaEngine = sb
+        val me = s.name.trim()
+        val host = s.isHost
+        val sendG: (GMsg) -> Unit = { transport.send(it.encode()) }
+        val clock: () -> Long = { SystemClock.elapsedRealtime() }
+        val syncList = listOf(
+            DropEngine(me, partner, host, sendG, clock = clock),
+            MemoryEngine(me, partner, host, sendG, clock = clock),
+            QuickEngine(me, partner, host, sendG, clock = clock),
+            DiceEngine(me, partner, host, sendG, clock = clock),
+            FlipEngine(me, partner, host, sendG, clock = clock),
+        )
+        syncList.forEach { it.onChange = { publishAll() } }
+        syncEngines = syncList.associateBy { it.kind }
         tickJob?.cancel()
         tickJob = viewModelScope.launch {
             while (isActive) {
                 delay(TICK_MS)
                 e.tick()
+                syncEngines.values.forEach { it.tick() }
             }
         }
         _ui.update {
@@ -314,6 +369,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 pairing = null, pairingConfirmed = false, hostAccepted = null,
                 hosts = emptyList(), notice = null,
                 game = e.state, mines = m.state, sea = sb.state, board = e.board, boardVersion = e.board.version,
+                syncEngines = syncEngines, sync = syncEngines.mapValues { it.value.stateAny },
             )
         }
         // The host may already have picked a game while waiting: let the partner's lobby show it.
@@ -331,10 +387,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 val playing = d.state.phase != Phase.LOBBY ||
                     (m != null && m.state.phase != MinesPhase.LOBBY) ||
-                    (sb != null && sb.state.phase != SeaPhase.LOBBY)
+                    (sb != null && sb.state.phase != SeaPhase.LOBBY) ||
+                    syncEngines.values.any { e -> e.isActive }
                 it.copy(
                     stage = if (playing) Stage.PLAYING else Stage.LOBBY,
                     game = d.state, mines = m?.state, sea = sb?.state, boardVersion = d.board.version,
+                    sync = syncEngines.mapValues { e -> e.value.stateAny },
                 )
             }
         }
@@ -350,6 +408,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         minesEngine = null
         seaEngine?.onChange = {}
         seaEngine = null
+        syncEngines.values.forEach { it.onChange = {} }
+        syncEngines = emptyMap()
         transport.stopAll()
     }
 

@@ -37,10 +37,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.json.JSONObject
 import com.neil1454.drawsomething.LobbySettings
 import com.neil1454.drawsomething.NearbyHost
 import com.neil1454.drawsomething.UiState
 import com.neil1454.drawsomething.core.Difficulty
+import com.neil1454.drawsomething.core.DiceTarget
+import com.neil1454.drawsomething.core.DropSize
+import com.neil1454.drawsomething.core.FlipSize
+import com.neil1454.drawsomething.core.MemorySize
+import com.neil1454.drawsomething.core.MemoryThemes
+import com.neil1454.drawsomething.core.QuickMatch
 import com.neil1454.drawsomething.core.GameEngine
 import com.neil1454.drawsomething.core.GameKind
 import com.neil1454.drawsomething.core.MineSize
@@ -156,6 +163,11 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     }
                     GameKind.MINES -> MinesHelp()
                     GameKind.SEA -> SeaHelp()
+                    GameKind.DROP -> DropHelp()
+                    GameKind.MEMORY -> MemoryHelp()
+                    GameKind.QUICK -> QuickHelp()
+                    GameKind.DICE -> DiceHelp()
+                    GameKind.FLIP -> FlipHelp()
                 }
             }
         },
@@ -403,6 +415,7 @@ fun GameBrowser(
     onStartDraw: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
     onStartMines: (MineSize) -> Unit,
     onStartSea: (SeaSize) -> Unit,
+    onStartSync: (GameKind, JSONObject) -> Unit,
 ) {
     val connected = game != null
     Column(
@@ -415,6 +428,11 @@ fun GameBrowser(
             GameKind.DRAW -> DrawLobby(ui, game, act, onSettings, onStartDraw)
             GameKind.MINES -> MinesLobby(ui, connected, onSettings, onStartMines)
             GameKind.SEA -> SeaLobby(ui, connected, onSettings, onStartSea)
+            GameKind.DROP -> DropLobby(ui, connected, onSettings, onStartSync)
+            GameKind.MEMORY -> MemoryLobby(ui, connected, onSettings, onStartSync)
+            GameKind.QUICK -> QuickLobby(ui, connected, onSettings, onStartSync)
+            GameKind.DICE -> DiceLobby(ui, connected, onSettings, onStartSync)
+            GameKind.FLIP -> FlipLobby(ui, connected, onSettings, onStartSync)
         }
     }
 }
@@ -438,6 +456,7 @@ fun BrowseGames(
         onStartDraw = { _, _, _ -> },
         onStartMines = {},
         onStartSea = {},
+        onStartSync = { _, _ -> },
     )
 }
 
@@ -451,6 +470,7 @@ fun LobbyScreen(
     onStartDraw: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
     onStartMines: (MineSize) -> Unit,
     onStartSea: (SeaSize) -> Unit,
+    onStartSync: (GameKind, JSONObject) -> Unit,
     onLeave: () -> Unit,
 ) {
     Page {
@@ -476,6 +496,7 @@ fun LobbyScreen(
                 selected = ui.lobbyGame, canPick = ui.isHost, onSelect = onPickGame,
                 onSettings = onSettings,
                 onStartDraw = onStartDraw, onStartMines = onStartMines, onStartSea = onStartSea,
+                onStartSync = onStartSync,
             )
             TextButton(onClick = onLeave) { Text("Leave") }
         }
@@ -635,4 +656,91 @@ private fun SeaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings
             WaitingForHost(ui, "Waiting for {name} to start the game…")
         }
     }
+}
+
+// ---------------------------------------------------------------------------- the turn-based games
+
+/** The same shape for every sync game: how-to-play card, the host's options, and a Start button. */
+@Composable
+private fun SyncLobby(
+    ui: UiState,
+    connected: Boolean,
+    kind: GameKind,
+    help: @Composable () -> Unit,
+    options: @Composable () -> Unit,
+    onStart: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp)) { help() } }
+        if (ui.isHost) {
+            options()
+            FunkyButton(
+                if (connected) "${kind.emoji}  Start ${kind.label}" else "Start (waiting for your partner…)",
+                onStart, Modifier.fillMaxWidth(), kind.colors(), enabled = connected, fontSize = 18.sp,
+            )
+        } else if (connected) {
+            WaitingForHost(ui, "Waiting for {name} to start the game…")
+        }
+    }
+}
+
+@Composable
+private fun ChipRow(title: String, labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(title, style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            labels.forEachIndexed { i, l -> FilterChip(selected = selected == i, onClick = { onSelect(i) }, label = { Text(l) }) }
+        }
+    }
+}
+
+@Composable
+private fun ToggleChip(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
+    FilterChip(selected = on, onClick = { onChange(!on) }, label = { Text((if (on) "✓ " else "") + label) })
+}
+
+@Composable
+private fun DropLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.DROP, { DropHelp() }, {
+        ChipRow("Board", DropSize.values().map { it.label.substringBefore(" ·") }, set.dropSize) { onSettings(set.copy(dropSize = it)) }
+        Text(DropSize.values()[set.dropSize].label.substringAfter("· "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ToggleChip("💣 Power discs (bomb and double)", set.dropPower) { onSettings(set.copy(dropPower = it)) }
+    }) { onStart(GameKind.DROP, JSONObject().put("size", set.dropSize).put("power", set.dropPower)) }
+}
+
+@Composable
+private fun MemoryLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.MEMORY, { MemoryHelp() }, {
+        ChipRow("Board", MemorySize.values().map { it.label.substringAfter(' ') }, set.memorySize) { onSettings(set.copy(memorySize = it)) }
+        ChipRow("Cards", MemoryThemes.names, set.memoryTheme) { onSettings(set.copy(memoryTheme = it)) }
+        Text(MemoryThemes.symbols[set.memoryTheme].take(8).joinToString(" "), fontSize = 22.sp)
+    }) { onStart(GameKind.MEMORY, JSONObject().put("size", set.memorySize).put("theme", set.memoryTheme)) }
+}
+
+@Composable
+private fun QuickLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.QUICK, { QuickHelp() }, {
+        ChipRow("Match", QuickMatch.values().map { it.label }, set.quickMatch) { onSettings(set.copy(quickMatch = it)) }
+        ToggleChip("🙂 Fake-outs (decoy flashes)", set.quickFake) { onSettings(set.copy(quickFake = it)) }
+    }) { onStart(GameKind.QUICK, JSONObject().put("match", set.quickMatch).put("fake", set.quickFake)) }
+}
+
+@Composable
+private fun DiceLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.DICE, { DiceHelp() }, {
+        ChipRow("Play to", DiceTarget.values().map { it.label.substringAfter(": ") }, set.diceTarget) { onSettings(set.copy(diceTarget = it)) }
+        ToggleChip("🎲🎲 Two dice (snake eyes wipes your score!)", set.diceTwo) { onSettings(set.copy(diceTwo = it)) }
+    }) { onStart(GameKind.DICE, JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)) }
+}
+
+@Composable
+private fun FlipLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.FLIP, { FlipHelp() }, {
+        ChipRow("Board", FlipSize.values().map { it.label }, set.flipSize) { onSettings(set.copy(flipSize = it)) }
+    }) { onStart(GameKind.FLIP, JSONObject().put("size", set.flipSize)) }
 }

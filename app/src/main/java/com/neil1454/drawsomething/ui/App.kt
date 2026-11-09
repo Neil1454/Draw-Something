@@ -12,7 +12,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neil1454.drawsomething.GameViewModel
+import com.neil1454.drawsomething.core.DiceEngine
+import com.neil1454.drawsomething.core.DiceState
+import com.neil1454.drawsomething.core.DropEngine
+import com.neil1454.drawsomething.core.DropState
+import com.neil1454.drawsomething.core.FlipEngine
+import com.neil1454.drawsomething.core.FlipState
+import com.neil1454.drawsomething.core.GameKind
+import com.neil1454.drawsomething.core.MemoryEngine
+import com.neil1454.drawsomething.core.MemoryState
 import com.neil1454.drawsomething.core.MinesPhase
+import com.neil1454.drawsomething.core.QuickEngine
+import com.neil1454.drawsomething.core.QuickState
+import com.neil1454.drawsomething.core.SyncEngine
+import org.json.JSONObject
 import com.neil1454.drawsomething.core.SeaPhase
 import com.neil1454.drawsomething.Stage
 
@@ -52,6 +65,7 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
                 onStartDraw = vm::startDraw,
                 onStartMines = vm::startMines,
                 onStartSea = vm::startSea,
+                onStartSync = vm::startSync,
                 onLeave = vm::leave,
             )
         }
@@ -60,7 +74,9 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
             val board = ui.board
             val mines = ui.mines
             val sea = ui.sea
+            val activeSync = ui.syncEngines.values.firstOrNull { it.isActive }
             when {
+                activeSync != null -> SyncGameRoot(activeSync, ui.sync[activeSync.kind], ui, vm)
                 mines != null && mines.phase != MinesPhase.LOBBY ->
                     MinesScreen(
                         mines, { vm.mines(it) },
@@ -94,5 +110,28 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
             confirmButton = { TextButton(onClick = { confirmLeave = false; vm.leave() }) { Text("Leave") } },
             dismissButton = { TextButton(onClick = { confirmLeave = false }) { Text("Stay") } },
         )
+    }
+}
+
+/** Shows the screen for whichever turn-based game is running. */
+@Composable
+private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameViewModel) {
+    val again: () -> Unit = {
+        val set = ui.settings
+        val options = when (engine.kind) {
+            GameKind.DROP -> JSONObject().put("size", set.dropSize).put("power", set.dropPower)
+            GameKind.MEMORY -> JSONObject().put("size", set.memorySize).put("theme", set.memoryTheme)
+            GameKind.QUICK -> JSONObject().put("match", set.quickMatch).put("fake", set.quickFake)
+            GameKind.DICE -> JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)
+            else -> JSONObject().put("size", set.flipSize)
+        }
+        vm.startSync(engine.kind, options)
+    }
+    when {
+        engine is DropEngine && state is DropState -> DropScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is MemoryEngine && state is MemoryState -> MemoryScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is QuickEngine && state is QuickState -> QuickScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is DiceEngine && state is DiceState -> DiceScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is FlipEngine && state is FlipState -> FlipScreen(state, engine, again, vm::backToGames, vm::leave)
     }
 }

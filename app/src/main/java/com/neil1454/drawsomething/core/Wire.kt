@@ -7,6 +7,11 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     DRAW("Draw Something", "🎨", "One draws, the other guesses. Fast guesses score big."),
     MINES("Bomb Find", "💣", "Take turns clearing a minefield. Dodge bombs, grab power-ups."),
     SEA("Sea Battle", "🚢", "Hide your fleet, hunt theirs. Hit a ship and fire again."),
+    DROP("Drop Four", "🔴", "Drop discs, connect four. Power discs blow things up."),
+    MEMORY("Memory Match", "🃏", "Flip cards, find pairs, build streaks."),
+    QUICK("Quick Draw", "⚡", "Wait for it… then tap first. Don't fall for the fake-out."),
+    DICE("Lucky Dice", "🎲", "Push your luck. Bank it or bust."),
+    FLIP("Flip Fight", "⚫", "Outflank and flip their discs. Easy to learn, hard to master."),
 }
 
 /** Host -> partner: "I've picked this game" (so both lobbies show the same thing). */
@@ -25,6 +30,7 @@ sealed class Packet {
     data class Draw(val msg: Msg) : Packet()
     data class Mines(val msg: MineMsg) : Packet()
     data class Sea(val msg: SeaMsg) : Packet()
+    data class Sync(val msg: GMsg) : Packet()
 
     companion object {
         fun decode(bytes: ByteArray): Packet? = try {
@@ -37,6 +43,7 @@ sealed class Packet {
                     t == "l_pick" -> GameKind.values().firstOrNull { it.name == o.getString("g") }?.let { Lobby(it) }
                     t.startsWith("m_") -> MineMsg.decode(o)?.let { Mines(it) }
                     t.startsWith("s_") -> SeaMsg.decode(o)?.let { Sea(it) }
+                    t.startsWith("g_") -> GMsg.decode(o)?.let { Sync(it) }
                     else -> Msg.decodeJson(o)?.let { Draw(it) }
                 }
             }
