@@ -87,7 +87,6 @@ fun LearnScreen(kind: GameKind, onBack: () -> Unit) {
             }
         }
     }
-    @Suppress("UNUSED_VARIABLE") val redraw = frame // every step redraws the screen below
 
     val restart: () -> Unit = { seed++ ; playing = true }
     val step: () -> Unit = {
@@ -101,7 +100,7 @@ fun LearnScreen(kind: GameKind, onBack: () -> Unit) {
         val landscape = maxWidth > maxHeight
         val game: @Composable (Modifier) -> Unit = { m ->
             Box(m) {
-                LearnGameView(kind, session, restart, onBack)
+                LearnGameView(kind, session, frame, restart, onBack)
                 if (!session.finished) {
                     Box(
                         Modifier.matchParentSize().pointerInput(Unit) {
@@ -115,7 +114,7 @@ fun LearnScreen(kind: GameKind, onBack: () -> Unit) {
         }
         val panel: @Composable (Modifier) -> Unit = { m ->
             CaptionPanel(
-                session = session, playing = playing, speed = speed,
+                session = session, tick = frame, playing = playing, speed = speed,
                 onTogglePlay = { playing = !playing },
                 onSpeed = { speed = if (speed >= 4) 1 else speed * 2 },
                 onStep = step, onExit = onBack, modifier = m,
@@ -138,6 +137,7 @@ fun LearnScreen(kind: GameKind, onBack: () -> Unit) {
 @Composable
 private fun CaptionPanel(
     session: LearnSession,
+    tick: Int,
     playing: Boolean,
     speed: Int,
     onTogglePlay: () -> Unit,
@@ -146,6 +146,7 @@ private fun CaptionPanel(
     onExit: () -> Unit,
     modifier: Modifier,
 ) {
+    @Suppress("UNUSED_VARIABLE") val redraw = tick // caption text lives in plain fields, so redraw on every tick
     val shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
     Column(
         modifier
@@ -172,7 +173,8 @@ private fun CaptionPanel(
 
 /** The ordinary screen for [kind], fed by the demo's first computer player. */
 @Composable
-private fun LearnGameView(kind: GameKind, session: LearnSession, restart: () -> Unit, onBack: () -> Unit) {
+private fun LearnGameView(kind: GameKind, session: LearnSession, tick: Int, restart: () -> Unit, onBack: () -> Unit) {
+    @Suppress("UNUSED_VARIABLE") val redraw = tick // the demo's state is plain objects, so this tick is what makes the screen redraw
     val host = session.duel.host
     when (kind) {
         GameKind.DRAW -> GameRoot(host.draw.state, host.draw.board, host.draw.board.version, { }, restart, onBack, onBack)
