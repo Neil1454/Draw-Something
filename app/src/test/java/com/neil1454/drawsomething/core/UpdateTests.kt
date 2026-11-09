@@ -58,6 +58,21 @@ class UpdateTest {
         assertEquals(hash, parseRelease(release().replace(hash, hash.uppercase()))!!.sha256)
     }
 
+    /** A real answer from api.github.com for this repository (trimmed), so format changes get noticed. */
+    @Test fun readsARealGitHubResponse() {
+        val real = """{"tag_name": "v1.3.0", "name": "Neil & Teri's Time Killer Games v1.3.0", "draft": false, "prerelease": false, "body": "Download **TimeKillerGames-v1.3.0.apk** below on your Android phone or tablet and open it to install (allow installs from your browser or Files app when asked). Install it on both devices. Ideal for long flights: no internet needed. Made by Neil Sampson.", "assets": [{"name": "TimeKillerGames-v1.3.0.apk", "size": 10049202, "digest": "sha256:a0b7ec9d144696928e0d9ef19bb6466cd62b547a2a5dfbd3c839a532751b4ee1", "browser_download_url": "https://github.com/Neil1454/Draw-Something/releases/download/v1.3.0/TimeKillerGames-v1.3.0.apk", "content_type": "application/vnd.android.package-archive"}]}"""
+        val r = parseRelease(real)!!
+        assertEquals("v1.3.0", r.tag)
+        assertEquals("1.3.0", r.version)
+        assertEquals("TimeKillerGames-v1.3.0.apk", r.apkName)
+        assertTrue(r.apkUrl.startsWith(UpdateRules.ASSET_PREFIX))
+        assertEquals(10_049_202L, r.sizeBytes)
+        assertEquals(64, r.sha256!!.length)
+        assertTrue(UpdateRules.isNewer(r.version, "1.2.0"))
+        assertFalse(UpdateRules.isNewer(r.version, "1.3.0"))
+        assertFalse(UpdateRules.isNewer(r.version, "1.5.0"))
+    }
+
     @Test fun onlyGitHubHostsOverHttpsAreAllowed() {
         assertTrue(UpdateRules.hostAllowed("api.github.com"))
         assertTrue(UpdateRules.hostAllowed("github.com"))
