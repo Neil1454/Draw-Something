@@ -29,10 +29,11 @@ class PlayerSide(
     val quick = QuickEngine(myName, theirName, isHost, send, random, clock)
     val dice = DiceEngine(myName, theirName, isHost, send, random, clock)
     val flip = FlipEngine(myName, theirName, isHost, send, random, clock)
+    val hilo = HiLoEngine(myName, theirName, isHost, send, random, clock)
 
     private val syncByKind: Map<GameKind, SyncEngine> = mapOf(
         GameKind.DROP to drop, GameKind.MEMORY to memory, GameKind.QUICK to quick,
-        GameKind.DICE to dice, GameKind.FLIP to flip,
+        GameKind.DICE to dice, GameKind.FLIP to flip, GameKind.HILO to hilo,
     )
 
     /** The Draw Something guesser only makes sense on the guest side (the host is the drawer). */
@@ -45,6 +46,7 @@ class PlayerSide(
         QuickBrain(quick, skill, random),
         DiceBrain(dice, skill, random),
         FlipBrain(flip, skill, random),
+        HiLoBrain(hilo, skill, random),
     )
 
     /** The computer agrees to the Draw Something rules straight away. */

@@ -12,6 +12,7 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     QUICK("Quick Draw", "⚡", "Wait for it… then tap first. Don't fall for the fake-out."),
     DICE("Lucky Dice", "🎲", "Push your luck. Bank it or bust."),
     FLIP("Flip Fight", "⚫", "Outflank and flip their discs. Easy to learn, hard to master."),
+    HILO("Higher or Lower", "🎴", "Will the next card be higher or lower? Climb the prize ladder."),
 }
 
 /** Host -> partner: "I've picked this game" (so both lobbies show the same thing). */

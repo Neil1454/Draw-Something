@@ -4,7 +4,7 @@
 
 *Created by Neil Sampson.*
 
-Neil & Teri's Time Killer Games is eight two-player games for Android phones and tablets, played directly between your two devices.
+Neil & Teri's Time Killer Games is nine two-player games for Android phones and tablets, played directly between your two devices.
 **It works with no internet at all**, so you can play on a plane, because the devices talk to
 each other over Bluetooth and/or Wi-Fi. After you pair, the host picks any game from the lobby,
 and you can switch games without reconnecting.
@@ -19,6 +19,7 @@ and you can switch games without reconnecting.
 | ⚡ **Quick Draw** | A reflex duel: tap first when the screen turns green. Optional fake-out decoys. |
 | 🎲 **Lucky Dice** | Push your luck: keep rolling, bank it before you bust. One or two dice. |
 | ⚫ **Flip Fight** | Reversi. Trap lines of their discs to flip them. 8×8 or 6×6. |
+| 🎴 **Higher or Lower** | Guess whether the next card is higher or lower and climb the prize ladder, like the TV game show. Change card once, optional odds. |
 
 ## Play solo, or learn by watching
 
@@ -199,7 +200,7 @@ identical picture.
 
 ## Status
 
-Version 1.6. Two players (or solo vs the computer), eight games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 1.7. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

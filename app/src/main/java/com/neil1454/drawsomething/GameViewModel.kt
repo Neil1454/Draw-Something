@@ -15,6 +15,7 @@ import java.io.File
 import com.neil1454.drawsomething.core.DiceEngine
 import com.neil1454.drawsomething.core.DropEngine
 import com.neil1454.drawsomething.core.FlipEngine
+import com.neil1454.drawsomething.core.HiLoEngine
 import com.neil1454.drawsomething.core.GMsg
 import com.neil1454.drawsomething.core.MemoryEngine
 import com.neil1454.drawsomething.core.QuickEngine
@@ -86,6 +87,8 @@ data class LobbySettings(
     val diceTarget: Int = 1,
     val diceTwo: Boolean = false,
     val flipSize: Int = 0,
+    val hiloRows: Int = 1,
+    val hiloOdds: Boolean = true,
 )
 
 data class UiState(
@@ -468,6 +471,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             QuickEngine(me, partner, host, sendG, clock = clock),
             DiceEngine(me, partner, host, sendG, clock = clock),
             FlipEngine(me, partner, host, sendG, clock = clock),
+            HiLoEngine(me, partner, host, sendG, clock = clock),
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }

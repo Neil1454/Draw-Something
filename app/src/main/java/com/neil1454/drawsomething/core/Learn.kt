@@ -68,6 +68,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.QUICK -> h.quick.start(JSONObject().put("match", 0).put("fake", true))
             GameKind.DICE -> h.dice.start(JSONObject().put("target", 0).put("two", false))
             GameKind.FLIP -> h.flip.start(JSONObject().put("size", 1))
+            GameKind.HILO -> h.hilo.start(JSONObject().put("rows", 0).put("odds", true))
         }
     }
 
@@ -160,6 +161,26 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                                 "bank" -> "${who(mine)} BANK${if (mine) "" else "s"} ${s.eventPoints}. Those points are safe now."
                                 else -> caption
                             } + tip(DICE_TIPS, s.moves),
+                        )
+                    }
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.HILO -> {
+                val s = duel.host.hilo.state
+                if (s.moves != last) {
+                    last = s.moves
+                    if (s.moves > 0 && s.row.isNotEmpty()) {
+                        val mine = s.resultByMe
+                        val card = HiLoRules.cardName(s.row[s.idx])
+                        say(
+                            when (s.result) {
+                                "hit" -> "${who(mine)} guessed right! The card was $card. The next guess will be worth ${(s.guesses + 1) * HiLoRules.STEP_POINTS}."
+                                "full" -> "A FULL ROW! ${who(mine)} cleared all seven cards for a ${HiLoRules.FULL_ROW_BONUS}-point bonus!"
+                                "miss" -> "Wrong! The card was $card. ${who(mine)}'s row ends, but the points already won are kept."
+                                "same" -> "Same value ($card)! A tie counts as wrong, so that row ends."
+                                else -> "${who(s.myTurn)} swapped the face-up card. Change can only be used once per game."
+                            } + tip(HILO_TIPS, s.moves),
                         )
                     }
                 }
@@ -314,6 +335,13 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "An empty square opens all its neighbours at once, which can score a lot.",
             "Hidden power-ups fire when you reveal them. Use the numbers to avoid bombs!",
         )
+        private val HILO_TIPS = listOf(
+            "Guess whether the next card is higher or lower than the one showing. Aces are high.",
+            "Each right guess is worth more than the last: 10, 20, 30, up to 60 points.",
+            "The percentages are the odds from the cards still unseen. Pick the bigger one!",
+            "A card of the SAME value counts as wrong, so middling cards are risky.",
+            "You can Change the face-up card once per game. It's handy when it's a 7, 8 or 9.",
+        )
         private val SEA_TIPS = listOf(
             "When you hit, you fire again, so a hit near a hit is a good bet.",
             "Ships run in straight lines, so line up your shots once you find one.",
@@ -329,6 +357,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.QUICK -> "⚡ Quick Draw: a reflex duel. Watch the screen and learn when to tap."
             GameKind.DICE -> "🎲 Lucky Dice: roll to build points, then bank them before you bust. You are Player 1."
             GameKind.FLIP -> "⚫ Flip Fight: trap the other player's discs to flip them. You are Player 1 (black)."
+            GameKind.HILO -> "🎴 Higher or Lower: guess whether each next card is higher or lower, and climb the prize ladder. You are Player 1."
         }
 
         fun outro(kind: GameKind): String = "🎉 That's ${kind.label}! Tap Play again to watch another game, or go back and try it for real."

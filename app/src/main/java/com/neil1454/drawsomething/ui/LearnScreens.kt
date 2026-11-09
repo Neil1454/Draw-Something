@@ -183,5 +183,6 @@ private fun LearnGameView(kind: GameKind, session: LearnSession, restart: () -> 
         GameKind.QUICK -> QuickScreen(host.quick.state, host.quick, restart, onBack, onBack)
         GameKind.DICE -> DiceScreen(host.dice.state, host.dice, restart, onBack, onBack)
         GameKind.FLIP -> FlipScreen(host.flip.state, host.flip, restart, onBack, onBack)
+        GameKind.HILO -> HiLoScreen(host.hilo.state, host.hilo, restart, onBack, onBack)
     }
 }

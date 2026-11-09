@@ -45,6 +45,7 @@ import com.neil1454.drawsomething.core.Difficulty
 import com.neil1454.drawsomething.core.DiceTarget
 import com.neil1454.drawsomething.core.DropSize
 import com.neil1454.drawsomething.core.FlipSize
+import com.neil1454.drawsomething.core.HiLoRows
 import com.neil1454.drawsomething.core.MemorySize
 import com.neil1454.drawsomething.core.MemoryThemes
 import com.neil1454.drawsomething.core.QuickMatch
@@ -216,6 +217,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.QUICK -> QuickHelp()
                     GameKind.DICE -> DiceHelp()
                     GameKind.FLIP -> FlipHelp()
+                    GameKind.HILO -> HiLoHelp()
                 }
             }
         },
@@ -481,6 +483,7 @@ fun GameBrowser(
             GameKind.QUICK -> QuickLobby(ui, connected, onSettings, onStartSync)
             GameKind.DICE -> DiceLobby(ui, connected, onSettings, onStartSync)
             GameKind.FLIP -> FlipLobby(ui, connected, onSettings, onStartSync)
+            GameKind.HILO -> HiLoLobby(ui, connected, onSettings, onStartSync)
         }
     }
 }
@@ -802,4 +805,13 @@ private fun FlipLobby(ui: UiState, connected: Boolean, onSettings: (LobbySetting
     SyncLobby(ui, connected, GameKind.FLIP, { FlipHelp() }, {
         ChipRow("Board", FlipSize.values().map { it.label }, set.flipSize) { onSettings(set.copy(flipSize = it)) }
     }) { onStart(GameKind.FLIP, JSONObject().put("size", set.flipSize)) }
+}
+
+@Composable
+private fun HiLoLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.HILO, { HiLoHelp() }, {
+        ChipRow("Rows each", HiLoRows.values().map { it.rows.toString() }, set.hiloRows) { onSettings(set.copy(hiloRows = it)) }
+        ToggleChip("📊 Show the odds", set.hiloOdds) { onSettings(set.copy(hiloOdds = it)) }
+    }) { onStart(GameKind.HILO, JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)) }
 }

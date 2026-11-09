@@ -147,6 +147,7 @@ fun GameKind.colors(): List<Color> = when (this) {
     GameKind.QUICK -> listOf(Color(0xFF7BD100), Color(0xFF1FA85A))
     GameKind.DICE -> listOf(Funk.Mint, Color(0xFF0E8F9F))
     GameKind.FLIP -> listOf(Color(0xFF4B35B0), Funk.Blue)
+    GameKind.HILO -> listOf(Color(0xFF0E8A56), Color(0xFFB88A00))
 }
 
 @Composable

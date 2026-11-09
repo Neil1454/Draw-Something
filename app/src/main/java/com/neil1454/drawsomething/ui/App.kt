@@ -21,6 +21,8 @@ import com.neil1454.drawsomething.core.DropState
 import com.neil1454.drawsomething.core.FlipEngine
 import com.neil1454.drawsomething.core.FlipState
 import com.neil1454.drawsomething.core.GameKind
+import com.neil1454.drawsomething.core.HiLoEngine
+import com.neil1454.drawsomething.core.HiLoState
 import com.neil1454.drawsomething.core.MemoryEngine
 import com.neil1454.drawsomething.core.MemoryState
 import com.neil1454.drawsomething.core.MinesPhase
@@ -147,6 +149,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.MEMORY -> JSONObject().put("size", set.memorySize).put("theme", set.memoryTheme)
             GameKind.QUICK -> JSONObject().put("match", set.quickMatch).put("fake", set.quickFake)
             GameKind.DICE -> JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)
+            GameKind.HILO -> JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)
             else -> JSONObject().put("size", set.flipSize)
         }
         vm.startSync(engine.kind, options)
@@ -157,5 +160,6 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is QuickEngine && state is QuickState -> QuickScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is DiceEngine && state is DiceState -> DiceScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is FlipEngine && state is FlipState -> FlipScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is HiLoEngine && state is HiLoState -> HiLoScreen(state, engine, again, vm::backToGames, vm::leave)
     }
 }
