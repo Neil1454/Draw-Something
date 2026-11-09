@@ -21,14 +21,17 @@
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="tiramisu" />
 
-    <!-- The game never talks to the internet. Make sure no library can add this permission. -->
-    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <!-- The games never use the internet. These two exist ONLY for the "Check for updates" button:
+         it asks GitHub for the latest release, downloads it, and hands it to Android's installer. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
         android:theme="@style/Theme.DrawSomething">
         <activity
             android:name=".MainActivity"
@@ -40,5 +43,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Lets Android's installer read a downloaded update from this app's private cache. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

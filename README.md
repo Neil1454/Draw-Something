@@ -125,9 +125,15 @@ every phone/tablet; Amazon Fire tablets don't have it).
   searching, rejects every other connection attempt, and only reads data from the one paired device.
   While hosting, the host sees any extra requests (name + code) and can pick the right one or decline.
   People without the app can't see or join anything at all.
-- **No internet permission.** The app doesn't request the INTERNET permission, so it can't send
-  anything off the device. It also keeps no account, location or contact data (only your name,
-  saved on your phone), and cloud backup is switched off.
+- **The internet is used for one thing only: updates.** The games never touch the network. The app
+  does hold the INTERNET permission, but the only code that uses it is the **Check for updates**
+  button on the home screen. Nothing runs in the background and nothing is sent when you play. When
+  you tap it, the app asks GitHub for this project's latest release and, if you agree, downloads it.
+  Every connection is HTTPS and only to GitHub's own hosts (also across redirects); the file must come
+  from this repository's releases; its size and SHA-256 are checked; and before Android is asked to
+  install it the app confirms it is the same app, newer, and signed by the same key as your copy.
+  Android then still asks you to tap Install. The app keeps no account, location or contact data
+  (only your name, saved on your phone), and cloud backup is switched off.
 - **Defensive decoding.** Every incoming message is size-limited and range-checked (text length,
   coordinates, scores, number of strokes), so a damaged or hostile packet can't crash the app or use
   up memory. Unit tests cover this.
@@ -137,6 +143,13 @@ every phone/tablet; Amazon Fire tablets don't have it).
   guesser's: fine for a friendly game, not cheat-proof.
 - **Signing key.** Builds are signed with a fixed key committed to the repo so updates install over
   the old version. It is a convenience key for sideloading, not a secret.
+
+## Updating
+
+Tap **🔄 Check for updates** on the home screen. The app looks at the latest GitHub release and, if it
+is newer, offers to download and install it. The first time, Android asks you to allow this app to
+install updates (Settings → “Allow from this source”). It works without any login or key as long as
+the GitHub repository is **public**.
 
 ## Building
 
@@ -168,7 +181,7 @@ identical picture.
 
 ## Status
 
-Version 1.4. Two players, eight games. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 1.5. Two players, eight games, in-app updates. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

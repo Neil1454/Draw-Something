@@ -6,6 +6,12 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.neil1454.drawsomething.core.Difficulty
+import com.neil1454.drawsomething.core.ReleaseInfo
+import com.neil1454.drawsomething.update.UpdateCheck
+import com.neil1454.drawsomething.update.UpdateManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import com.neil1454.drawsomething.core.DiceEngine
 import com.neil1454.drawsomething.core.DropEngine
 import com.neil1454.drawsomething.core.FlipEngine
@@ -43,6 +49,18 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 enum class Stage { HOME, HOSTING, SEARCHING, LOBBY, PLAYING }
+
+/** The "Check for updates" journey. */
+sealed class UpdateUi {
+    data object Idle : UpdateUi()
+    data object Checking : UpdateUi()
+    data class UpToDate(val version: String) : UpdateUi()
+    data class Available(val info: ReleaseInfo) : UpdateUi()
+    data class Downloading(val info: ReleaseInfo, val progress: Float) : UpdateUi()
+    data class NeedPermission(val info: ReleaseInfo) : UpdateUi()
+    data class Installing(val info: ReleaseInfo) : UpdateUi()
+    data class Failed(val message: String) : UpdateUi()
+}
 
 data class NearbyHost(val id: String, val name: String)
 
@@ -95,6 +113,76 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("draw_something", Context.MODE_PRIVATE)
     private val _ui = MutableStateFlow(UiState(name = prefs.getString("name", "").orEmpty()))
     val ui: StateFlow<UiState> = _ui
+
+    // ---------------------------------------------------------------- updates (the only use of the internet)
+
+    private val updater = UpdateManager(app)
+    private val _update = MutableStateFlow<UpdateUi>(UpdateUi.Idle)
+    val updateUi: StateFlow<UpdateUi> = _update
+    val appVersion: String = updater.currentVersion
+    private var downloaded: File? = null
+
+    /** Asks GitHub for the newest release. Only ever runs when the player taps the button. */
+    fun checkForUpdate() {
+        if (_update.value is UpdateUi.Checking || _update.value is UpdateUi.Downloading) return
+        _update.value = UpdateUi.Checking
+        viewModelScope.launch {
+            _update.value = try {
+                when (val r = updater.check()) {
+                    is UpdateCheck.Available -> UpdateUi.Available(r.info)
+                    is UpdateCheck.UpToDate -> UpdateUi.UpToDate(r.version)
+                }
+            } catch (e: Exception) {
+                UpdateUi.Failed(e.message ?: "Couldn't check for updates.")
+            }
+        }
+    }
+
+    /** Download, check, and hand to Android's installer. */
+    fun startUpdate() {
+        val info = (_update.value as? UpdateUi.Available)?.info ?: return
+        _update.value = UpdateUi.Downloading(info, 0f)
+        viewModelScope.launch {
+            try {
+                val file = updater.download(info) { p -> _update.value = UpdateUi.Downloading(info, p) }
+                val problem = withContext(Dispatchers.IO) { updater.problemWith(file) }
+                if (problem != null) {
+                    file.delete()
+                    _update.value = UpdateUi.Failed(problem)
+                } else {
+                    downloaded = file
+                    proceedToInstall(info)
+                }
+            } catch (e: Exception) {
+                _update.value = UpdateUi.Failed(e.message ?: "The download failed.")
+            }
+        }
+    }
+
+    private fun proceedToInstall(info: ReleaseInfo) {
+        val file = downloaded ?: return
+        if (!updater.canInstall()) {
+            _update.value = UpdateUi.NeedPermission(info)
+            return
+        }
+        _update.value = UpdateUi.Installing(info)
+        try {
+            updater.install(file)
+        } catch (e: Exception) {
+            _update.value = UpdateUi.Failed("Couldn't open Android's installer: ${e.message}")
+        }
+    }
+
+    fun openInstallPermissionScreen() = updater.openInstallPermissionScreen()
+
+    /** After the player has allowed installs from this app. */
+    fun retryInstall() {
+        (_update.value as? UpdateUi.NeedPermission)?.info?.let { proceedToInstall(it) }
+    }
+
+    fun dismissUpdate() {
+        if (_update.value !is UpdateUi.Downloading) _update.value = UpdateUi.Idle
+    }
 
     private val transport = NearbyTransport(app) { onTransportEvent(it) }
     private var engine: GameEngine? = null

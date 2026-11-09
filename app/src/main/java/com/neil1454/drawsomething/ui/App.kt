@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neil1454.drawsomething.GameViewModel
 import com.neil1454.drawsomething.UiState
+import com.neil1454.drawsomething.UpdateUi
 import com.neil1454.drawsomething.core.DiceEngine
 import com.neil1454.drawsomething.core.DiceState
 import com.neil1454.drawsomething.core.DropEngine
@@ -49,7 +50,7 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
     }
 
     when (ui.stage) {
-        Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice)
+        Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice, vm.appVersion, vm::checkForUpdate)
         Stage.HOSTING -> HostingScreen(
             ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice,
             browse = { BrowseGames(ui, vm::pickGame, vm::setSettings) },
@@ -101,6 +102,15 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
                     )
             }
         }
+    }
+
+    val update by vm.updateUi.collectAsStateWithLifecycle()
+    if (update != UpdateUi.Idle) {
+        UpdateDialog(
+            state = update, currentVersion = vm.appVersion,
+            onDownload = vm::startUpdate, onOpenSettings = vm::openInstallPermissionScreen,
+            onRetryInstall = vm::retryInstall, onClose = vm::dismissUpdate,
+        )
     }
 
     if (confirmLeave) {

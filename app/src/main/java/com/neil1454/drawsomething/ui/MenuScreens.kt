@@ -80,6 +80,8 @@ fun HomeScreen(
     onHost: () -> Unit,
     onJoin: () -> Unit,
     onDismissNotice: () -> Unit,
+    appVersion: String,
+    onCheckUpdate: () -> Unit,
 ) {
     var help by rememberSaveable { mutableStateOf(false) }
     var info by rememberSaveable { mutableStateOf<GameKind?>(null) }
@@ -128,6 +130,13 @@ fun HomeScreen(
             )
             GameGrid(GameKind.values().toList(), selected = null, enabled = true) { info = it }
             TextButton(onClick = { help = true }) { Text("How to play & scoring") }
+            FunkyButton("🔄  Check for updates", onCheckUpdate, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Blue), fontSize = 16.sp)
+            Text(
+                "Version $appVersion. Checking for updates is the only time this app uses the internet; the games never do.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
             Text(
                 "Both devices just need Bluetooth and/or Wi-Fi switched on. No internet or mobile signal " +
                     "is needed, so it works on a plane (turn Bluetooth back on after enabling airplane mode). " +
