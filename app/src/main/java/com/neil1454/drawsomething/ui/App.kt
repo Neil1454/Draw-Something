@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neil1454.drawsomething.GameViewModel
+import com.neil1454.drawsomething.UiState
 import com.neil1454.drawsomething.core.DiceEngine
 import com.neil1454.drawsomething.core.DiceState
 import com.neil1454.drawsomething.core.DropEngine
