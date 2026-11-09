@@ -62,6 +62,8 @@ data class GameState(
     val history: List<RoundOutcome> = emptyList(),
     /** On the result screen: my partner has already tapped Next. */
     val partnerReady: Boolean = false,
+    /** Solo practice: the host draws every round and the computer plays the guesser. */
+    val solo: Boolean = false,
 )
 
 /**
@@ -103,7 +105,7 @@ class GameEngine(
         onChange()
     }
 
-    private fun drawerIsHost(round: Int) = hostDrawsFirst == (round % 2 == 0)
+    private fun drawerIsHost(round: Int) = state.solo || hostDrawsFirst == (round % 2 == 0)
     private fun iDrawIn(round: Int) = drawerIsHost(round) == isHost
     private val roundMs get() = state.roundSeconds * 1000L
 
@@ -128,18 +130,19 @@ class GameEngine(
         state.iAgreed && state.partnerAgreed
 
     /** Host only: begin a fresh game. Can be called again for a rematch. */
-    fun hostStart(rounds: Int, seconds: Int, minDifficulty: Difficulty = Difficulty.EASY) {
+    fun hostStart(rounds: Int, seconds: Int, minDifficulty: Difficulty = Difficulty.EASY, solo: Boolean = false) {
         if (!canStart) return
         hostDrawsFirst = random.nextBoolean()
-        send(Msg.Setup(rounds, seconds, hostDrawsFirst, minDifficulty.ordinal))
-        newGame(rounds, seconds, minDifficulty)
+        send(Msg.Setup(rounds, seconds, hostDrawsFirst, minDifficulty.ordinal, solo))
+        newGame(rounds, seconds, minDifficulty, solo)
     }
 
-    private fun newGame(rounds: Int, seconds: Int, minDifficulty: Difficulty) {
+    private fun newGame(rounds: Int, seconds: Int, minDifficulty: Difficulty, solo: Boolean = false) {
         usedWords.clear()
         iReadyRound = -1
         theyReadyRound = -1
         state = state.copy(
+            solo = solo,
             totalRounds = rounds, roundSeconds = seconds, minDifficulty = minDifficulty,
             myScore = 0, theirScore = 0, history = emptyList(), outcome = null,
         )
@@ -409,7 +412,7 @@ class GameEngine(
             is Msg.Setup -> if (!isHost) {
                 hostDrawsFirst = msg.hostDrawsFirst
                 val min = Difficulty.values().getOrElse(msg.minDifficulty) { Difficulty.EASY }
-                newGame(msg.rounds, msg.seconds, min)
+                newGame(msg.rounds, msg.seconds, min, msg.solo)
             }
 
             Msg.RulesAgreed -> update { copy(partnerAgreed = true) }

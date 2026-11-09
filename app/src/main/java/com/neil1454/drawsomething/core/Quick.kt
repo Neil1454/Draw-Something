@@ -109,13 +109,13 @@ class QuickEngine(
     }
 
     /** The player tapped. Early taps (WAIT or a decoy) lose the round; a tap on GO records a time. */
-    fun tap() {
+    fun tap(forcedMs: Int? = null) {
         val s = state
         if (s.phase != GPhase.PLAYING || tapped) return
         val a = JSONObject().put("a", "tap").put("sq", s.seq)
         when (s.step) {
             "WAIT", "FAKE" -> a.put("ph", "early").put("ms", -1)
-            "GO" -> a.put("ph", "go").put("ms", (clock() - goLocal).toInt().coerceIn(1, 5000))
+            "GO" -> a.put("ph", "go").put("ms", (forcedMs ?: (clock() - goLocal).toInt()).coerceIn(1, 5000))
             else -> return
         }
         tapped = true

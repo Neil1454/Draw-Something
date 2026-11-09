@@ -6,7 +6,7 @@ import org.json.JSONObject
 /** Everything the two phones say to each other. Small JSON messages. */
 sealed class Msg {
     /** Host starts (or restarts) a game. */
-    data class Setup(val rounds: Int, val seconds: Int, val hostDrawsFirst: Boolean, val minDifficulty: Int = 0) : Msg()
+    data class Setup(val rounds: Int, val seconds: Int, val hostDrawsFirst: Boolean, val minDifficulty: Int = 0, val solo: Boolean = false) : Msg()
 
     /** "I agree to the rules." */
     data object RulesAgreed : Msg()
@@ -57,7 +57,7 @@ sealed class Msg {
         val o = JSONObject()
         when (this) {
             is Setup -> o.put("t", "setup").put("rounds", rounds).put("secs", seconds).put("hostFirst", hostDrawsFirst)
-                .put("minDiff", minDifficulty)
+                .put("minDiff", minDifficulty).put("solo", solo)
             RulesAgreed -> o.put("t", "agree")
             is RuleReport -> o.put("t", "report").put("rule", rule)
             is ReportResponse -> o.put("t", "reportReply").put("ok", accepted)
@@ -103,7 +103,7 @@ sealed class Msg {
         internal fun decodeJson(o: JSONObject): Msg? = when (o.getString("t")) {
             "setup" -> Setup(
                 o.getInt("rounds").coerceIn(2, 20), o.getInt("secs").coerceIn(30, 300),
-                o.getBoolean("hostFirst"), o.optInt("minDiff", 0).coerceIn(0, 3),
+                o.getBoolean("hostFirst"), o.optInt("minDiff", 0).coerceIn(0, 3), o.optBoolean("solo", false),
             )
             "agree" -> RulesAgreed
             "report" -> RuleReport(clean(o.getString("rule"), 20))

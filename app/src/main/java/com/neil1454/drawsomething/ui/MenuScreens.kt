@@ -55,6 +55,7 @@ import com.neil1454.drawsomething.core.SeaSize
 import com.neil1454.drawsomething.core.GameState
 import com.neil1454.drawsomething.core.Rules
 import com.neil1454.drawsomething.core.Scoring
+import com.neil1454.drawsomething.core.Skill
 
 const val CREATOR = "Neil Sampson"
 const val APP_NAME = "Neil & Teri's Time Killer Games"
@@ -82,8 +83,11 @@ fun HomeScreen(
     onDismissNotice: () -> Unit,
     appVersion: String,
     onCheckUpdate: () -> Unit,
+    onSolo: (Skill) -> Unit,
+    onLearn: () -> Unit,
 ) {
     var help by rememberSaveable { mutableStateOf(false) }
+    var pickSkill by rememberSaveable { mutableStateOf(false) }
     var info by rememberSaveable { mutableStateOf<GameKind?>(null) }
     Page {
         Column(
@@ -122,6 +126,10 @@ fun HomeScreen(
             ui.notice?.let { NoticeCard(it, onDismissNotice) }
             FunkyButton("🎮  Host a game", onHost, Modifier.fillMaxWidth(), listOf(Funk.Pink, Funk.Orange), fontSize = 20.sp)
             FunkyButton("🔎  Join a game", onJoin, Modifier.fillMaxWidth(), listOf(Funk.Cyan, Funk.Blue), fontSize = 20.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FunkyButton("🤖  Solo vs computer", { pickSkill = true }, Modifier.weight(1f), listOf(Funk.Mint, Funk.Cyan), fontSize = 15.sp)
+                FunkyButton("📖  Learn to play", onLearn, Modifier.weight(1f), listOf(Funk.Sun, Funk.Orange), fontSize = 15.sp)
+            }
             Text("The games", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
             Text(
                 "Tap one to see how it works.",
@@ -153,6 +161,37 @@ fun HomeScreen(
         }
     }
     if (help) HowToPlayDialog { help = false }
+    if (pickSkill) {
+        AlertDialog(
+            onDismissRequest = { pickSkill = false },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { pickSkill = false }) { Text("Cancel") } },
+            title = { Text("🤖 Play against the computer") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Great for getting a feel for a game, or when you're on your own. Choose how clever the computer is:")
+                    Skill.values().forEach { sk ->
+                        FunkyButton(
+                            "${sk.emoji}  ${sk.label}",
+                            { pickSkill = false; onSolo(sk) },
+                            Modifier.fillMaxWidth(),
+                            when (sk) {
+                                Skill.EASY -> listOf(Funk.Mint, Funk.Cyan)
+                                Skill.NORMAL -> listOf(Funk.Violet, Funk.Blue)
+                                Skill.HARD -> listOf(Funk.Pink, Funk.Red)
+                            },
+                            fontSize = 17.sp,
+                        )
+                    }
+                    Text(
+                        "Draw Something is practice only: the computer can't read drawings, so it pretends to guess.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+        )
+    }
     info?.let { GameInfoDialog(it) { info = null } }
 }
 
@@ -495,7 +534,11 @@ fun LobbyScreen(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
-            Text("Connected! Your link is private and encrypted.", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            Text(
+                if (ui.solo) "Solo practice (${ui.soloSkill?.label ?: ""}). Pick any game and press Start."
+                else "Connected! Your link is private and encrypted.",
+                color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+            )
             Text(
                 if (ui.isHost) "Choose a game" else "${ui.partnerName} is choosing the game…",
                 style = MaterialTheme.typography.titleMedium,
@@ -533,6 +576,12 @@ private fun DrawLobby(
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("📜 Rules", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 RulesList()
+                if (ui.solo) {
+                    Text(
+                        "Solo: you draw every round and the computer pretends to guess, so you can practise the drawing tools and the scoring.",
+                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
+                    )
+                }
                 if (game == null) {
                     Text(
                         "Once you're connected you'll both tap “I agree” before the game starts.",

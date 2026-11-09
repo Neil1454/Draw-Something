@@ -20,6 +20,17 @@ and you can switch games without reconnecting.
 | 🎲 **Lucky Dice** | Push your luck: keep rolling, bank it before you bust. One or two dice. |
 | ⚫ **Flip Fight** | Reversi. Trap lines of their discs to flip them. 8×8 or 6×6. |
 
+## Play solo, or learn by watching
+
+- **🤖 Solo vs computer.** Press it on the home screen, choose Easy, Normal or Hard, then pick any game as
+  usual. The computer is a stand-in for a second phone, so every game, rule and option works exactly as it
+  does with a real partner. It only uses what you could see (it can't peek at hidden cards, ships or mines).
+  In Draw Something it's practice only: you draw every round and the computer pretends to guess, because it
+  can't read a drawing.
+- **📖 Learn to play.** Pick a game and watch it play itself with captions explaining each step (and a few
+  tips), instead of reading the rules. Pause, step through one caption at a time, or speed it up. Nothing
+  needs connecting and nobody else needs to be there.
+
 ## Bomb Find (minesweeper for two)
 
 A shared grid (6×6, 8×8, 10×10 or 12×12). You **take turns** tapping a square; a number tells you how
@@ -188,7 +199,7 @@ identical picture.
 
 ## Status
 
-Version 1.5. Two players, eight games, in-app updates. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 1.6. Two players (or solo vs the computer), eight games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

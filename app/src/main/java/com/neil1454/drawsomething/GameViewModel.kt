@@ -31,6 +31,8 @@ import com.neil1454.drawsomething.core.MinesPhase
 import com.neil1454.drawsomething.core.MinesState
 import com.neil1454.drawsomething.core.Msg
 import com.neil1454.drawsomething.core.Packet
+import com.neil1454.drawsomething.core.PlayerSide
+import com.neil1454.drawsomething.core.Skill
 import com.neil1454.drawsomething.core.Phase
 import com.neil1454.drawsomething.core.SeaEngine
 import com.neil1454.drawsomething.core.SeaMsg
@@ -96,6 +98,9 @@ data class UiState(
     val pairingConfirmed: Boolean = false, // joiner side: I tapped "codes match"
     val hostAccepted: String? = null,      // host side: name of the device I accepted
     val isHost: Boolean = false,
+    /** Playing against the computer on this one phone. */
+    val solo: Boolean = false,
+    val soloSkill: Skill? = null,
     val partnerName: String = "",
     val lobbyGame: GameKind = GameKind.DRAW, // the game the host has picked (before or after pairing)
     val settings: LobbySettings = LobbySettings(),
@@ -189,6 +194,28 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private var minesEngine: MinesEngine? = null
     private var seaEngine: SeaEngine? = null
     private var syncEngines: Map<GameKind, SyncEngine> = emptyMap()
+    private var computer: PlayerSide? = null // the pretend second phone in solo play
+
+    /** Everything the engines say goes to the real partner, or to the computer in solo play. */
+    private fun sendBytes(bytes: ByteArray) {
+        val c = computer
+        if (c != null) c.receive(bytes) else transport.send(bytes)
+    }
+
+    /** Play against the computer. You host; the computer joins instantly as a partner. */
+    fun startSolo(skill: Skill) {
+        val name = cleanName() ?: return
+        teardown()
+        _ui.update { UiState(name = it.name, isHost = true, solo = true, soloSkill = skill) }
+        computer = PlayerSide(
+            isHost = false, myName = COMPUTER_NAME, theirName = name, skill = skill,
+            sendBytes = { bytes -> onTransportEvent(TransportEvent.Received(bytes)) },
+            secretWord = { engine?.state?.word?.text },
+            clock = { SystemClock.elapsedRealtime() },
+        )
+        startSession(COMPUTER_NAME)
+        computer?.start()
+    }
     private var tickJob: Job? = null
     private var acceptedId: String? = null // host: the one device I accepted
 
@@ -291,7 +318,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startDraw(rounds: Int, seconds: Int, minDifficulty: Difficulty) {
         resetOthers(GameKind.DRAW)
-        engine?.hostStart(rounds, seconds, minDifficulty)
+        engine?.hostStart(rounds, seconds, minDifficulty, solo = _ui.value.solo)
     }
 
     fun startMines(size: MineSize) {
@@ -314,7 +341,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun pickGame(kind: GameKind) {
         if (!_ui.value.isHost) return
         _ui.update { it.copy(lobbyGame = kind) }
-        transport.send(LobbyMsg.encodePick(kind)) // does nothing until a partner is connected
+        sendBytes(LobbyMsg.encodePick(kind)) // does nothing until a partner is connected
     }
 
     fun setSettings(settings: LobbySettings) = _ui.update { it.copy(settings = settings) }
@@ -414,26 +441,26 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun startSession(partner: String) {
-        transport.stopLooking()
+        if (computer == null) transport.stopLooking()
         val s = _ui.value
         val e = GameEngine(
             myName = s.name.trim(),
             theirName = partner,
             isHost = s.isHost,
-            send = { transport.send(it.encode()) },
+            send = { sendBytes(it.encode()) },
             clock = { SystemClock.elapsedRealtime() },
         )
         engine = e
         e.onChange = { publishAll() }
-        val m = MinesEngine(s.name.trim(), partner, s.isHost, { transport.send(it.encode()) })
+        val m = MinesEngine(s.name.trim(), partner, s.isHost, { sendBytes(it.encode()) })
         m.onChange = { publishAll() }
         minesEngine = m
-        val sb = SeaEngine(s.name.trim(), partner, s.isHost, { transport.send(it.encode()) })
+        val sb = SeaEngine(s.name.trim(), partner, s.isHost, { sendBytes(it.encode()) })
         sb.onChange = { publishAll() }
         seaEngine = sb
         val me = s.name.trim()
         val host = s.isHost
-        val sendG: (GMsg) -> Unit = { transport.send(it.encode()) }
+        val sendG: (GMsg) -> Unit = { sendBytes(it.encode()) }
         val clock: () -> Long = { SystemClock.elapsedRealtime() }
         val syncList = listOf(
             DropEngine(me, partner, host, sendG, clock = clock),
@@ -449,6 +476,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             while (isActive) {
                 delay(TICK_MS)
                 e.tick()
+                computer?.tick(SystemClock.elapsedRealtime())
                 syncEngines.values.forEach { it.tick() }
             }
         }
@@ -462,7 +490,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         // The host may already have picked a game while waiting: let the partner's lobby show it.
-        if (s.isHost) transport.send(LobbyMsg.encodePick(_ui.value.lobbyGame))
+        if (s.isHost) sendBytes(LobbyMsg.encodePick(_ui.value.lobbyGame))
     }
 
     /** Copy every engine's state into the UI. We are "playing" if any game is under way. */
@@ -488,6 +516,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun teardown() {
+        computer = null
         acceptedId = null
         tickJob?.cancel()
         tickJob = null
@@ -508,6 +537,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val MAX_NAME = 20
+        const val COMPUTER_NAME = "Computer 🤖"
         const val MAX_PENDING_REQUESTS = 5
         const val TICK_MS = 100L
     }

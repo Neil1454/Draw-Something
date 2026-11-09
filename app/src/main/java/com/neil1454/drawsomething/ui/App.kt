@@ -42,15 +42,28 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
         if (ui.stage == Stage.PLAYING) confirmLeave = true else vm.leave()
     }
 
-    ImmersiveMode(ui.stage == Stage.PLAYING)
+    var learnMode by rememberSaveable { mutableStateOf(false) }
+    var learnKind by rememberSaveable { mutableStateOf<GameKind?>(null) }
+    ImmersiveMode(ui.stage == Stage.PLAYING || (learnMode && learnKind != null))
 
     if (showSplash && ui.stage == Stage.HOME) {
         SplashScreen { showSplash = false }
         return
     }
 
+    // Back steps out of Learn mode (declared after the handler above, so it takes priority)
+    BackHandler(enabled = learnMode && ui.stage == Stage.HOME) {
+        if (learnKind != null) learnKind = null else learnMode = false
+    }
+    if (learnMode && ui.stage == Stage.HOME) {
+        val kind = learnKind
+        if (kind == null) LearnMenu(onPick = { learnKind = it }, onBack = { learnMode = false })
+        else LearnScreen(kind, onBack = { learnKind = null })
+        return
+    }
+
     when (ui.stage) {
-        Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice, vm.appVersion, vm::checkForUpdate)
+        Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice, vm.appVersion, vm::checkForUpdate, vm::startSolo) { learnMode = true }
         Stage.HOSTING -> HostingScreen(
             ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice,
             browse = { BrowseGames(ui, vm::pickGame, vm::setSettings) },
