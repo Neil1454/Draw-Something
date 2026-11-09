@@ -27,6 +27,8 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
         if (ui.stage == Stage.PLAYING) confirmLeave = true else vm.leave()
     }
 
+    ImmersiveMode(ui.stage == Stage.PLAYING)
+
     if (showSplash && ui.stage == Stage.HOME) {
         SplashScreen { showSplash = false }
         return

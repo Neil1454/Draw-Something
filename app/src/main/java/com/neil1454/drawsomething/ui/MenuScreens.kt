@@ -2,7 +2,6 @@
 
 package com.neil1454.drawsomething.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -75,40 +75,34 @@ fun HomeScreen(
     onDismissNotice: () -> Unit,
 ) {
     var help by rememberSaveable { mutableStateOf(false) }
+    var info by rememberSaveable { mutableStateOf<GameKind?>(null) }
     Page {
         Column(
             Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Spacer(Modifier.height(24.dp))
-            Text("🎮", fontSize = 64.sp)
-            Text(
-                APP_NAME,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center,
-            )
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GameKind.values().forEachIndexed { i, k ->
+                    val b = bobbing(phase = if (i % 2 == 0) 0f else 1f, amount = 6f, millis = 1100 + i * 90)
+                    Text(k.emoji, Modifier.graphicsLayer { translationY = b * density }, fontSize = 26.sp)
+                }
+            }
+            GradientText(APP_NAME, fontSize = 36.sp)
             Text(
                 "✈️ $APP_TAGLINE",
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Funk.Sun,
             )
             Text(
-                "Three games for two players. No internet needed.",
+                "Two-player games. No internet needed.",
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                "Made by $CREATOR",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary,
-            )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = ui.name,
                 onValueChange = onName,
@@ -117,8 +111,15 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             ui.notice?.let { NoticeCard(it, onDismissNotice) }
-            Button(onClick = onHost, Modifier.fillMaxWidth().height(56.dp)) { Text("Host a game", fontSize = 18.sp) }
-            FilledTonalButton(onClick = onJoin, Modifier.fillMaxWidth().height(56.dp)) { Text("Join a game", fontSize = 18.sp) }
+            FunkyButton("🎮  Host a game", onHost, Modifier.fillMaxWidth(), listOf(Funk.Pink, Funk.Orange), fontSize = 20.sp)
+            FunkyButton("🔎  Join a game", onJoin, Modifier.fillMaxWidth(), listOf(Funk.Cyan, Funk.Blue), fontSize = 20.sp)
+            Text("The games", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
+            Text(
+                "Tap one to see how it works.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            GameGrid(GameKind.values().toList(), selected = null, enabled = true) { info = it }
             TextButton(onClick = { help = true }) { Text("How to play & scoring") }
             Text(
                 "Both devices just need Bluetooth and/or Wi-Fi switched on. No internet or mobile signal " +
@@ -136,6 +137,29 @@ fun HomeScreen(
         }
     }
     if (help) HowToPlayDialog { help = false }
+    info?.let { GameInfoDialog(it) { info = null } }
+}
+
+/** A short explainer for one game, shown from the home screen. */
+@Composable
+fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        confirmButton = { TextButton(onClick = onClose) { Text("Got it") } },
+        title = { Text("${kind.emoji} ${kind.label}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                when (kind) {
+                    GameKind.DRAW -> {
+                        Text(kind.blurb)
+                        RulesList()
+                    }
+                    GameKind.MINES -> MinesHelp()
+                    GameKind.SEA -> SeaHelp()
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -358,29 +382,6 @@ private val DifficultyChoices = listOf(
     Difficulty.EXTREME to "Extra hard",
 )
 
-@Composable
-private fun GameCard(kind: GameKind, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.fillMaxWidth(),
-        border = if (selected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null,
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-            else MaterialTheme.colorScheme.surface,
-        ),
-    ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(kind.emoji, fontSize = 32.sp)
-            Column(Modifier.weight(1f)) {
-                Text(kind.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(kind.blurb, style = MaterialTheme.typography.bodySmall)
-            }
-            if (selected) Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
 /**
  * The game picker plus the selected game's rules and setup. Used on the waiting screens (so you can
  * browse and prepare before anyone has joined: [game] is null) and in the lobby once paired.
@@ -409,9 +410,7 @@ fun GameBrowser(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        GameKind.values().forEach { kind ->
-            GameCard(kind, selected = selected == kind, enabled = canPick) { onSelect(kind) }
-        }
+        GameGrid(GameKind.values().toList(), selected = selected, enabled = canPick) { onSelect(it) }
         when (selected) {
             GameKind.DRAW -> DrawLobby(ui, game, act, onSettings, onStartDraw)
             GameKind.MINES -> MinesLobby(ui, connected, onSettings, onStartMines)
