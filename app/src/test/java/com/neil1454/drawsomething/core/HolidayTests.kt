@@ -30,7 +30,7 @@ class HolidayPackTest {
         val packs = PackFiles.all()
         assertTrue(packs.isNotEmpty())
         for (p in packs) {
-            assertTrue("${p.id} needs a good number of questions", p.questions.size >= 30)
+            assertTrue("${p.id} needs a good number of questions", p.questions.size >= 60)
             for (q in p.questions) {
                 assertEquals("${q.text} should have four answers", 4, q.options.size)
                 assertEquals(4, q.options.toSet().size)
@@ -47,7 +47,7 @@ class HolidayPackTest {
         q.forEach { counts[it.correct]++ }
         assertTrue("correct answers should be spread across A-D: ${counts.toList()}", counts.all { it >= q.size / 8 })
         val longest = q.count { it.options[it.correct].length == it.options.maxOf { o -> o.length } }
-        assertTrue("the longest option shouldn't give the answer away ($longest of ${q.size})", longest < q.size * 0.45)
+        assertTrue("the longest option shouldn't give the answer away ($longest of ${q.size})", longest < q.size * 0.40)
     }
 
     @Test fun badPacksAreRejectedAndBadQuestionsSkipped() {

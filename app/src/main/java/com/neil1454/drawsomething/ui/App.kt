@@ -1,5 +1,21 @@
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -108,7 +124,7 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
                 onLeave = vm::leave,
             )
         }
-        Stage.PLAYING -> {
+        Stage.PLAYING -> Box(Modifier.fillMaxSize()) {
             val game = ui.game
             val board = ui.board
             val mines = ui.mines
@@ -138,6 +154,8 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
                         onLeave = vm::leave,
                     )
             }
+            // A small, always-visible way out of the game.
+            LeaveCorner(Modifier.align(Alignment.TopEnd)) { confirmLeave = true }
         }
     }
 
@@ -154,8 +172,8 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
         AlertDialog(
             onDismissRequest = { confirmLeave = false },
             title = { Text("Leave the game?") },
-            text = { Text("This ends the game for both of you.") },
-            confirmButton = { TextButton(onClick = { confirmLeave = false; vm.leave() }) { Text("Leave") } },
+            text = { Text("This ends the game for both of you and takes you back to the main menu.") },
+            confirmButton = { TextButton(onClick = { confirmLeave = false; vm.leave() }) { Text("Leave game") } },
             dismissButton = { TextButton(onClick = { confirmLeave = false }) { Text("Stay") } },
         )
     }
@@ -187,4 +205,20 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is HiLoEngine && state is HiLoState -> HiLoScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HolidayEngine && state is HolidayState -> HolidayScreen(state, engine, again, vm::backToGames, vm::leave)
     }
+}
+
+/** A small round ✕ in the corner of every game screen. */
+@Composable
+private fun LeaveCorner(modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .padding(top = 6.dp, end = 6.dp)
+            .size(34.dp)
+            .alpha(0.7f)
+            .clip(CircleShape)
+            .background(Color(0x99000000))
+            .border(1.5.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+            .clickable(onClick = { Sfx.play(Sound.TAP); onClick() }),
+        contentAlignment = Alignment.Center,
+    ) { Text("✕", fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.Bold) }
 }

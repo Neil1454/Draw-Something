@@ -133,7 +133,7 @@
     "CPV"
    ],
    "c": 1,
-   "fact": "SAL, the obvious guess, is actually the code for El Salvador's airport.",
+   "fact": "Look for SID on your boarding pass and luggage tags.",
    "cat": "Sal"
   },
   {
@@ -307,9 +307,9 @@
   {
    "q": "What is the wooden pier in Santa Maria best known for today?",
    "a": [
-    "Loading salt ships",
-    "Ferries to Brazil",
-    "Cruise ship arrivals",
+    "Loading ships with salt",
+    "Ferries to Brazil and Portugal",
+    "Cruise ships arriving in port",
     "Fishermen landing their catch"
    ],
    "c": 3,
@@ -332,9 +332,9 @@
    "q": "Which two things are the base of a traditional cachupa?",
    "a": [
     "Dried corn and beans",
-    "Rice and plantain",
-    "Cassava and peanuts",
-    "Potato and cabbage"
+    "Rice and ripe plantain",
+    "Cassava and ground peanuts",
+    "Potato and green cabbage"
    ],
    "c": 0,
    "fact": "It cooks for hours, so locals often make it in big batches.",
@@ -380,9 +380,9 @@
    "q": "What does the Cape Verdean word 'sodade' mean?",
    "a": [
     "Deep longing or nostalgia",
-    "A warm welcome",
-    "Sunny weather",
-    "A celebration"
+    "A warm welcome to visitors",
+    "Sunny weather all year round",
+    "A big family celebration"
    ],
    "c": 0,
    "fact": "It is the same idea as the Portuguese 'saudade' and the title of Cesária Évora's best-known song.",
@@ -437,18 +437,6 @@
    "cat": "Language"
   },
   {
-   "q": "How do you say 'thank you' in Portuguese?",
-   "a": [
-    "Obrigado (obrigada if you're a woman)",
-    "De nada",
-    "Por favor",
-    "Desculpe"
-   ],
-   "c": 0,
-   "fact": "A few Portuguese words go a long way: bom dia means good morning.",
-   "cat": "Language"
-  },
-  {
    "q": "Which of these is the local currency?",
    "a": [
     "Portuguese real",
@@ -488,37 +476,385 @@
    "q": "What plugs do you need in Cape Verde?",
    "a": [
     "Two round pins (types C and F)",
-    "Two flat pins (US type A)",
-    "Three flat pins (UK type G)",
-    "Three round pins (type D)"
+    "Two flat pins (the US type A)",
+    "Three flat pins (the UK type G)",
+    "Three round pins (the Indian type D)"
    ],
    "c": 0,
    "fact": "It runs at 230 V like the UK, so you only need an adaptor.",
    "cat": "Practical"
   },
   {
-   "q": "What's a sensible habit before getting into a taxi on Sal?",
+   "q": "Which is the largest island in Cape Verde, home to the capital Praia?",
    "a": [
-    "Insist on paying by card",
-    "Ask to share with strangers",
-    "Agree the fare first",
-    "Pay the driver in advance"
+    "Santiago",
+    "Santo Antão",
+    "Boa Vista",
+    "Fogo"
    ],
-   "c": 2,
-   "fact": "Many taxis don't use meters, so agree the price before you set off.",
-   "cat": "Practical"
+   "c": 0,
+   "fact": "Santiago is also where most Cape Verdeans live.",
+   "cat": "Islands"
   },
   {
-   "q": "What should you do before swimming at an Atlantic beach on Sal?",
+   "q": "Which small island is nicknamed the 'Island of Flowers'?",
    "a": [
-    "Ask if jellyfish are in season",
-    "Wear a wetsuit",
-    "Check the flags and the currents",
-    "Wait one hour after sunset"
+    "Maio",
+    "Brava",
+    "Santa Luzia",
+    "São Nicolau"
+   ],
+   "c": 1,
+   "fact": "Brava is the smallest inhabited island and is reached by boat from Fogo.",
+   "cat": "Islands"
+  },
+  {
+   "q": "Which island is famous for wine and coffee grown on volcanic soil?",
+   "a": [
+    "Fogo",
+    "Brava",
+    "São Vicente",
+    "Maio"
+   ],
+   "c": 0,
+   "fact": "The vines and coffee bushes grow inside the huge crater of Pico do Fogo.",
+   "cat": "Islands"
+  },
+  {
+   "q": "Which island is known for steep green valleys and some of the best hiking in Cape Verde?",
+   "a": [
+    "Maio",
+    "Santa Luzia",
+    "Santo Antão",
+    "Boa Vista"
    ],
    "c": 2,
-   "fact": "Waves and currents can be strong. Red flag: don't swim.",
-   "cat": "Practical"
+   "fact": "Its mountains catch the clouds, so it is far greener than flat, dry Sal.",
+   "cat": "Islands"
+  },
+  {
+   "q": "Which island do ferries from Mindelo travel to?",
+   "a": [
+    "Sal",
+    "Maio",
+    "Santo Antão",
+    "Fogo"
+   ],
+   "c": 2,
+   "fact": "The crossing from São Vicente takes roughly an hour.",
+   "cat": "Islands"
+  },
+  {
+   "q": "What is the main town on the island of Fogo?",
+   "a": [
+    "Tarrafal",
+    "Sal Rei",
+    "Espargos",
+    "São Filipe"
+   ],
+   "c": 3,
+   "fact": "São Filipe has old colonial houses with wooden balconies.",
+   "cat": "Islands"
+  },
+  {
+   "q": "Which desert-like area on Boa Vista has sand blown in from the Sahara?",
+   "a": [
+    "The Pedra Desert",
+    "The Viana Desert",
+    "The Salina Plains",
+    "The Morro Flats"
+   ],
+   "c": 1,
+   "fact": "Boa Vista is the neighbouring island to Sal and has huge dunes.",
+   "cat": "Islands"
+  },
+  {
+   "q": "Why are Sal, Boa Vista and Maio so much flatter than the western islands?",
+   "a": [
+    "The sea level rose and washed their peaks away",
+    "They were flattened long ago to make salt pans",
+    "They are made of coral rather than rock",
+    "They are older, so their volcanoes have worn down"
+   ],
+   "c": 3,
+   "fact": "The eastern islands are the oldest, which is why they have sandy beaches and little height.",
+   "cat": "Islands"
+  },
+  {
+   "q": "Which island was the first stop for Charles Darwin's voyage in 1832 after Tenerife?",
+   "a": [
+    "Sal",
+    "São Vicente",
+    "Fogo",
+    "Santiago"
+   ],
+   "c": 3,
+   "fact": "HMS Beagle visited Santiago, which Darwin called St Jago, in January 1832.",
+   "cat": "Islands"
+  },
+  {
+   "q": "What does 'Cabo Verde' mean in English?",
+   "a": [
+    "Windy Cape",
+    "Green Cape",
+    "Black Cape",
+    "Salt Cape"
+   ],
+   "c": 1,
+   "fact": "The name is a reminder of a headland on the mainland coast.",
+   "cat": "Basics"
+  },
+  {
+   "q": "Cape Verde is named after a headland on the African mainland. In which country is it?",
+   "a": [
+    "Senegal",
+    "Guinea",
+    "Mauritania",
+    "Morocco"
+   ],
+   "c": 0,
+   "fact": "Cap-Vert is on the coast of Dakar, about 570 km east of the islands.",
+   "cat": "Basics"
+  },
+  {
+   "q": "On which date is Independence Day celebrated in Cape Verde?",
+   "a": [
+    "24 January",
+    "5 July",
+    "1 May",
+    "12 September"
+   ],
+   "c": 1,
+   "fact": "The islands became independent from Portugal on 5 July 1975.",
+   "cat": "Basics"
+  },
+  {
+   "q": "Who was the first president of independent Cape Verde?",
+   "a": [
+    "Jorge Carlos Fonseca",
+    "Aristides Pereira",
+    "Pedro Pires",
+    "Amílcar Cabral"
+   ],
+   "c": 1,
+   "fact": "He led the country from 1975 to 1991.",
+   "cat": "Basics"
+  },
+  {
+   "q": "Roughly how many people live in Cape Verde?",
+   "a": [
+    "About 20 million",
+    "About 5 million",
+    "About 50,000",
+    "About half a million"
+   ],
+   "c": 3,
+   "fact": "Many more Cape Verdeans live abroad than on the islands themselves.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What is Cape Verde's international dialling code?",
+   "a": [
+    "+221",
+    "+238",
+    "+233",
+    "+244"
+   ],
+   "c": 1,
+   "fact": "You'll dial +238 before a local number.",
+   "cat": "Basics"
+  },
+  {
+   "q": "Which side of the road do vehicles drive on in Cape Verde?",
+   "a": [
+    "It depends on the island",
+    "The right",
+    "The left",
+    "Whichever is emptier"
+   ],
+   "c": 1,
+   "fact": "Remember this when crossing the road, especially if you're used to driving on the left.",
+   "cat": "Basics"
+  },
+  {
+   "q": "Cape Verde's people are proud of 'morabeza'. What does it mean?",
+   "a": [
+    "Calm, quiet reflection at sunset",
+    "Deep respect for older people",
+    "Warm, friendly hospitality",
+    "Hard work and determination"
+   ],
+   "c": 2,
+   "fact": "It is the spirit of welcome that visitors often mention.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What did Mindelo's Porto Grande harbour supply to passing steamships in the 1800s?",
+   "a": [
+    "Fish",
+    "Sugar",
+    "Fresh fruit",
+    "Coal"
+   ],
+   "c": 3,
+   "fact": "The port boomed because ships crossing the Atlantic needed to refuel.",
+   "cat": "History"
+  },
+  {
+   "q": "Which old fortress looks over the UNESCO town of Cidade Velha?",
+   "a": [
+    "Fort Pedra de Lume",
+    "Fort Real de São Filipe",
+    "Fort Duque de Bragança",
+    "Fort Santa Maria"
+   ],
+   "c": 1,
+   "fact": "The hilltop fort was built to defend the town from pirates.",
+   "cat": "History"
+  },
+  {
+   "q": "Why did Sal's airport become important in the early days of long-distance flying?",
+   "a": [
+    "It was a Portuguese military training base",
+    "It was the only runway long enough for early jets",
+    "It was the main sorting point for Atlantic mail",
+    "It was a refuelling stop in the middle of the Atlantic"
+   ],
+   "c": 3,
+   "fact": "The flat, dry island was ideal for a runway.",
+   "cat": "History"
+  },
+  {
+   "q": "Which community on Fogo was hit hardest by the volcanic eruption of 2014?",
+   "a": [
+    "Cova Figueira",
+    "Mosteiros",
+    "Chã das Caldeiras",
+    "São Filipe"
+   ],
+   "c": 2,
+   "fact": "Lava destroyed villages inside the crater, and people have since rebuilt.",
+   "cat": "History"
+  },
+  {
+   "q": "About how tall is the volcano Pico do Fogo, the highest point in Cape Verde?",
+   "a": [
+    "About 2,800 metres",
+    "About 3,700 metres",
+    "About 1,400 metres",
+    "About 4,500 metres"
+   ],
+   "c": 0,
+   "fact": "Its height is 2,829 metres, so it is a real mountain, not a hill.",
+   "cat": "Nature"
+  },
+  {
+   "q": "In which months do loggerhead turtles mainly nest on Sal's beaches?",
+   "a": [
+    "December to March",
+    "February to April",
+    "June to October",
+    "They nest all year"
+   ],
+   "c": 2,
+   "fact": "Hatchlings head for the sea at night, so avoid bright lights near nesting beaches.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What is 'pastel com diabo dentro' ('pastry with the devil inside')?",
+   "a": [
+    "A fried pastry filled with sugar cane",
+    "A fried pastry filled with spicy fish",
+    "A sweet pastry filled with chilli jam",
+    "A baked pastry filled with goat cheese"
+   ],
+   "c": 1,
+   "fact": "The 'devil' is the hot pepper in the tuna filling.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Xerém is a traditional dish based on what?",
+   "a": [
+    "Rice",
+    "Ground corn",
+    "Cassava",
+    "Sweet potato"
+   ],
+   "c": 1,
+   "fact": "Corn is the heart of Cape Verdean cooking, from xerém to cachupa.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is the 'ferrinho' used in funaná music?",
+   "a": [
+    "A small drum made from a gourd",
+    "A bamboo flute",
+    "A metal bar scraped for rhythm",
+    "A type of guitar"
+   ],
+   "c": 2,
+   "fact": "Funaná is played with an accordion and a scraped iron bar.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "Which upbeat dance music is the livelier cousin of morna?",
+   "a": [
+    "Batuku",
+    "Coladeira",
+    "Fado",
+    "Funaná"
+   ],
+   "c": 1,
+   "fact": "Coladeira has a quicker, more danceable beat than the slow, sad morna.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "In 2019, which Cape Verdean music was added to UNESCO's list of intangible cultural heritage?",
+   "a": [
+    "Coladeira",
+    "Funaná",
+    "Batuku",
+    "Morna"
+   ],
+   "c": 3,
+   "fact": "Morna is often described as the soul of Cape Verde.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "Which Santiago tradition has women singing and drumming on rolled-up cloth?",
+   "a": [
+    "Morna",
+    "Funaná",
+    "Batuku",
+    "Coladeira"
+   ],
+   "c": 2,
+   "fact": "The rhythm is beaten on cloth held between the knees.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "In Kriolu, what does 'Kuma ki bu sta?' mean?",
+   "a": [
+    "Where are you going?",
+    "How are you?",
+    "What is your name?",
+    "How much is it?"
+   ],
+   "c": 1,
+   "fact": "Kriolu has different forms on different islands, but many people understand this one.",
+   "cat": "Language"
+  },
+  {
+   "q": "On other islands, what is an 'aluguer'?",
+   "a": [
+    "A shared taxi or minibus",
+    "A stall selling fresh fish on the beach",
+    "A donkey you can hire for hill walks",
+    "A small ferry between nearby islands"
+   ],
+   "c": 0,
+   "fact": "Locals use aluguers to travel between towns; ask your hotel before using one.",
+   "cat": "Getting around"
   }
  ]
 }
