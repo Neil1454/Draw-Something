@@ -173,6 +173,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val appVersion: String = updater.currentVersion
     private var downloaded: File? = null
 
+    init {
+        // A downloaded update is only needed until it has been installed. Anything left from last time is removed
+        // as soon as the app starts (the app restarts after an update, so this also clears the one just installed).
+        viewModelScope.launch(Dispatchers.IO) { runCatching { updater.cleanUp() } }
+    }
+
     /** Asks GitHub for the newest release. Only ever runs when the player taps the button. */
     fun checkForUpdate() {
         if (_update.value is UpdateUi.Checking || _update.value is UpdateUi.Downloading) return
@@ -232,7 +238,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun dismissUpdate() {
-        if (_update.value !is UpdateUi.Downloading) _update.value = UpdateUi.Idle
+        val state = _update.value
+        if (state is UpdateUi.Downloading) return
+        _update.value = UpdateUi.Idle
+        // Closing the dialog throws away the downloaded file, unless Android's installer may still be reading it
+        // (then it is removed the next time the app starts).
+        if (state !is UpdateUi.Installing) {
+            downloaded = null
+            viewModelScope.launch(Dispatchers.IO) { runCatching { updater.cleanUp() } }
+        }
     }
 
     private val transport = NearbyTransport(app) { onTransportEvent(it) }

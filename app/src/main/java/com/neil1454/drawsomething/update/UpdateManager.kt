@@ -94,6 +94,11 @@ class UpdateManager(private val context: Context) {
         }
     }
 
+    /** Deletes every leftover downloaded update (there is only ever one, in the app's private cache). */
+    fun cleanUp() {
+        File(context.cacheDir, "updates").deleteRecursively()
+    }
+
     /** Returns null if the file is safe to hand to Android, otherwise a plain-English problem. */
     fun problemWith(file: File): String? {
         val pm = context.packageManager
