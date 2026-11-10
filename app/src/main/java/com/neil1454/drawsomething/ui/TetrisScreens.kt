@@ -435,7 +435,7 @@ fun TetrisScreen(
                     MiniBar(((mine?.lines ?: 0) % 10) / 10f, Color(0xFF22D3EE), Modifier.fillMaxWidth().height(8.dp))
                 }
             }
-            val giftLine: @Composable () -> Unit = {
+            val giftText: @Composable () -> Unit = {
                 val pending = (s.myIncoming - s.myQueued).coerceAtLeast(0)
                 val text = when {
                     pending > 0 && s.myQueued > 0 -> "$pending coming (clear 2+ rows to cancel) · ${s.myQueued} next"
@@ -444,6 +444,9 @@ fun TetrisScreen(
                     else -> "sent ${s.mySent} gift${if (s.mySent == 1) "" else "s"}"
                 }
                 Text(text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = if (s.myIncoming > 0) Gold else Color.White.copy(alpha = 0.6f), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            }
+            val giftLine: @Composable () -> Unit = {
+                ToastStrip(toasts, { id -> toasts.removeAll { it.id == id } }, Modifier.fillMaxWidth().height(34.dp), idle = { giftText() })
             }
             val rivalColumn: @Composable (Dp, Dp) -> Unit = { colW, wellW ->
                 Column(Modifier.width(colW), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -461,7 +464,7 @@ fun TetrisScreen(
             if (!landscape) {
                 val hudH = 58.dp
                 val bottomH = 84.dp
-                val availH = (maxHeight - hudH - bottomH - 40.dp).coerceAtLeast(160.dp)
+                val availH = (maxHeight - hudH - bottomH - 60.dp).coerceAtLeast(160.dp)
                 val myW = minOf(maxWidth * 0.68f, availH / 2f)
                 val rightW = (maxWidth - myW - 10.dp - 16.dp - 12.dp).coerceAtLeast(56.dp)
                 val rivalW = minOf(rightW, ((availH - 44.dp) / 2f).coerceAtLeast(56.dp))
@@ -519,8 +522,6 @@ fun TetrisScreen(
                 }
             }
         }
-
-        ToastHost(toasts, { id -> toasts.removeAll { it.id == id } }, Modifier.fillMaxSize().padding(top = 70.dp, bottom = 100.dp))
 
         if (!s.myAlive && !over) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -70,6 +70,56 @@ fun ToastHost(toasts: List<Toast>, onDone: (Long) -> Unit, modifier: Modifier = 
     }
 }
 
+/**
+ * A one-line announcement strip that lives in its own slot beside the board (never on top of it).
+ * Messages play one after another; if a pile builds up the oldest waiting ones are dropped.
+ */
+@Composable
+fun ToastStrip(toasts: List<Toast>, onDone: (Long) -> Unit, modifier: Modifier = Modifier, idle: @Composable () -> Unit = {}) {
+    LaunchedEffect(toasts.size) {
+        if (toasts.size > 3) toasts.drop(1).dropLast(2).forEach { onDone(it.id) }
+    }
+    Box(modifier, contentAlignment = Alignment.Center) {
+        val t = toasts.firstOrNull()
+        if (t == null) idle() else key(t.id) { StripToast(t, onDone) }
+    }
+}
+
+@Composable
+private fun StripToast(t: Toast, onDone: (Long) -> Unit) {
+    val p = remember { Animatable(0f) }
+    val ms = if (t.big) 1500 else 1100
+    LaunchedEffect(t.id) {
+        p.animateTo(1f, tween(ms, easing = LinearEasing))
+        onDone(t.id)
+    }
+    val v = p.value
+    val fadeIn = smooth((v / 0.12f).coerceIn(0f, 1f))
+    val fadeOut = 1f - smooth(((v - 0.8f) / 0.2f).coerceIn(0f, 1f))
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .graphicsLayer {
+                alpha = fadeIn * fadeOut
+                scaleX = 0.94f + 0.06f * fadeIn
+                scaleY = 0.94f + 0.06f * fadeIn
+            }
+            .clip(shape)
+            .background(Brush.horizontalGradient(listOf(Color(0xF00B1030), Color(0xF0141A44))))
+            .border(if (t.big) 1.5.dp else 1.dp, t.accent.copy(alpha = if (t.big) 0.95f else 0.65f), shape)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(t.accent))
+        Text(
+            t.title, fontSize = if (t.big) 16.sp else 13.sp, fontWeight = FontWeight.Black, letterSpacing = if (t.big) 2.5.sp else 1.4.sp, color = Color.White, maxLines = 1,
+            style = TextStyle(shadow = Shadow(t.accent.copy(alpha = 0.8f), Offset(0f, 0f), if (t.big) 14f else 6f)),
+        )
+        if (t.sub.isNotBlank()) Text(t.sub, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = t.accent.lighten(0.45f), maxLines = 1)
+    }
+}
+
 @Composable
 private fun BigToast(t: Toast, onDone: (Long) -> Unit) {
     val p = remember { Animatable(0f) }
