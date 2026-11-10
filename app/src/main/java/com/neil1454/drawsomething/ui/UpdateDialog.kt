@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,10 +67,19 @@ fun UpdateDialog(
                         LinearProgressIndicator(progress = { state.progress }, Modifier.fillMaxWidth())
                         Text("${(state.progress * 100).toInt()}% of version ${state.info.version}")
                     }
-                    is UpdateUi.NeedPermission -> Text(
-                        "Android wants your OK before this app can install an update. Tap “Open settings”, switch on " +
-                            "“Allow from this source”, press back, then tap “Install now”.",
-                    )
+                    is UpdateUi.NeedPermission -> {
+                        Text(
+                            "Android wants your OK before this app can install an update, so nothing has been downloaded yet. " +
+                                "Tap “Open settings”, switch on “Allow from this source”, press back, then tap “Done, download now”.",
+                        )
+                        Text(
+                            "If Android restarts the app when you switch it on, just tap Check for updates again: it will download once.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (state.stillBlocked) {
+                            Text("Android still says no. Switch on “Allow from this source” first.", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                     is UpdateUi.Installing -> Text(
                         "Handing over to Android's installer. Tap Install on the screen that appears. The app will restart on version ${state.info.version}.",
                     )
@@ -89,7 +99,7 @@ fun UpdateDialog(
         dismissButton = {
             when (state) {
                 is UpdateUi.Available -> TextButton(onClick = onClose) { Text("Not now") }
-                is UpdateUi.NeedPermission -> TextButton(onClick = onRetryInstall) { Text("Install now") }
+                is UpdateUi.NeedPermission -> TextButton(onClick = onRetryInstall) { Text("Done, download now") }
                 else -> Unit
             }
         },

@@ -245,9 +245,12 @@ install updates (Settings → “Allow from this source”). It works without an
 the GitHub repository is **public**.
 
 **Tidying up:** the downloaded file is kept only in the app's private cache folder (one file, replaced on each
-download, never in your Downloads). It is deleted when the update fails a check, when you close the update
-dialog, and every time the app starts, so the copy you just installed disappears the next time you open the
-app. Nothing is left in your gallery or files, and Android can also clear it from Settings → Apps → Clear cache.
+download, never in your Downloads, gallery or files). Android's "allow installs from this app" switch is checked
+**before** anything is downloaded, so you are never made to download twice because of it. The file is deleted when it
+fails a check, when you close the update dialog, and every time the app starts, so the copy you just installed disappears
+the next time you open the app. Any stray `.apk`, `.tmp` or `.part` file in the app's cache is swept up too.
+The home screen shows how much space update files take ("No update files stored on this phone" is what you want to see),
+with a **Clear** button, and you can also use Android's Settings → Apps → this app → Storage → Clear cache.
 
 ## Building
 
@@ -279,7 +282,7 @@ identical picture.
 
 ## Status
 
-Version 2.4.1. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 2.4.2. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

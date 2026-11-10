@@ -65,6 +65,7 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
     var showBoards by rememberSaveable { mutableStateOf(false) }
     var soundOn by remember { mutableStateOf(Sfx.enabled) }
     val statsVersion by vm.stats.version.collectAsStateWithLifecycle()
+    val updateBytes by vm.updateFilesBytes.collectAsStateWithLifecycle()
     val myRecord = remember(statsVersion, ui.name) {
         val rows = vm.stats.book.dominator()
         val i = rows.indexOfFirst { it.name.equals(ui.name.trim(), ignoreCase = true) }
@@ -105,6 +106,7 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
             ui, vm::setName, onHost, onJoin, vm::clearNotice, vm.appVersion, vm::checkForUpdate, vm::startSolo,
             onLearn = { learnMode = true }, onBoards = { showBoards = true }, myRecord = myRecord,
             soundOn = soundOn, onSound = { soundOn = it; Sfx.setEnabled(it); if (it) Sfx.play(Sound.CHIME) },
+            updateBytes = updateBytes, onClearUpdateFiles = vm::clearUpdateFiles,
         )
         Stage.HOSTING -> HostingScreen(
             ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice,

@@ -68,7 +68,7 @@ sealed class UpdateUi {
     data class UpToDate(val version: String) : UpdateUi()
     data class Available(val info: ReleaseInfo) : UpdateUi()
     data class Downloading(val info: ReleaseInfo, val progress: Float) : UpdateUi()
-    data class NeedPermission(val info: ReleaseInfo) : UpdateUi()
+    data class NeedPermission(val info: ReleaseInfo, val stillBlocked: Boolean = false) : UpdateUi()
     data class Installing(val info: ReleaseInfo) : UpdateUi()
     data class Failed(val message: String) : UpdateUi()
 }
@@ -173,10 +173,33 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val appVersion: String = updater.currentVersion
     private var downloaded: File? = null
 
+    private val _updateBytes = MutableStateFlow(0L)
+
+    /** How much space downloaded update files take on this phone (shown on the home screen). */
+    val updateFilesBytes: StateFlow<Long> = _updateBytes
+
+    private fun refreshUpdateBytes() {
+        viewModelScope.launch(Dispatchers.IO) { _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L) }
+    }
+
     init {
         // A downloaded update is only needed until it has been installed. Anything left from last time is removed
         // as soon as the app starts (the app restarts after an update, so this also clears the one just installed).
-        viewModelScope.launch(Dispatchers.IO) { runCatching { updater.cleanUp() } }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { updater.cleanUp() }
+            _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L)
+        }
+    }
+
+    /** The "Clear" button: delete every downloaded update file now (not while one is downloading or being installed). */
+    fun clearUpdateFiles() {
+        val s = _update.value
+        if (s is UpdateUi.Downloading || s is UpdateUi.Installing) return
+        downloaded = null
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { updater.cleanUp() }
+            _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L)
+        }
     }
 
     /** Asks GitHub for the newest release. Only ever runs when the player taps the button. */
@@ -195,9 +218,20 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Download, check, and hand to Android's installer. */
+    /**
+     * Download, check, and hand to Android's installer. Android's "allow installs from this app" switch is checked FIRST,
+     * so nothing is downloaded until installing is actually allowed (and nothing is downloaded twice).
+     */
     fun startUpdate() {
         val info = (_update.value as? UpdateUi.Available)?.info ?: return
+        if (!updater.canInstall()) {
+            _update.value = UpdateUi.NeedPermission(info)
+            return
+        }
+        beginDownload(info)
+    }
+
+    private fun beginDownload(info: ReleaseInfo) {
         _update.value = UpdateUi.Downloading(info, 0f)
         viewModelScope.launch {
             try {
@@ -212,6 +246,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (e: Exception) {
                 _update.value = UpdateUi.Failed(e.message ?: "The download failed.")
+            } finally {
+                refreshUpdateBytes()
             }
         }
     }
@@ -232,9 +268,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openInstallPermissionScreen() = updater.openInstallPermissionScreen()
 
-    /** After the player has allowed installs from this app. */
+    /** After the player has allowed installs from this app: carry on (using a file already downloaded, if there is one). */
     fun retryInstall() {
-        (_update.value as? UpdateUi.NeedPermission)?.info?.let { proceedToInstall(it) }
+        val info = (_update.value as? UpdateUi.NeedPermission)?.info ?: return
+        if (!updater.canInstall()) {
+            _update.value = UpdateUi.NeedPermission(info, stillBlocked = true)
+            return
+        }
+        val file = downloaded
+        if (file != null && file.exists()) proceedToInstall(info) else beginDownload(info)
     }
 
     fun dismissUpdate() {
@@ -245,7 +287,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         // (then it is removed the next time the app starts).
         if (state !is UpdateUi.Installing) {
             downloaded = null
-            viewModelScope.launch(Dispatchers.IO) { runCatching { updater.cleanUp() } }
+            viewModelScope.launch(Dispatchers.IO) {
+                runCatching { updater.cleanUp() }
+                _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L)
+            }
         }
     }
 

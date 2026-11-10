@@ -102,6 +102,8 @@ fun HomeScreen(
     myRecord: String?,
     soundOn: Boolean,
     onSound: (Boolean) -> Unit,
+    updateBytes: Long,
+    onClearUpdateFiles: () -> Unit,
 ) {
     var help by rememberSaveable { mutableStateOf(false) }
     var pickSkill by rememberSaveable { mutableStateOf(false) }
@@ -183,6 +185,15 @@ fun HomeScreen(
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FunkyButton("🔄  Check for updates", onCheckUpdate, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Blue), fontSize = 16.sp)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Text(
+                            if (updateBytes <= 0L) "🧹 No update files stored on this phone"
+                            else "🧹 Update files stored: ${"%.1f".format(updateBytes / 1_048_576.0)} MB",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (updateBytes > 0L) TextButton(onClick = onClearUpdateFiles) { Text("Clear") }
+                    }
                     Text(
                         "Checking for updates is the only time this app uses the internet; the games never do. " +
                             "Both phones just need Bluetooth and/or Wi-Fi on, so it works on a plane (turn Bluetooth back on after " +

@@ -94,10 +94,22 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    /** Deletes every leftover downloaded update (there is only ever one, in the app's private cache). */
-    fun cleanUp() {
-        File(context.cacheDir, "updates").deleteRecursively()
+    /** Folders where a stray update file could ever be: the app's own cache (inside and next to the "updates" folder). */
+    private fun cacheDirs(): List<File> = listOfNotNull(context.cacheDir, context.externalCacheDir)
+
+    private fun strays(): List<File> = cacheDirs().flatMap { dir ->
+        dir.listFiles().orEmpty().filter { it.isFile && (it.name.endsWith(".apk") || it.name.endsWith(".tmp") || it.name.endsWith(".part")) }
     }
+
+    /** Deletes every downloaded update file, and any stray .apk/.tmp/.part files, from the app's private cache. */
+    fun cleanUp() {
+        cacheDirs().forEach { File(it, "updates").deleteRecursively() }
+        strays().forEach { it.delete() }
+    }
+
+    /** How many bytes of downloaded update files are on the phone right now. */
+    fun storedBytes(): Long =
+        cacheDirs().sumOf { File(it, "updates").walkTopDown().filter { f -> f.isFile }.sumOf { f -> f.length() } } + strays().sumOf { it.length() }
 
     /** Returns null if the file is safe to hand to Android, otherwise a plain-English problem. */
     fun problemWith(file: File): String? {
