@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething
 
+import com.neil1454.drawsomething.core.TetrisEngine
 import android.app.Application
 import android.content.Context
 import android.os.SystemClock
@@ -99,6 +100,10 @@ data class LobbySettings(
     val holidayPack: String = "",
     val holidayLen: Int = 1,
     val holidaySecs: Int = 1,
+    val tetrisMode: Int = 0,
+    val tetrisLevel: Int = 0,
+    val tetrisGifts: Boolean = true,
+    val tetrisMins: Int = 1,
 )
 
 data class UiState(
@@ -511,6 +516,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             FlipEngine(me, partner, host, sendG, clock = clock),
             HiLoEngine(me, partner, host, sendG, clock = clock),
             HolidayEngine(me, partner, host, sendG, clock = clock),
+            TetrisEngine(me, partner, host, sendG, clock = clock),
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }

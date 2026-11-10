@@ -1,5 +1,7 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.TetrisEngine
+import com.neil1454.drawsomething.core.TetrisState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -190,6 +192,8 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.QUICK -> JSONObject().put("match", set.quickMatch).put("fake", set.quickFake)
             GameKind.DICE -> JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)
             GameKind.HILO -> JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)
+            GameKind.TETRIS -> JSONObject().put("mode", set.tetrisMode).put("lvl", set.tetrisLevel)
+                .put("mins", set.tetrisMins).put("gifts", set.tetrisGifts)
             GameKind.HOLIDAY -> JSONObject().put("pack", set.holidayPack).put("len", set.holidayLen)
                 .put("secs", HolidayRules.SECONDS[set.holidaySecs.coerceIn(0, HolidayRules.SECONDS.lastIndex)])
             else -> JSONObject().put("size", set.flipSize)
@@ -204,6 +208,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is FlipEngine && state is FlipState -> FlipScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HiLoEngine && state is HiLoState -> HiLoScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HolidayEngine && state is HolidayState -> HolidayScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is TetrisEngine && state is TetrisState -> TetrisScreen(state, engine, again, vm::backToGames, vm::leave)
     }
 }
 

@@ -6,6 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LearnTest {
+    @org.junit.Before fun packs() = HolidayPacks.install(PackFiles.all())
+
     private fun watch(kind: GameKind, seed: Int = 1): Pair<LearnSession, List<String>> {
         val s = LearnSession(kind, seed)
         val captions = ArrayList<String>()

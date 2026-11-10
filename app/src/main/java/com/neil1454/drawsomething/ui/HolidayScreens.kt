@@ -87,7 +87,7 @@ fun HolidayScreen(
         }
     }
     LaunchedEffect(s.secsLeft) {
-        if (s.step == "ASK" && s.secsLeft in 1..3 && s.myChoice == -1) Sfx.play(Sound.TICK)
+        if (s.step == "ASK" && s.limitSecs > 0 && s.secsLeft in 1..3 && s.myChoice == -1) Sfx.play(Sound.TICK)
     }
 
     Box(Modifier.fillMaxSize().background(Sunset).shaking(shake)) {
@@ -137,7 +137,7 @@ fun HolidayScreen(
                         s.myChoice != -1 && !s.theyAnswered -> "🔒 Locked in. Waiting to see if ${s.theirName} is right…"
                         s.myChoice != -1 -> "🔒 Locked in. Revealing…"
                         s.theyAnswered -> "⚡ ${s.theirName} has already answered. Be quick!"
-                        else -> "Tap your answer. The quickest right answer scores most."
+                        else -> if (s.limitSecs == 0) "Tap your answer. The quickest right answer still scores most." else "Tap your answer. The quickest right answer scores most."
                     }
                     Text(note, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
                 } else {
@@ -166,6 +166,10 @@ private fun signed(n: Int) = if (n > 0) "+$n" else "$n"
 
 @Composable
 private fun TimerBar(s: HolidayState, revealed: Boolean) {
+    if (s.limitSecs == 0) {
+        Text("⏳ No timer: take your time", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.85f))
+        return
+    }
     val frac by animateFloatAsState(
         if (revealed) 0f else (s.secsLeft.toFloat() / s.limitSecs.coerceAtLeast(1)).coerceIn(0f, 1f),
         label = "timer",
@@ -179,7 +183,7 @@ private fun TimerBar(s: HolidayState, revealed: Boolean) {
         Box(Modifier.weight(1f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(Color.White.copy(alpha = 0.18f))) {
             Box(Modifier.fillMaxWidth(frac).height(12.dp).clip(RoundedCornerShape(6.dp)).background(colour))
         }
-        Text(if (revealed) "—" else "${s.secsLeft}s", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
+        Text(if (revealed) "—" else "${s.secsLeft.coerceAtLeast(0)}s", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
     }
 }
 

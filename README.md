@@ -76,6 +76,19 @@ don't count; scores live only on the phone (and can be reset).
 
 Every sound effect is generated in code (`core/Synth.kt`), so there are no audio files. There is a mute button on the home screen.
 
+## Block Battle (falling blocks, head to head)
+
+Falling blocks, played side by side: you each play your own board, and each phone shows the other player's board live.
+Turn and slide the pieces to complete rows. Blow up **2 or more rows at once** and the pieces you cleared are sent to your rival as
+**gift pieces** (2 rows = 1 gift, 3 rows = 2, 4 rows = 4, long combos add one). The gifts fall onto their stack by themselves, drawn as
+gold striped blocks so they can see where they came from. Gifts you send first cancel any waiting to fall on you.
+
+* **Battle:** last stack standing wins. **Score attack:** best score when the 2, 3 or 5 minute clock runs out wins (gifts optional).
+* Start speed: Gentle, Fast or Frantic. Ghost piece, hold, next-three preview, wall kicks, soft and hard drop, levels every 10 lines.
+* Both players get exactly the same piece sequence (a shared 7-piece bag), so it is fair.
+* Each phone simulates its own board, so the controls never lag; only the board picture and gift pieces cross the link.
+* Works against the computer too (Easy / Normal / Hard) and has a Learn demo.
+
 ## Bomb Find (minesweeper for two)
 
 A shared grid (6×6, 8×8, 10×10 or 12×12). You **take turns** tapping a square; a number tells you how
@@ -244,7 +257,7 @@ identical picture.
 
 ## Status
 
-Version 2.1. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 2.2. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

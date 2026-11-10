@@ -151,6 +151,7 @@ fun GameKind.colors(): List<Color> = when (this) {
     GameKind.FLIP -> listOf(Color(0xFF4B35B0), Funk.Blue)
     GameKind.HILO -> listOf(Color(0xFF0E8A56), Color(0xFFB88A00))
     GameKind.HOLIDAY -> listOf(Color(0xFF00A99D), Color(0xFFFF8A3D))
+    GameKind.TETRIS -> listOf(Color(0xFF6A3DE8), Color(0xFF00B8D9))
 }
 
 @Composable

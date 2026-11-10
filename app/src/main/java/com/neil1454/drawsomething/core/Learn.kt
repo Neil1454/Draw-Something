@@ -26,6 +26,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
     private var started = false
     private var last = -1
     private var lastSeq = -1
+    private var lastGift = 0
     private var finishedAt = 0L
 
     /** Move the demo forward by [ms] (virtual milliseconds). */
@@ -76,7 +77,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.DICE -> h.dice.start(JSONObject().put("target", 0).put("two", false))
             GameKind.FLIP -> h.flip.start(JSONObject().put("size", 1))
             GameKind.HILO -> h.hilo.start(JSONObject().put("rows", 0).put("odds", true))
-            GameKind.HOLIDAY -> h.holiday.start(JSONObject().put("len", 0).put("secs", 15))
+            GameKind.TETRIS -> h.tetris.start(JSONObject().put("mode", 1).put("lvl", 0).put("gifts", true).put("mins", 0))
+            GameKind.HOLIDAY -> h.holiday.start(JSONObject().put("len", 0).put("secs", 30))
         }
     }
 
@@ -193,6 +195,28 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                     }
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.TETRIS -> {
+                val s = duel.host.tetris.state
+                if (s.phase == GPhase.OVER) {
+                    finish(outro(kind))
+                } else if (s.countdownMs == 0) {
+                    if (last == -1) {
+                        last = 0
+                        say("Blocks fall from the top. Your board is on the LEFT and your rival's is on the RIGHT, live. Fill complete rows to clear them." + tip(TETRIS_TIPS, 1))
+                    } else if (s.clearSeq != lastSeq && s.lastClear > 0) {
+                        lastSeq = s.clearSeq
+                        val n = s.lastClear
+                        say(
+                            "${who(s.lastClearByMe)} clear${if (s.lastClearByMe) "" else "s"} $n line${if (n == 1) "" else "s"}!" +
+                                (if (n >= 2) " The pieces blown up are sent to ${who(!s.lastClearByMe)} as GIFT PIECES (the gold, striped blocks). They fall by themselves onto the stack." else " Clear 2 or more lines at once to send gift pieces.") +
+                                tip(TETRIS_TIPS, 1 + s.clearSeq),
+                        )
+                    } else if (s.giftSeq != lastGift && s.giftSeq > 0) {
+                        lastGift = s.giftSeq
+                        say("🎁 A gift piece lands on your board! Gift blocks stay gold until you clear their row.")
+                    }
+                }
             }
             GameKind.HOLIDAY -> {
                 val s = duel.host.holiday.state
@@ -373,6 +397,13 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "A wrong answer costs 25 points, so don't just guess wildly!",
             "After each answer a 'did you know' fact appears: great for learning before you land.",
         )
+        private val TETRIS_TIPS = listOf(
+            "Move and turn the falling piece to fill gaps. Keep the stack low and flat.",
+            "A full row disappears. The more rows at once, the bigger the score.",
+            "Clear 2 rows for 1 gift piece, 3 for 2, and 4 at once (a 'Block Battle') sends 4!",
+            "Gifts you send first cancel any gifts waiting to fall on you.",
+            "HOLD saves a piece for later, and the ghost outline shows where a piece will land.",
+        )
         private val SEA_TIPS = listOf(
             "When you hit, you fire again, so a hit near a hit is a good bet.",
             "Ships run in straight lines, so line up your shots once you find one.",
@@ -389,6 +420,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.DICE -> "🎲 Lucky Dice: roll to build points, then bank them before you bust. You are Player 1."
             GameKind.FLIP -> "⚫ Flip Fight: trap the other player's discs to flip them. You are Player 1 (black)."
             GameKind.HILO -> "🎴 Higher or Lower: guess whether each next card is higher or lower, and climb the prize ladder. You are Player 1."
+            GameKind.TETRIS -> "🧱 Block Battle: falling blocks, side by side. You are Player 1 (the left board). Clear lines and the pieces you blow up are sent to your rival."
             GameKind.HOLIDAY -> "🏝️ Do you know your Holiday? A quiz about where you're going. You are Player 1; the quickest correct answer wins the most points."
         }
 

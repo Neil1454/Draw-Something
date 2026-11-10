@@ -188,5 +188,6 @@ private fun LearnGameView(kind: GameKind, session: LearnSession, tick: Int, rest
         GameKind.FLIP -> FlipScreen(host.flip.state, host.flip, restart, onBack, onBack)
         GameKind.HILO -> HiLoScreen(host.hilo.state, host.hilo, restart, onBack, onBack)
         GameKind.HOLIDAY -> HolidayScreen(host.holiday.state, host.holiday, restart, onBack, onBack)
+        GameKind.TETRIS -> TetrisScreen(host.tetris.state, host.tetris, restart, onBack, onBack)
     }
 }

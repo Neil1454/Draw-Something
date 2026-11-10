@@ -158,6 +158,31 @@ class HolidayQuizTest {
         assertEquals(0, p.client.state.theirScore)
     }
 
+    @Test fun withNoTimerTheQuestionWaitsForAnAnswer() {
+        val p = pair(secs = 0)
+        assertEquals(0, p.host.state.limitSecs)
+        assertEquals(-1, p.client.state.secsLeft)
+        p.advance(120_000) // two minutes pass...
+        assertEquals("ASK", p.host.state.step)
+        p.host.pick(p.rightAnswer(), forcedMs = 5_000)
+        p.client.pick(p.wrongAnswer(), forcedMs = 8_000)
+        p.pump()
+        assertEquals("REVEAL", p.host.state.step)
+        assertTrue(p.host.state.myDelta > HolidayRules.CORRECT)
+    }
+
+    @Test fun longerTimersAreHonoured() {
+        for (secs in listOf(30, 60)) {
+            val p = pair(secs = secs)
+            assertEquals(secs, p.client.state.limitSecs)
+            p.advance(secs * 1000L - 2_000)
+            assertEquals("ASK", p.host.state.step)
+            p.advance(2_500)
+            assertEquals("REVEAL", p.host.state.step)
+        }
+        assertEquals(listOf(15, 30, 60, 0), HolidayRules.SECONDS)
+    }
+
     @Test fun cannotAnswerTwiceOrWithABogusPosition() {
         val p = pair()
         p.host.pick(p.wrongAnswer(), forcedMs = 1000)

@@ -27,6 +27,7 @@ object Outcomes {
         is QuickState -> sync(state.phase, GameKind.QUICK, state.myScore, state.theirScore, state.result)
         is DiceState -> sync(state.phase, GameKind.DICE, state.myScore, state.theirScore, state.result)
         is HiLoState -> sync(state.phase, GameKind.HILO, state.myScore, state.theirScore, state.matchResult)
+        is TetrisState -> sync(state.phase, GameKind.TETRIS, state.myScore, state.theirScore, state.result)
         is HolidayState -> sync(state.phase, GameKind.HOLIDAY, state.myScore, state.theirScore, state.result)
         else -> null
     }

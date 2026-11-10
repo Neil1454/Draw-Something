@@ -102,9 +102,15 @@ abstract class SyncEngine(
         if (isHost) guarded { hostHandle(true, a) } else send(GMsg.Act(kind.name, a))
     }
 
+    /** Both phones, about ten times a second: for games where each phone runs its own clock. */
+    protected open fun localTick(now: Long) {}
+
     /** Called about ten times a second. */
     fun tick() {
-        if (isHost && isActive) guarded { hostTick(clock()) }
+        if (isActive) guarded {
+            localTick(clock())
+            if (isHost) hostTick(clock())
+        }
     }
 
     fun backToLobby() {

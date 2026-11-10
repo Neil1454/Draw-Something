@@ -2,6 +2,7 @@
 
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.TetrisRules
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -256,6 +257,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.FLIP -> FlipHelp()
                     GameKind.HILO -> HiLoHelp()
                     GameKind.HOLIDAY -> HolidayHelp()
+                    GameKind.TETRIS -> TetrisHelp()
                 }
             }
         },
@@ -523,6 +525,7 @@ fun GameBrowser(
             GameKind.FLIP -> FlipLobby(ui, connected, onSettings, onStartSync)
             GameKind.HILO -> HiLoLobby(ui, connected, onSettings, onStartSync)
             GameKind.HOLIDAY -> HolidayLobby(ui, connected, onSettings, onStartSync)
+            GameKind.TETRIS -> TetrisLobby(ui, connected, onSettings, onStartSync)
         }
     }
 }
@@ -874,12 +877,34 @@ private fun HolidayLobby(ui: UiState, connected: Boolean, onSettings: (LobbySett
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
             ChipRow("Questions", HolidayLength.values().map { it.label }, set.holidayLen) { onSettings(set.copy(holidayLen = it)) }
-            ChipRow("Time per question", HolidayRules.SECONDS.map { "${it}s" }, secsIdx) { onSettings(set.copy(holidaySecs = it)) }
+            ChipRow("Time per question", HolidayRules.SECONDS.map { if (it == 0) "No timer" else "${it}s" }, secsIdx) { onSettings(set.copy(holidaySecs = it)) }
         }
     }) {
         onStart(
             GameKind.HOLIDAY,
             JSONObject().put("pack", packs.getOrNull(packIdx)?.id ?: "").put("len", set.holidayLen).put("secs", HolidayRules.SECONDS[secsIdx]),
+        )
+    }
+}
+
+@Composable
+private fun TetrisLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.TETRIS, { TetrisHelp() }, {
+        ChipRow("Mode", listOf("⚔ Battle", "⏱ Score attack"), set.tetrisMode) { onSettings(set.copy(tetrisMode = it)) }
+        Text(
+            if (set.tetrisMode == 0) "Last stack standing wins. Gift pieces are always on." else "Best score when the clock runs out wins.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+        )
+        ChipRow("Start speed", TetrisRules.LEVEL_LABELS, set.tetrisLevel) { onSettings(set.copy(tetrisLevel = it)) }
+        if (set.tetrisMode == 1) {
+            ChipRow("Match length", TetrisRules.MINUTES.map { "$it min" }, set.tetrisMins) { onSettings(set.copy(tetrisMins = it)) }
+            ToggleChip("🎁 Gift pieces", set.tetrisGifts) { onSettings(set.copy(tetrisGifts = it)) }
+        }
+    }) {
+        onStart(
+            GameKind.TETRIS,
+            JSONObject().put("mode", set.tetrisMode).put("lvl", set.tetrisLevel).put("mins", set.tetrisMins).put("gifts", set.tetrisGifts),
         )
     }
 }

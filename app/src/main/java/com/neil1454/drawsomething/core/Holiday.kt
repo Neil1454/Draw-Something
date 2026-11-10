@@ -91,8 +91,13 @@ enum class HolidayLength(val label: String, val questions: Int) {
 }
 
 object HolidayRules {
-    const val DEFAULT_SECONDS = 15
-    val SECONDS = listOf(10, 15, 20)
+    const val DEFAULT_SECONDS = 30
+
+    /** Time-per-question choices in the lobby. 0 means no timer at all. */
+    val SECONDS = listOf(15, 30, 60, 0)
+
+    /** With no timer, speed bonuses are worked out as if the question lasted this long. */
+    const val UNTIMED_REFERENCE_MS = 20_000L
     const val CORRECT = 100          // fastest correct answer
     const val SPEED_BONUS = 100      // up to this much extra for answering quickly
     const val ALSO_RIGHT = 40        // right, but not the quickest
@@ -118,7 +123,9 @@ data class HolidayState(
     val category: String = "",
     val question: String = "",
     val options: List<String> = emptyList(),
+    /** 0 = no timer. */
     val limitSecs: Int = HolidayRules.DEFAULT_SECONDS,
+    /** -1 when there is no timer. */
     val secsLeft: Int = HolidayRules.DEFAULT_SECONDS,
     val myChoice: Int = -1,
     val theyAnswered: Boolean = false,
@@ -181,7 +188,7 @@ class HolidayEngine(
     override fun hostBegin(opts: JSONObject) {
         val pack = HolidayPacks.byId(opts.optString("pack", ""))
         val len = HolidayLength.values()[opts.optInt("len", 1).coerceIn(0, HolidayLength.values().size - 1)].questions
-        val secs = opts.optInt("secs", HolidayRules.DEFAULT_SECONDS).coerceIn(5, 60)
+        val secs = opts.optInt("secs", HolidayRules.DEFAULT_SECONDS).let { if (it <= 0) 0 else it.coerceIn(5, 120) }
         qs = pack?.questions?.shuffled(random)?.take(len) ?: emptyList()
         packTitle = pack?.title ?: ""
         packEmoji = pack?.emoji ?: "🏝️"
@@ -200,7 +207,7 @@ class HolidayEngine(
         choice.fill(-1); ms.fill(-1); delta.fill(0)
         firstCorrectAt = -1L
         startAt = now
-        lastSecs = (limitMs / 1000).toInt()
+        lastSecs = if (limitMs > 0) (limitMs / 1000).toInt() else -1
     }
 
     private fun correctDisplay() = perm.indexOf(current().correct)
@@ -226,7 +233,7 @@ class HolidayEngine(
         val i = a.getInt("i")
         if (i !in perm.indices) return
         val now = clock()
-        val took = a.getInt("ms").coerceIn(HolidayRules.MIN_REACTION_MS, limitMs.toInt())
+        val took = a.getInt("ms").coerceIn(HolidayRules.MIN_REACTION_MS, if (limitMs > 0) limitMs.toInt() else 600_000)
         choice[who] = i
         ms[who] = took
         if (i == correctDisplay() && firstCorrectAt < 0L) firstCorrectAt = now
@@ -238,7 +245,8 @@ class HolidayEngine(
         if (step == "ASK") {
             when {
                 firstCorrectAt >= 0L && now >= firstCorrectAt + HolidayRules.GRACE_MS -> resolve(now)
-                now >= startAt + limitMs -> resolve(now)
+                limitMs > 0 && now >= startAt + limitMs -> resolve(now)
+                limitMs == 0L -> Unit
                 else -> {
                     val left = (((startAt + limitMs - now) + 999) / 1000).toInt().coerceAtLeast(0)
                     if (left != lastSecs) {
@@ -280,7 +288,7 @@ class HolidayEngine(
     }
 
     private fun speedBonus(took: Int): Int {
-        val frac = 1.0 - took.toDouble() / limitMs
+        val frac = 1.0 - took.toDouble() / (if (limitMs > 0) limitMs else HolidayRules.UNTIMED_REFERENCE_MS)
         return ((frac.coerceIn(0.0, 1.0) * HolidayRules.SPEED_BONUS) / 5).toInt() * 5
     }
 
@@ -334,8 +342,8 @@ class HolidayEngine(
             category = s.optString("ct", "").filter { !it.isISOControl() }.take(24),
             question = s.optString("q", "").filter { !it.isISOControl() }.take(220),
             options = options,
-            limitSecs = s.getInt("lm").coerceIn(5, 60),
-            secsLeft = s.getInt("sl").coerceIn(0, 60),
+            limitSecs = s.getInt("lm").coerceIn(0, 120),
+            secsLeft = s.getInt("sl").coerceIn(-1, 120),
             myChoice = if (revealed) (if (me1) c1 else c2) else myPick,
             theyAnswered = s.optBoolean(if (me1) "a2" else "a1", false),
             correct = if (revealed) s.optInt("cr", -1).coerceIn(-1, 3) else -1,
@@ -381,7 +389,7 @@ class HolidayBrain(
             planned = -1
             plan = -1
             if (s.step != "ASK" || s.options.isEmpty()) return
-            val limit = s.limitSecs * 1000
+            val limit = if (s.limitSecs > 0) s.limitSecs * 1000 else 20_000
             planMs = when (skill) {
                 Skill.EASY -> random.nextInt(limit * 35 / 100, limit * 80 / 100)
                 Skill.NORMAL -> random.nextInt(limit * 22 / 100, limit * 60 / 100)
