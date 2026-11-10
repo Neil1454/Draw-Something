@@ -144,6 +144,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         Sfx.init(app)
+        com.neil1454.drawsomething.ui.TetrisPrefs.init(app)
         if (Features.HOLIDAY) loadHolidayPacks(app)
     }
 

@@ -85,4 +85,51 @@ object Sfx {
             }
         }
     }
+
+    private var music: AudioTrack? = null
+
+    /** Starts the quiet looping tune (Tetris only). Does nothing if sound is off or it is already playing. */
+    @Synchronized
+    fun startMusic() {
+        if (!enabled || music != null) return
+        try {
+            val data = synchronized(cache) { musicData ?: Synth.renderMusic().also { musicData = it } }
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_GAME)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build(),
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(Synth.RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build(),
+                )
+                .setBufferSizeInBytes(data.size * 2)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+            track.write(data, 0, data.size)
+            track.setLoopPoints(0, data.size, -1)
+            track.play()
+            music = track
+        } catch (e: Exception) {
+            music = null
+        }
+    }
+
+    @Synchronized
+    fun stopMusic() {
+        try {
+            music?.stop()
+            music?.release()
+        } catch (e: Exception) {
+            // already gone
+        }
+        music = null
+    }
+
+    private var musicData: ShortArray? = null
 }

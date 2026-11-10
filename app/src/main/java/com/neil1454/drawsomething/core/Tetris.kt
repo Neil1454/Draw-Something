@@ -137,14 +137,20 @@ object TetrisRules {
 
     fun lineScore(lines: Int): Int = when (lines) { 1 -> 100; 2 -> 300; 3 -> 500; else -> 800 }
 
+    /** Two charge units make one gift piece. Whatever is left over stays in the meter for next time. */
+    const val UNITS_PER_GIFT = 2
+
+    /** Most gift pieces a single clear can send. */
+    const val MAX_GIFTS_PER_CLEAR = 8
+
     /**
-     * How many gift pieces a clear sends: 1 line none, 2 lines two, 3 lines three, 4 lines five; long combos add one.
-     * (Real versus games send 0/1/2/4 garbage LINES. Pieces you place yourself are much kinder than rising lines,
-     * so there are more of them.)
+     * Charge a clear puts in your gift meter: a single line 1, a double 3, a triple 5, four lines 10; each step of a
+     * combo adds one more and a back-to-back four-line clear adds two. So even singles send gifts, every other line.
      */
-    fun gifts(lines: Int, combo: Int): Int {
-        val base = when (lines) { 0, 1 -> 0; 2 -> 2; 3 -> 3; else -> 5 }
-        return base + if (lines >= 1 && combo >= 3) 1 else 0
+    fun chargeFor(lines: Int, combo: Int, backToBack: Boolean): Int {
+        val base = when (lines) { 0 -> 0; 1 -> 1; 2 -> 3; 3 -> 5; else -> 10 }
+        if (lines <= 0) return 0
+        return base + combo.coerceAtLeast(0) + if (backToBack) 2 else 0
     }
 
     /** The piece shape (0..6) a cell code belongs to, or -1 for junk and gift blocks. */
@@ -272,6 +278,28 @@ class TetrisBoard(
     var giftsReceived = 0
         private set
     var tideRows = 0
+        private set
+
+    /** The gift meter: how many charge units you have towards the next gift piece (0 until [TetrisRules.UNITS_PER_GIFT]). */
+    var charge = 0
+        private set
+
+    /** A block that was just cleared (visible position and what it was), so the screen can burst it into pieces. */
+    class ClearedBlock(val x: Int, val y: Int, val code: Int)
+
+    var lastClearBlocks: List<ClearedBlock> = emptyList()
+        private set
+
+    /** The last hard drop: columns x0..x1, from row y0 down to row y1 (visible rows), for the trail. */
+    var dropSerial = 0
+        private set
+    var dropX0 = 0
+        private set
+    var dropX1 = 0
+        private set
+    var dropY0 = 0
+        private set
+    var dropY1 = 0
         private set
 
     // Curses currently on me (milliseconds left).
@@ -462,11 +490,24 @@ class TetrisBoard(
 
     fun hardDrop() {
         if (!controllable()) return
+        val s = TetrisRules.SHAPE[type][rot]
+        val topBefore = py + (0 until 4).minOf { s[it * 2 + 1] } - TetrisRules.HIDDEN
         var d = 0
         while (fits(type, rot, px, py + 1)) { py++; d++ }
         score += 2 * d
+        if (d > 0) {
+            dropX0 = px + TetrisRules.minX(type, rot)
+            dropX1 = px + TetrisRules.maxX(type, rot)
+            dropY0 = topBefore
+            dropY1 = py + (0 until 4).maxOf { s[it * 2 + 1] } - TetrisRules.HIDDEN
+            dropSerial++
+        }
         lock()
     }
+
+    /** 0..1: how close the landed piece is to locking in place (it glows as this grows). */
+    val lockFraction: Float
+        get() = if (type >= 0 && grounded()) (lockAcc.toFloat() / TetrisRules.LOCK_DELAY_MS).coerceIn(0f, 1f) else 0f
 
     fun holdPiece() {
         if (!controllable() || !canHold || type == TetrisRules.BOMB_TYPE || isGift) return
@@ -596,11 +637,11 @@ class TetrisBoard(
             combo++
             if (combo > maxCombo) maxCombo = combo
             var pts = TetrisRules.lineScore(n) * level + 50 * combo * level
-            var bonusGifts = 0
+            var backToBack = false
             val tetris = n == 4
             if (tetris && lastWasTetris) {
                 pts = pts * 3 / 2
-                bonusGifts = 1
+                backToBack = true
                 b2bSerial++
             }
             lastWasTetris = tetris
@@ -609,13 +650,19 @@ class TetrisBoard(
             lines += n
             lastClear = n
             lastClearRows = cleared.rows.map { it - TetrisRules.HIDDEN }.filter { it >= 0 }
+            lastClearBlocks = buildList {
+                cleared.rows.forEachIndexed { i, row ->
+                    val y = row - TetrisRules.HIDDEN
+                    if (y >= 0) for (x in 0 until TetrisRules.W) add(ClearedBlock(x, y, cleared.codes[i * TetrisRules.W + x]))
+                }
+            }
             clearSerial++
-            if (giftsOn) makeGifts(TetrisRules.gifts(n, combo) + bonusGifts, cleared.codes)
+            if (giftsOn) addCharge(TetrisRules.chargeFor(n, combo, backToBack), cleared.codes)
             if (grid.all { it == 0 }) {
                 perfectClears++
                 perfectSerial++
                 score += 1000 * level
-                if (giftsOn) makeGifts(4, cleared.codes)
+                if (giftsOn) addCharge(8, cleared.codes)
             }
             if (mode == TetrisMode.SURGE) {
                 repeat(minOf(2, cleared.codes.count { TetrisRules.isStar(it) })) { earnPower() }
@@ -624,7 +671,7 @@ class TetrisBoard(
             combo = -1
         }
         if (isBomb && bombBlown.isNotEmpty() && giftsOn) {
-            makeGifts(minOf(6, bombBlown.count { TetrisRules.kindOf(it) >= 0 } / 4), bombBlown)
+            makeGifts(minOf(6, bombBlown.count { TetrisRules.kindOf(it) >= 0 } / 3), bombBlown)
         }
         // Gifts only arrive when you did NOT just clear lines (or while a run of gifts is still landing).
         holdGifts = n > 0
@@ -693,6 +740,14 @@ class TetrisBoard(
             write--
         }
         return Cleared(removed, rows)
+    }
+
+    /** Adds to the gift meter and sends a gift for every full [TetrisRules.UNITS_PER_GIFT] units. */
+    private fun addCharge(units: Int, blownUp: List<Int>) {
+        charge += units
+        val gifts = charge / TetrisRules.UNITS_PER_GIFT
+        charge -= gifts * TetrisRules.UNITS_PER_GIFT
+        if (gifts > 0) makeGifts(minOf(gifts, TetrisRules.MAX_GIFTS_PER_CLEAR), blownUp)
     }
 
     /** The pieces blown up become the gifts: the most common blown-up shapes are sent first. */
@@ -967,10 +1022,11 @@ class TetrisEngine(
 
     private fun live(): TetrisBoard? = board.takeIf { playing && clock() >= startAt && it?.alive == true }
 
-    fun moveLeft() { if (live()?.moveLeft() == true) touched() }
-    fun moveRight() { if (live()?.moveRight() == true) touched() }
-    fun rotate() { if (live()?.rotateCw() == true) touched() }
-    fun rotateBack() { if (live()?.rotateCcw() == true) touched() }
+    /** These return true when the piece really moved or turned. */
+    fun moveLeft(): Boolean = (live()?.moveLeft() == true).also { if (it) touched() }
+    fun moveRight(): Boolean = (live()?.moveRight() == true).also { if (it) touched() }
+    fun rotate(): Boolean = (live()?.rotateCw() == true).also { if (it) touched() }
+    fun rotateBack(): Boolean = (live()?.rotateCcw() == true).also { if (it) touched() }
 
     /** Called by the screen every frame (and by the 100 ms tick) so falling is smooth. */
     fun frame() {
@@ -982,7 +1038,7 @@ class TetrisEngine(
     }
 
     fun hardDrop() { live()?.let { it.hardDrop(); afterBoardChange(clock()) } }
-    fun hold() { live()?.let { it.holdPiece(); touched() } }
+    fun hold(): Boolean = live()?.let { it.holdPiece(); touched(); true } ?: false
     fun setSoft(on: Boolean) { board?.soft = on && live() != null }
 
     private fun touched() { lastSig = 0 } // the next tick sends the new position

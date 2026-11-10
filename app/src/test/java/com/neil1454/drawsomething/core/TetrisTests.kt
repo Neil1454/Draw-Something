@@ -78,24 +78,70 @@ class TetrisBoardTest {
         assertTrue((0 until W).all { b.cell(it, R - 1) == 0 })
     }
 
-    @Test fun twoLinesSendTwoGiftsMadeOfTheBlownUpPieces() {
+    @Test fun aDoubleChargesTheMeterEnoughForAGiftMadeOfTheBlownUpPieces() {
         val b = board()
         for (y in R - 2..R - 1) for (x in 0..8) b.grid[y * W + x] = 3 // lots of "T" blocks
         b.forcePiece(0, 1, 7, R - 4) // upright long piece in column 9
         b.hardDrop()
         assertEquals(2, b.lines)
-        assertEquals(2, b.outgoing.size)
+        assertEquals("a double is 3 charge: one gift and one left over", 1, b.outgoing.size)
         assertEquals("the gift is the shape that was blown up most", 2, b.outgoing[0].type)
-        assertEquals(2, b.giftsSent)
+        assertEquals(1, b.charge)
+        assertEquals(1, b.giftsSent)
     }
 
-    @Test fun biggerClearsSendMoreAndLongCombosAddOne() {
-        assertEquals(0, TetrisRules.gifts(1, 0))
-        assertEquals(2, TetrisRules.gifts(2, 0))
-        assertEquals(3, TetrisRules.gifts(3, 0))
-        assertEquals(5, TetrisRules.gifts(4, 0))
-        assertEquals(1, TetrisRules.gifts(1, 3))
-        assertEquals(6, TetrisRules.gifts(4, 5))
+    @Test fun evenSinglesSendGiftsEveryOtherLine() {
+        val b = board()
+        fun single() {
+            for (x in 0..5) b.grid[(R - 1) * W + x] = 3
+            b.grid[(R - 5) * W] = 2 // keep the board from being empty (no perfect clear)
+            b.forcePiece(0, 0, 6, R - 2)
+            b.hardDrop()
+        }
+        single()
+        assertEquals("one single is only half a gift", 0, b.outgoing.size)
+        assertEquals(1, b.charge)
+        single()
+        assertTrue("a second single completes it", b.outgoing.size >= 1)
+        assertEquals(2, b.lines)
+    }
+
+    @Test fun theChargeRulesAreGenerousButBounded() {
+        assertEquals(0, TetrisRules.chargeFor(0, 0, false))
+        assertEquals(1, TetrisRules.chargeFor(1, 0, false))
+        assertEquals(3, TetrisRules.chargeFor(2, 0, false))
+        assertEquals(5, TetrisRules.chargeFor(3, 0, false))
+        assertEquals(10, TetrisRules.chargeFor(4, 0, false))
+        assertEquals("combo and back-to-back add to it", 10 + 3 + 2, TetrisRules.chargeFor(4, 3, true))
+        assertEquals(2, TetrisRules.UNITS_PER_GIFT)
+    }
+
+    @Test fun clearedBlocksAndTheDropTrailAreRecordedForTheEffects() {
+        val b = board()
+        for (x in 0..5) b.grid[(R - 1) * W + x] = 3
+        b.grid[(R - 5) * W] = 2
+        b.forcePiece(0, 0, 6, R - 2)
+        b.hardDrop()
+        assertEquals(W, b.lastClearBlocks.size)
+        assertTrue(b.lastClearBlocks.all { it.y == TetrisRules.H - 1 })
+        assertEquals(setOf(3, 1), b.lastClearBlocks.map { it.code }.toSet())
+        // a hard drop from high up leaves a trail
+        val c = board()
+        c.hardDrop()
+        assertEquals(1, c.dropSerial)
+        assertTrue(c.dropY1 > c.dropY0 && c.dropX1 >= c.dropX0)
+    }
+
+    @Test fun aLandedPieceGlowsMoreAsItGetsCloserToLocking() {
+        val b = board()
+        b.forcePiece(1, 0, 4, R - 2)
+        assertEquals(0f, b.lockFraction, 0f)
+        b.advance(10) // grounded: the lock timer starts
+        b.advance(200)
+        val early = b.lockFraction
+        b.advance(150)
+        assertTrue(b.lockFraction > early)
+        assertTrue(b.lockFraction in 0f..1f)
     }
 
     @Test fun giftsYouSendFirstCancelGiftsStillInYourMeter() {
@@ -106,7 +152,7 @@ class TetrisBoardTest {
         b.forcePiece(0, 1, 7, R - 4)
         b.hardDrop()
         assertEquals("the incoming gift was cancelled", 0, b.pendingGifts.size)
-        assertEquals("two earned, one used to cancel, one sent", 1, b.outgoing.size)
+        assertEquals("the gift earned was used to cancel it, so nothing is sent", 0, b.outgoing.size)
     }
 
     @Test fun aGiftWaitsInTheMeterThenJoinsYourQueueAndCanNoLongerBeCancelled() {
@@ -306,12 +352,12 @@ class TetrisMatchTest {
         p.go()
         p.clearTwoOnHost()
         p.advance(300)
-        assertEquals(2, p.host.state.mySent)
-        assertEquals(2, p.client.board!!.giftsReceived)
-        assertEquals("both are in the meter at first", 2, p.client.state.myIncoming)
+        assertEquals(1, p.host.state.mySent)
+        assertEquals(1, p.client.board!!.giftsReceived)
+        assertEquals("it is in the meter at first", 1, p.client.state.myIncoming)
         assertEquals(0, p.client.state.myQueued)
         repeat(8) { p.advance(500) } // the delay passes
-        assertEquals("then they are in the queue", 2, p.client.state.myQueued)
+        assertEquals("then it is in the queue", 1, p.client.state.myQueued)
         // the guest locks a normal piece; the next one is a gift they steer themselves
         p.client.hardDrop()
         assertTrue(p.client.board!!.isGift)
@@ -319,7 +365,7 @@ class TetrisMatchTest {
         p.client.hardDrop()
         val g = p.client.board!!
         assertEquals(4, (0 until g.grid.size).count { g.grid[it] == TetrisRules.GIFT })
-        assertEquals(2, p.client.state.giftSeq)
+        assertEquals(1, p.client.state.giftSeq)
         assertTrue(p.host.state.clearSeq >= 1 && p.client.state.clearSeq >= 1)
         assertFalse(p.client.state.lastClearByMe)
     }

@@ -79,8 +79,15 @@ Every sound effect is generated in code (`core/Synth.kt`), so there are no audio
 ## Tetris (falling blocks, head to head)
 
 Tetris played side by side: you each play your own board, and each phone shows the other player's board live.
-Turn and slide the pieces to complete rows. Blow up **2 or more rows at once** and the pieces you cleared are sent to your rival as
-**gift pieces**: 2 rows send 2, 3 rows send 3, 4 rows send 5, and a long combo adds one.
+The whole screen is the control, there are no buttons:
+* **Slide** your finger sideways: the piece follows. **Tap** the left half to turn left, the right half to turn right.
+* **Drag down** and hold: soft drop. **Flick down** (long, fast, straight): hard drop. **Flick up**: hold.
+* Mistake protection: a small wobble does nothing, a gesture stays sideways or vertical once recognised, and a hard drop needs a clear flick.
+  Three touch feels (Relaxed / Normal / Quick) in ⚙ Settings.
+* Settings (⚙ on the home screen and in-game): four block styles (Glass, Neon, Candy, Classic), vibration, optional quiet music (off by default).
+
+Clear rows to send **gift pieces** to your rival. A charge meter builds with every clear (single 1, double 3, triple 5, four 10, plus combo and back-to-back
+bonuses); every 2 charge becomes one gift, so even singles send a gift every other line.
 
 How gifts work (modelled on how other versus Tetris games handle attacks, but with pieces you control instead of rising junk rows):
 * Gifts wait in a **meter** for 3 seconds. Clearing 2+ rows in that time **cancels** them (oldest first), as in Tetris 99 and similar games.

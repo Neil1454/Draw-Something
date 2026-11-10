@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
@@ -109,6 +110,7 @@ fun HomeScreen(
 ) {
     var showFiles by rememberSaveable { mutableStateOf(false) }
     var help by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     var pickSkill by rememberSaveable { mutableStateOf(false) }
     var info by rememberSaveable { mutableStateOf<GameKind?>(null) }
     Page {
@@ -120,8 +122,11 @@ fun HomeScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("v$appVersion", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.weight(1f))
+                RoundIconButton("⚙", { showSettings = true })
+                Spacer(Modifier.width(8.dp))
                 RoundIconButton(if (soundOn) "🔊" else "🔇", { onSound(!soundOn) })
             }
+            if (showSettings) SettingsDialog(soundOn, onSound) { showSettings = false }
             // ---- hero
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 availableGames().forEachIndexed { i, k ->
