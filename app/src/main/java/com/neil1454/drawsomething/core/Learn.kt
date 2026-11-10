@@ -403,6 +403,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "Clear 2 rows for 1 gift piece, 3 for 2, and 4 at once (a 'Tetris') sends 4!",
             "Gifts you send first cancel any gifts waiting to fall on you.",
             "HOLD saves a piece for later, and the ghost outline shows where a piece will land.",
+            "There are seven modes: Battle, Score attack, Sprint, Bomb Blitz, Rising Tide, Turbo and Power Surge. Try them all in the lobby!",
+            "Clear four lines twice in a row for a back-to-back bonus, or empty the whole board for a perfect clear.",
         )
         private val SEA_TIPS = listOf(
             "When you hit, you fire again, so a hit near a hit is a good bet.",

@@ -2,6 +2,7 @@
 
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.TetrisMode
 import com.neil1454.drawsomething.core.TetrisRules
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
@@ -890,21 +891,39 @@ private fun HolidayLobby(ui: UiState, connected: Boolean, onSettings: (LobbySett
 @Composable
 private fun TetrisLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
     val set = ui.settings
+    val mode = set.tetrisMode.coerceIn(0, TetrisMode.COUNT - 1)
+    val info = TetrisMode.info(mode)
     SyncLobby(ui, connected, GameKind.TETRIS, { TetrisHelp() }, {
-        ChipRow("Mode", listOf("⚔ Battle", "⏱ Score attack"), set.tetrisMode) { onSettings(set.copy(tetrisMode = it)) }
-        Text(
-            if (set.tetrisMode == 0) "Last stack standing wins. Gift pieces are always on." else "Best score when the clock runs out wins.",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
-        )
+        Text("Game mode", style = MaterialTheme.typography.titleSmall)
+        TetrisMode.ALL.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                pair.forEach { m ->
+                    FilterChip(
+                        selected = mode == m.id,
+                        onClick = { onSettings(set.copy(tetrisMode = m.id)) },
+                        label = { Text("${m.emoji} ${m.label}", maxLines = 1) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+        Text(info.blurb, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         ChipRow("Start speed", TetrisRules.LEVEL_LABELS, set.tetrisLevel) { onSettings(set.copy(tetrisLevel = it)) }
-        if (set.tetrisMode == 1) {
+        if (mode == TetrisMode.SCORE) {
             ChipRow("Match length", TetrisRules.MINUTES.map { "$it min" }, set.tetrisMins) { onSettings(set.copy(tetrisMins = it)) }
+        }
+        if (mode == TetrisMode.SPRINT) {
+            ChipRow("Race to", TetrisRules.LINE_TARGETS.map { "$it lines" }, set.tetrisLines) { onSettings(set.copy(tetrisLines = it)) }
+        }
+        if (TetrisMode.giftsOptional(mode)) {
             ToggleChip("🎁 Gift pieces", set.tetrisGifts) { onSettings(set.copy(tetrisGifts = it)) }
         }
     }) {
         onStart(
             GameKind.TETRIS,
-            JSONObject().put("mode", set.tetrisMode).put("lvl", set.tetrisLevel).put("mins", set.tetrisMins).put("gifts", set.tetrisGifts),
+            JSONObject().put("mode", mode).put("lvl", set.tetrisLevel).put("mins", set.tetrisMins)
+                .put("gifts", set.tetrisGifts).put("tl", set.tetrisLines),
         )
     }
 }

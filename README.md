@@ -78,16 +78,28 @@ Every sound effect is generated in code (`core/Synth.kt`), so there are no audio
 
 ## Tetris (falling blocks, head to head)
 
-Falling blocks, played side by side: you each play your own board, and each phone shows the other player's board live.
+Tetris played side by side: you each play your own board, and each phone shows the other player's board live.
 Turn and slide the pieces to complete rows. Blow up **2 or more rows at once** and the pieces you cleared are sent to your rival as
 **gift pieces** (2 rows = 1 gift, 3 rows = 2, 4 rows = 4, long combos add one). The gifts fall onto their stack by themselves, drawn as
 gold striped blocks so they can see where they came from. Gifts you send first cancel any waiting to fall on you.
 
-* **Battle:** last stack standing wins. **Score attack:** best score when the 2, 3 or 5 minute clock runs out wins (gifts optional).
-* Start speed: Gentle, Fast or Frantic. Ghost piece, hold, next-three preview, wall kicks, soft and hard drop, levels every 10 lines.
-* Both players get exactly the same piece sequence (a shared 7-piece bag), so it is fair.
-* Each phone simulates its own board, so the controls never lag; only the board picture and gift pieces cross the link.
-* Works against the computer too (Easy / Normal / Hard) and has a Learn demo.
+Seven game modes:
+
+| Mode | How it works |
+|---|---|
+| ⚔️ Battle | Last stack standing wins. |
+| ⏱ Score attack | Best score when the 2, 3 or 5 minute clock runs out wins. Gifts optional. |
+| 🏁 Sprint | First to clear 20, 40 or 60 lines wins. Gifts optional. |
+| 💣 Bomb Blitz | Every 6th piece is a bomb. Its blast blows a hole, the blocks above fall in, and the blown-up blocks are sent to your rival as gifts. |
+| 🌊 Rising Tide | A junk row with one gap rises from the bottom of both boards every 12 seconds (the same gap on both). |
+| 🔥 Turbo | The speed goes up every 25 seconds whatever you do. |
+| ⚡ Power Surge | Every 5th piece carries a star block. Clear a row with a star to launch a power: dizzy (rival's left and right swapped), turbo curse (they fall 3x faster), fog (they can't see ahead), double gift, or clean-up (your bottom rows vanish). |
+
+Also: back-to-back four-line clears (x1.5 and an extra gift), perfect clears (empty board: big bonus and four gifts), combos, line-clear flashes,
+bomb explosions, ghost piece, hold, next-three preview, wall kicks, soft and hard drop, swipe controls on your board (slide, swipe down, flick to drop),
+Gentle / Fast / Frantic start speeds. Both players get exactly the same piece sequence (a shared 7-piece bag), so it is fair, and each phone
+simulates its own board so the controls never lag; only the board picture, gift pieces and curses cross the link. It works against the
+computer too (Easy / Normal / Hard, and it knows how to aim a bomb) and has a Learn demo.
 
 ## Bomb Find (minesweeper for two)
 
@@ -257,7 +269,7 @@ identical picture.
 
 ## Status
 
-Version 2.2.1. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 2.3. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

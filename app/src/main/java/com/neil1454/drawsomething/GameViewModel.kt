@@ -104,6 +104,7 @@ data class LobbySettings(
     val tetrisLevel: Int = 0,
     val tetrisGifts: Boolean = true,
     val tetrisMins: Int = 1,
+    val tetrisLines: Int = 1,
 )
 
 data class UiState(

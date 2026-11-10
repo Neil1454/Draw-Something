@@ -5,13 +5,42 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Tetris: falling blocks, side by side against a friend.
+// Tetris, head to head, side by side.
 //
 // Both phones play their OWN board (so the controls feel instant) from the same piece sequence,
 // and show each other's board live. Clear lines and the pieces you "blow up" are sent to your
 // rival as GIFT PIECES: they fall onto their stack by themselves, in a different colour so they
-// can see where they came from. Last stack standing wins (or the best score in a timed match).
+// can see where they came from. There are seven game modes (see [TetrisMode]).
 // ====================================================================================
+
+/** The game modes. The number is what travels over the wire and is stored in settings. */
+object TetrisMode {
+    const val BATTLE = 0
+    const val SCORE = 1
+    const val SPRINT = 2
+    const val BOMB = 3
+    const val TIDE = 4
+    const val TURBO = 5
+    const val SURGE = 6
+    const val COUNT = 7
+
+    class Info(val id: Int, val emoji: String, val label: String, val blurb: String)
+
+    val ALL = listOf(
+        Info(BATTLE, "⚔️", "Battle", "Last stack standing wins. Cleared pieces rain on your rival as gifts."),
+        Info(SCORE, "⏱", "Score attack", "Best score when the clock runs out wins. Gifts optional."),
+        Info(SPRINT, "🏁", "Sprint", "Race to clear the lines first. A pure speed duel."),
+        Info(BOMB, "💣", "Bomb Blitz", "Every 6th piece is a BOMB. Its blast clears blocks and the blown-up blocks are sent to your rival."),
+        Info(TIDE, "🌊", "Rising Tide", "Junk rows rise from the bottom on both boards. Clear faster than the water climbs."),
+        Info(TURBO, "🔥", "Turbo", "The game speeds up every 25 seconds, whatever you do. How long can you hang on?"),
+        Info(SURGE, "⚡", "Power Surge", "Star blocks! Clear a row with a star to launch a power: dizzy, turbo or fog your rival, send double gifts, or clean up."),
+    )
+
+    fun info(id: Int): Info = ALL[id.coerceIn(0, COUNT - 1)]
+
+    /** Modes where the host chooses whether gift pieces are on. The others always have them. */
+    fun giftsOptional(id: Int) = id == SCORE || id == SPRINT
+}
 
 object TetrisRules {
     const val W = 10
@@ -19,8 +48,13 @@ object TetrisRules {
     const val HIDDEN = 2
     const val ROWS = H + HIDDEN
 
-    /** Cell code for a block that was sent by the other player. Normal blocks are 1..7. */
+    /** Piece type 7 is the bomb (Bomb Blitz). It is never written to the board. */
+    const val BOMB_TYPE = 7
+
+    /** Cell codes: 1..7 pieces, 8 junk (Rising Tide), 9 gift, 17..23 a piece with a star. */
+    const val JUNK = 8
     const val GIFT = 9
+    const val STAR = 16
 
     const val LOCK_DELAY_MS = 500L
     const val GIFT_LOCK_MS = 130L
@@ -31,6 +65,23 @@ object TetrisRules {
     const val RESOLVE_GRACE_MS = 600L
     const val MAX_INCOMING = 24
 
+    const val BOMB_EVERY = 6
+    const val BLAST_RADIUS = 2
+    const val STAR_EVERY = 5
+    const val TIDE_MS = 12_000L
+    const val TURBO_MS = 25_000L
+
+    /** Curses travel as "gifts" with these types. */
+    const val CURSE_DIZZY = 10
+    const val CURSE_TURBO = 11
+    const val CURSE_FOG = 12
+    const val DIZZY_MS = 8_000L
+    const val TURBO_CURSE_MS = 8_000L
+    const val FOG_MS = 10_000L
+
+    /** Power names, for the power-up popup. */
+    val POWERS = listOf("DOUBLE GIFT", "DIZZY", "TURBO CURSE", "FOG", "CLEAN UP")
+
     /** Starting speeds offered in the lobby. */
     val LEVELS = listOf(1, 5, 9)
     val LEVEL_LABELS = listOf("Gentle", "Fast", "Frantic")
@@ -38,7 +89,8 @@ object TetrisRules {
     /** Match lengths for score attack, in minutes. */
     val MINUTES = listOf(2, 3, 5)
 
-    const val NAMES = "IOTSZJL"
+    /** Lines to race to in Sprint. */
+    val LINE_TARGETS = listOf(20, 40, 60)
 
     private class Def(val n: Int, val cells: List<Pair<Int, Int>>)
 
@@ -50,10 +102,11 @@ object TetrisRules {
         Def(3, listOf(0 to 0, 1 to 0, 1 to 1, 2 to 1)), // Z
         Def(3, listOf(0 to 0, 0 to 1, 1 to 1, 2 to 1)), // J
         Def(3, listOf(2 to 0, 0 to 1, 1 to 1, 2 to 1)), // L
+        Def(1, listOf(0 to 0, 0 to 0, 0 to 0, 0 to 0)), // the bomb: one square
     )
 
     /** SHAPE[type][rotation] = x0,y0,x1,y1,x2,y2,x3,y3 inside the piece's box. */
-    val SHAPE: Array<Array<IntArray>> = Array(7) { t ->
+    val SHAPE: Array<Array<IntArray>> = Array(DEFS.size) { t ->
         val d = DEFS[t]
         var cur = d.cells
         Array(4) {
@@ -71,7 +124,7 @@ object TetrisRules {
 
     /** Milliseconds for a piece to fall one row. */
     fun gravityMs(level: Int): Long {
-        val table = longArrayOf(800, 720, 630, 550, 470, 380, 300, 220, 140, 100, 80, 70, 60)
+        val table = longArrayOf(800, 720, 630, 550, 470, 380, 300, 220, 140, 100, 80, 70, 60, 50, 42, 36)
         return table[(level - 1).coerceIn(0, table.size - 1)]
     }
 
@@ -82,12 +135,42 @@ object TetrisRules {
         val base = when (lines) { 0, 1 -> 0; 2 -> 1; 3 -> 2; else -> 4 }
         return base + if (lines >= 1 && combo >= 3) 1 else 0
     }
+
+    /** The piece shape (0..6) a cell code belongs to, or -1 for junk and gift blocks. */
+    fun kindOf(code: Int): Int = when (code) {
+        in 1..7 -> code - 1
+        in 17..23 -> code - 17
+        else -> -1
+    }
+
+    fun isStar(code: Int) = code in 17..23
+
+    /** One character per cell, for sending a board: '.' empty, '1'-'7', '8' junk, '9' gift, 'a'-'g' a piece with a star. */
+    fun charOf(code: Int): Char = when (code) {
+        0 -> '.'
+        in 1..9 -> '0' + code
+        in 17..23 -> 'a' + (code - 17)
+        else -> '.'
+    }
+
+    fun codeOf(c: Char): Int = when (c) {
+        in '1'..'9' -> c - '0'
+        in 'a'..'g' -> 17 + (c - 'a')
+        else -> 0
+    }
+
+    fun validBoardChar(c: Char) = c == '.' || c in '1'..'9' || c in 'a'..'g'
 }
 
-/** A gift piece: its shape, its turn, and the column of its leftmost block. */
+/** A gift piece: its shape, its turn, and the column of its leftmost block. Types 10+ are curses. */
 data class Gift(val type: Int, val rot: Int, val col: Int)
 
-class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean) {
+class TetrisBoard(
+    private val seed: Long,
+    val startLevel: Int,
+    private val giftsOn: Boolean,
+    val mode: Int = TetrisMode.BATTLE,
+) {
     val grid = IntArray(TetrisRules.ROWS * TetrisRules.W)
 
     var type = -1
@@ -100,8 +183,13 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
         private set
     var isGift = false
         private set
+
+    /** Which of the falling piece's four blocks carries a star (Power Surge), or -1. */
+    var starCell = -1
+        private set
     var hold = -1
         private set
+    private var holdStar = -1
     var canHold = true
         private set
     var soft = false
@@ -114,9 +202,22 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
         private set
     var combo = -1
         private set
-    val level get() = startLevel + lines / 10
+    var maxCombo = 0
+        private set
+    var tetrises = 0
+        private set
+    var perfectClears = 0
+        private set
+    var piecesPlaced = 0
+        private set
+    var elapsedMs = 0L
+        private set
 
-    /** Counts up each time a piece lands / a new piece appears / lines are cleared, so screens and brains can react once. */
+    /** The level: from the start choice, from lines cleared, and (Turbo) from time. */
+    val level: Int
+        get() = startLevel + lines / 10 + if (mode == TetrisMode.TURBO) (elapsedMs / TetrisRules.TURBO_MS).toInt() else 0
+
+    // Counters that go up once per event, so screens and brains react exactly once.
     var lockSerial = 0
         private set
     var pieceSerial = 0
@@ -125,23 +226,65 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
         private set
     var lastClear = 0
         private set
+
+    /** The visible rows (0 = top) that the last clear removed, for the flash. */
+    var lastClearRows: List<Int> = emptyList()
+        private set
+    var b2bSerial = 0
+        private set
+    var perfectSerial = 0
+        private set
+    var blastSerial = 0
+        private set
+    var blastX = 0
+        private set
+    var blastY = 0
+        private set
+    var powerSerial = 0
+        private set
+    var lastPower = -1
+        private set
+    var fxSerial = 0
+        private set
+    var lastFx = -1
+        private set
     var giftsSent = 0
         private set
     var giftsReceived = 0
         private set
+    var tideRows = 0
+        private set
+
+    // Curses currently on me (milliseconds left).
+    var dizzyMs = 0L
+        private set
+    var turboMs = 0L
+        private set
+    var fogMs = 0L
+        private set
+
+    private var tideAcc = 0L
+    val tideLeftMs: Long get() = if (mode == TetrisMode.TIDE) TetrisRules.TIDE_MS - tideAcc else 0L
 
     val incoming = ArrayDeque<Gift>()
 
-    /** Gifts earned by line clears, waiting for the engine to send them. */
+    /** Gifts and curses earned, waiting for the engine to send them. */
     val outgoing = ArrayList<Gift>()
 
     private val bag = Random(seed)
     private val giftRandom = Random(seed xor 0x5EEDL)
+    private val tideRandom = Random(seed xor 0x71DEL)
+    private val powerRandom = Random(seed xor 0x90E4L)
     private val queue = ArrayDeque<Int>()
+    private val bagLeft = ArrayList<Int>()
+    private var generated = 0
+    private var spawned = 0
     private var fallAcc = 0L
     private var lockAcc = 0L
     private var lockResets = 0
     private var holdGifts = false
+    private var lastWasTetris = false
+    private val kicks = listOf(0 to 0, -1 to 0, 1 to 0, 0 to -1, -2 to 0, 2 to 0, 0 to -2)
 
     init {
         spawn()
@@ -149,11 +292,19 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
 
     // ------------------------------------------------------------------ looking
 
-    private fun refill() {
-        while (queue.size < 8) queue.addAll((0..6).shuffled(bag))
+    private fun nextFromBag(): Int {
+        if (bagLeft.isEmpty()) bagLeft.addAll((0..6).shuffled(bag))
+        return bagLeft.removeAt(0)
     }
 
-    /** The next [n] normal pieces. */
+    private fun refill() {
+        while (queue.size < 8) {
+            val n = generated++
+            queue.addLast(if (mode == TetrisMode.BOMB && n % TetrisRules.BOMB_EVERY == TetrisRules.BOMB_EVERY - 1) TetrisRules.BOMB_TYPE else nextFromBag())
+        }
+    }
+
+    /** The next [n] pieces (7 means a bomb). */
     fun next(n: Int = 3): List<Int> {
         refill()
         return queue.take(n)
@@ -185,10 +336,18 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
     /** The leftmost block's column. */
     fun leftCol(): Int = if (type < 0) 0 else px + TetrisRules.minX(type, rot)
 
+    /** The strongest curse still on me: 0 dizzy, 1 turbo, 2 fog, or -1. */
+    fun activeCurse(): Int = when {
+        dizzyMs > 0 -> 0
+        turboMs > 0 -> 1
+        fogMs > 0 -> 2
+        else -> -1
+    }
+
     // ------------------------------------------------------------------ spawning
 
-    private fun place(t: Int, r: Int, x: Int, gift: Boolean) {
-        type = t; rot = r; px = x; py = 0; isGift = gift
+    private fun place(t: Int, r: Int, x: Int, gift: Boolean, star: Int = -1) {
+        type = t; rot = r; px = x; py = 0; isGift = gift; starCell = star
         fallAcc = 0; lockAcc = 0; lockResets = 0
         pieceSerial++
         if (!fits(t, r, px, py)) {
@@ -208,7 +367,11 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
         } else {
             refill()
             val t = queue.removeFirst()
-            place(t, 0, (TetrisRules.W - TetrisRules.boxSize(t)) / 2, gift = false)
+            val k = spawned++
+            val star = if (mode == TetrisMode.SURGE && t != TetrisRules.BOMB_TYPE && k % TetrisRules.STAR_EVERY == TetrisRules.STAR_EVERY - 1) {
+                Random((seed xor 0x57A7L) + k).nextInt(4)
+            } else -1
+            place(t, 0, (TetrisRules.W - TetrisRules.boxSize(t)) / 2, gift = false, star = star)
         }
     }
 
@@ -223,8 +386,8 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
 
     private fun controllable() = alive && type >= 0 && !isGift
 
-    fun moveLeft(): Boolean = move(-1)
-    fun moveRight(): Boolean = move(1)
+    fun moveLeft(): Boolean = move(if (dizzyMs > 0) 1 else -1)
+    fun moveRight(): Boolean = move(if (dizzyMs > 0) -1 else 1)
 
     private fun move(dx: Int): Boolean {
         if (!controllable() || !fits(type, rot, px + dx, py)) return false
@@ -236,10 +399,9 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
     fun rotateCw() = rotate(1)
     fun rotateCcw() = rotate(3)
 
-    private val kicks = listOf(0 to 0, -1 to 0, 1 to 0, 0 to -1, -2 to 0, 2 to 0, 0 to -2)
-
     private fun rotate(by: Int): Boolean {
         if (!controllable()) return false
+        if (type == TetrisRules.BOMB_TYPE) return true // a bomb looks the same any way up
         val r = (rot + by) and 3
         for ((dx, dy) in kicks) {
             if (fits(type, r, px + dx, py + dy)) {
@@ -260,27 +422,39 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
     }
 
     fun holdPiece() {
-        if (!controllable() || !canHold) return
+        if (!controllable() || !canHold || type == TetrisRules.BOMB_TYPE) return
         val cur = type
+        val curStar = starCell
         canHold = false
+        val t: Int
+        val star: Int
         if (hold < 0) {
-            hold = cur
             refill()
-            val t = queue.removeFirst()
-            place(t, 0, (TetrisRules.W - TetrisRules.boxSize(t)) / 2, gift = false)
+            t = queue.removeFirst()
+            star = -1
         } else {
-            val t = hold
-            hold = cur
-            place(t, 0, (TetrisRules.W - TetrisRules.boxSize(t)) / 2, gift = false)
+            t = hold
+            star = holdStar
         }
+        hold = cur
+        holdStar = curStar
+        place(t, 0, (TetrisRules.W - TetrisRules.boxSize(t)) / 2, gift = false, star = star)
     }
 
-    /** Another player's gift pieces join the queue of things that will fall on this board. */
+    /** Another player's gift pieces (or a curse) arrive. */
     fun receive(g: Gift) {
-        if (!alive || incoming.size >= TetrisRules.MAX_INCOMING) return
-        if (g.type !in 0..6) return
-        incoming.addLast(Gift(g.type, g.rot and 3, g.col.coerceIn(0, TetrisRules.W - 1)))
-        giftsReceived++
+        if (!alive) return
+        when (g.type) {
+            TetrisRules.CURSE_DIZZY -> { dizzyMs = TetrisRules.DIZZY_MS; lastFx = 0; fxSerial++ }
+            TetrisRules.CURSE_TURBO -> { turboMs = TetrisRules.TURBO_CURSE_MS; lastFx = 1; fxSerial++ }
+            TetrisRules.CURSE_FOG -> { fogMs = TetrisRules.FOG_MS; lastFx = 2; fxSerial++ }
+            in 0..6 -> {
+                if (incoming.size >= TetrisRules.MAX_INCOMING) return
+                incoming.addLast(Gift(g.type, g.rot and 3, g.col.coerceIn(0, TetrisRules.W - 1)))
+                giftsReceived++
+            }
+            else -> Unit
+        }
     }
 
     // ------------------------------------------------------------------ time
@@ -288,9 +462,22 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
     /** Move the game forward by [dtMs]. Safe to call with any chunk size. */
     fun advance(dtMs: Long) {
         var left = dtMs.coerceIn(0, 3000)
-        while (left > 0 && alive && type >= 0) {
+        while (left > 0 && alive) {
             val step = minOf(left, 10L)
             left -= step
+            elapsedMs += step
+            if (dizzyMs > 0) dizzyMs = maxOf(0, dizzyMs - step)
+            if (turboMs > 0) turboMs = maxOf(0, turboMs - step)
+            if (fogMs > 0) fogMs = maxOf(0, fogMs - step)
+            if (mode == TetrisMode.TIDE) {
+                tideAcc += step
+                if (tideAcc >= TetrisRules.TIDE_MS) {
+                    tideAcc -= TetrisRules.TIDE_MS
+                    rise()
+                    if (!alive) break
+                }
+            }
+            if (type < 0) continue
             if (grounded()) {
                 lockAcc += step
                 val limit = if (isGift) TetrisRules.GIFT_LOCK_MS else TetrisRules.LOCK_DELAY_MS
@@ -298,10 +485,12 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
             } else {
                 lockAcc = 0
                 fallAcc += step
+                val base = TetrisRules.gravityMs(level)
                 val interval = when {
                     isGift -> TetrisRules.GIFT_FALL_MS
-                    soft -> maxOf(25L, TetrisRules.gravityMs(level) / 15)
-                    else -> TetrisRules.gravityMs(level)
+                    soft -> maxOf(25L, base / 15)
+                    turboMs > 0 -> maxOf(20L, base / 3)
+                    else -> base
                 }
                 while (fallAcc >= interval && fits(type, rot, px, py + 1)) {
                     fallAcc -= interval
@@ -313,31 +502,83 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
         }
     }
 
+    /** Rising Tide: the whole stack moves up one row and a junk row with one gap appears at the bottom. */
+    private fun rise() {
+        val w = TetrisRules.W
+        if ((0 until w).any { grid[it] != 0 }) {
+            alive = false
+            return
+        }
+        for (y in 0 until TetrisRules.ROWS - 1) for (x in 0 until w) grid[y * w + x] = grid[(y + 1) * w + x]
+        val gap = tideRandom.nextInt(w)
+        for (x in 0 until w) grid[(TetrisRules.ROWS - 1) * w + x] = if (x == gap) 0 else TetrisRules.JUNK
+        tideRows++
+        if (type >= 0 && !fits(type, rot, px, py)) {
+            var tries = 0
+            while (tries < 3 && py > 0 && !fits(type, rot, px, py)) { py--; tries++ }
+            if (!fits(type, rot, px, py)) alive = false
+        }
+        lockAcc = 0
+    }
+
     private fun lock() {
-        val s = TetrisRules.SHAPE[type][rot]
         val wasGift = isGift
-        val code = if (wasGift) TetrisRules.GIFT else type + 1
-        var anyVisible = false
-        for (i in 0 until 4) {
-            val cx = px + s[i * 2]
-            val cy = py + s[i * 2 + 1]
-            grid[cy * TetrisRules.W + cx] = code
-            if (cy >= TetrisRules.HIDDEN) anyVisible = true
+        val isBomb = type == TetrisRules.BOMB_TYPE
+        var anyVisible = true
+        var bombBlown: List<Int> = emptyList()
+        if (isBomb) {
+            bombBlown = explode()
+        } else {
+            val s = TetrisRules.SHAPE[type][rot]
+            anyVisible = false
+            for (i in 0 until 4) {
+                val cx = px + s[i * 2]
+                val cy = py + s[i * 2 + 1]
+                var code = if (wasGift) TetrisRules.GIFT else type + 1
+                if (!wasGift && i == starCell) code += TetrisRules.STAR
+                grid[cy * TetrisRules.W + cx] = code
+                if (cy >= TetrisRules.HIDDEN) anyVisible = true
+            }
         }
         lockSerial++
+        if (!wasGift) piecesPlaced++
         soft = false
         canHold = true
         val cleared = clearFullRows()
-        val n = cleared.size / TetrisRules.W
+        val n = cleared.rows.size
         if (n > 0 && !wasGift) {
             combo++
-            score += TetrisRules.lineScore(n) * level + 50 * combo * level
+            if (combo > maxCombo) maxCombo = combo
+            var pts = TetrisRules.lineScore(n) * level + 50 * combo * level
+            var bonusGifts = 0
+            val tetris = n == 4
+            if (tetris && lastWasTetris) {
+                pts = pts * 3 / 2
+                bonusGifts = 1
+                b2bSerial++
+            }
+            lastWasTetris = tetris
+            if (tetris) tetrises++
+            score += pts
             lines += n
             lastClear = n
+            lastClearRows = cleared.rows.map { it - TetrisRules.HIDDEN }.filter { it >= 0 }
             clearSerial++
-            if (giftsOn) makeGifts(n, cleared)
+            if (giftsOn) makeGifts(TetrisRules.gifts(n, combo) + bonusGifts, cleared.codes)
+            if (grid.all { it == 0 }) {
+                perfectClears++
+                perfectSerial++
+                score += 1000 * level
+                if (giftsOn) makeGifts(4, cleared.codes)
+            }
+            if (mode == TetrisMode.SURGE) {
+                repeat(minOf(2, cleared.codes.count { TetrisRules.isStar(it) })) { earnPower() }
+            }
         } else if (n == 0 && !wasGift) {
             combo = -1
+        }
+        if (isBomb && bombBlown.isNotEmpty() && giftsOn) {
+            makeGifts(minOf(6, bombBlown.count { TetrisRules.kindOf(it) >= 0 } / 4), bombBlown)
         }
         // Gifts only arrive when you did NOT just clear lines (or while a run of gifts is still landing).
         holdGifts = n > 0 && !wasGift
@@ -349,14 +590,52 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
         spawn()
     }
 
-    /** Removes complete rows and returns the codes of every block that was blown up. */
-    private fun clearFullRows(): List<Int> {
+    /** The bomb lands: everything within the blast is removed, then blocks above fall into the gaps. */
+    private fun explode(): List<Int> {
+        val w = TetrisRules.W
+        val r = TetrisRules.BLAST_RADIUS
+        val blown = ArrayList<Int>()
+        for (dy in -r..r) for (dx in -r..r) {
+            if (kotlin.math.abs(dx) + kotlin.math.abs(dy) > r) continue
+            val x = px + dx
+            val y = py + dy
+            if (x < 0 || x >= w || y < 0 || y >= TetrisRules.ROWS) continue
+            val v = grid[y * w + x]
+            if (v != 0) {
+                blown.add(v)
+                grid[y * w + x] = 0
+            }
+        }
+        blastX = px
+        blastY = py - TetrisRules.HIDDEN
+        blastSerial++
+        score += 10 * blown.size
+        for (x in 0 until w) {
+            var write = TetrisRules.ROWS - 1
+            for (y in TetrisRules.ROWS - 1 downTo 0) {
+                val v = grid[y * w + x]
+                if (v != 0) {
+                    grid[write * w + x] = v
+                    if (write != y) grid[y * w + x] = 0
+                    write--
+                }
+            }
+        }
+        return blown
+    }
+
+    private class Cleared(val codes: List<Int>, val rows: List<Int>)
+
+    /** Removes complete rows and reports which rows went and every block that was blown up. */
+    private fun clearFullRows(): Cleared {
         val w = TetrisRules.W
         val removed = ArrayList<Int>()
+        val rows = ArrayList<Int>()
         var write = TetrisRules.ROWS - 1
         for (read in TetrisRules.ROWS - 1 downTo 0) {
             val full = (0 until w).all { grid[read * w + it] != 0 }
             if (full) {
+                rows.add(read)
                 for (x in 0 until w) removed.add(grid[read * w + x])
             } else {
                 if (write != read) for (x in 0 until w) grid[write * w + x] = grid[read * w + x]
@@ -367,19 +646,19 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
             for (x in 0 until w) grid[write * w + x] = 0
             write--
         }
-        return removed
+        return Cleared(removed, rows)
     }
 
     /** The pieces blown up become the gifts: the most common blown-up shapes are sent first. */
-    private fun makeGifts(lines: Int, blownUp: List<Int>) {
-        var count = TetrisRules.gifts(lines, combo)
+    private fun makeGifts(wanted: Int, blownUp: List<Int>) {
+        var count = wanted
         // your own pending incoming gifts are cancelled first
         while (count > 0 && incoming.isNotEmpty()) {
             incoming.removeLast()
             count--
         }
         if (count <= 0) return
-        val ranking = blownUp.filter { it in 1..7 }.groupingBy { it - 1 }.eachCount()
+        val ranking = blownUp.map { TetrisRules.kindOf(it) }.filter { it >= 0 }.groupingBy { it }.eachCount()
             .entries.sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key }).map { it.key }
         repeat(count) { i ->
             val t = if (ranking.isEmpty()) giftRandom.nextInt(7) else ranking[i % ranking.size]
@@ -390,21 +669,49 @@ class TetrisBoard(seed: Long, val startLevel: Int, private val giftsOn: Boolean)
         giftsSent += count
     }
 
+    /** Power Surge: a row with a star was cleared. */
+    private fun earnPower() {
+        val roll = powerRandom.nextInt(100)
+        val power = when {
+            roll < 25 -> 0
+            roll < 50 -> 1
+            roll < 70 -> 2
+            roll < 85 -> 3
+            else -> 4
+        }
+        lastPower = power
+        powerSerial++
+        when (power) {
+            0 -> makeGifts(2, emptyList())
+            1 -> outgoing.add(Gift(TetrisRules.CURSE_DIZZY, 0, 0))
+            2 -> outgoing.add(Gift(TetrisRules.CURSE_TURBO, 0, 0))
+            3 -> outgoing.add(Gift(TetrisRules.CURSE_FOG, 0, 0))
+            else -> cleanUp(2)
+        }
+    }
+
+    /** Remove the bottom [rows] rows and let everything above settle down. */
+    private fun cleanUp(rows: Int) {
+        val w = TetrisRules.W
+        for (y in TetrisRules.ROWS - 1 downTo rows) for (x in 0 until w) grid[y * w + x] = grid[(y - rows) * w + x]
+        for (y in 0 until rows) for (x in 0 until w) grid[y * w + x] = 0
+    }
+
     // ------------------------------------------------------------------ showing
 
     /** For tests: put a particular piece at a particular place. */
-    internal fun forcePiece(t: Int, r: Int, x: Int, y: Int, gift: Boolean = false) {
-        place(t, r, x, gift)
+    internal fun forcePiece(t: Int, r: Int, x: Int, y: Int, gift: Boolean = false, star: Int = -1) {
+        place(t, r, x, gift, star)
         py = y
     }
 
-    /** The 20 visible rows as one string: '.' empty, '1'..'7' a piece, '9' a gift block. */
+    /** For tests: pretend lines have been cleared. */
+    internal fun debugSetLines(n: Int) { lines = n }
+
+    /** The 20 visible rows as one string (see [TetrisRules.charOf]). */
     fun visibleRows(): String {
         val sb = StringBuilder(TetrisRules.H * TetrisRules.W)
-        for (i in TetrisRules.HIDDEN * TetrisRules.W until grid.size) {
-            val c = grid[i]
-            sb.append(if (c == 0) '.' else ('0' + c))
-        }
+        for (i in TetrisRules.HIDDEN * TetrisRules.W until grid.size) sb.append(TetrisRules.charOf(grid[i]))
         return sb.toString()
     }
 
@@ -426,7 +733,7 @@ object TetrisAi {
         return true
     }
 
-    /** Every sensible placement for [type], best first. */
+    /** Every sensible placement for a normal piece, best first. */
     fun rank(grid: IntArray, type: Int): List<Plan> {
         val w = TetrisRules.W
         val plans = ArrayList<Plan>()
@@ -449,10 +756,31 @@ object TetrisAi {
         return plans.sortedByDescending { it.value }
     }
 
+    /** The best column to drop a bomb: the one whose blast would remove the most blocks. */
+    fun bombColumn(grid: IntArray): Int {
+        val w = TetrisRules.W
+        var best = w / 2
+        var bestCount = -1
+        for (x in 0 until w) {
+            var y = 0
+            if (grid[y * w + x] != 0) continue
+            while (y + 1 < TetrisRules.ROWS && grid[(y + 1) * w + x] == 0) y++
+            var count = 0
+            val r = TetrisRules.BLAST_RADIUS
+            for (dy in -r..r) for (dx in -r..r) {
+                if (kotlin.math.abs(dx) + kotlin.math.abs(dy) > r) continue
+                val cx = x + dx
+                val cy = y + dy
+                if (cx in 0 until w && cy in 0 until TetrisRules.ROWS && grid[cy * w + cx] != 0) count++
+            }
+            if (count > bestCount) { bestCount = count; best = x }
+        }
+        return best
+    }
+
     private fun evaluate(g: IntArray): Double {
         val w = TetrisRules.W
         val rows = TetrisRules.ROWS
-        // remove complete lines
         var full = 0
         val rest = ArrayList<IntArray>()
         for (y in 0 until rows) {
@@ -500,11 +828,13 @@ data class TetrisState(
     val myName: String,
     val theirName: String,
     val phase: GPhase = GPhase.LOBBY,
-    /** 0 battle (last stack standing), 1 score attack (timed). */
+    /** See [TetrisMode]. */
     val mode: Int = 0,
     val giftsOn: Boolean = true,
+    /** Sprint: the number of lines to race to (0 in other modes). */
+    val target: Int = 0,
     val countdownMs: Int = 0,
-    /** Seconds left in score attack; -1 in battle. */
+    /** Seconds left in score attack; -1 otherwise. */
     val secsLeft: Int = -1,
     val myScore: Int = 0,
     val theirScore: Int = 0,
@@ -557,6 +887,7 @@ class TetrisEngine(
     private var mode = 0
     private var level = 1
     private var giftsOn = true
+    private var target = 0
     private var totalMs = 0L
     private var startAt = 0L
     private var lastAdvance = 0L
@@ -573,9 +904,9 @@ class TetrisEngine(
     private var oppSent = 0
     private var oppClearSerial = 0
     private var oppLastClear = 0
-    private var lastClearByMe = true
     private var clearSeq = 0
     private var lastClearShown = 0
+    private var lastClearByMe = true
     private var mySerialSeen = 0
 
     // ---- host-only
@@ -601,6 +932,7 @@ class TetrisEngine(
             // never let a bad moment crash the game
         }
     }
+
     fun hardDrop() { live()?.let { it.hardDrop(); afterBoardChange(clock()) } }
     fun hold() { live()?.let { it.holdPiece(); touched() } }
     fun setSoft(on: Boolean) { board?.soft = on && live() != null }
@@ -610,10 +942,11 @@ class TetrisEngine(
     // ------------------------------------------------------------------ starting
 
     override fun hostBegin(opts: JSONObject) {
-        mode = opts.optInt("mode", 0).coerceIn(0, 1)
+        mode = opts.optInt("mode", 0).coerceIn(0, TetrisMode.COUNT - 1)
         level = TetrisRules.LEVELS[opts.optInt("lvl", 0).coerceIn(0, TetrisRules.LEVELS.size - 1)]
-        giftsOn = mode == 0 || opts.optBoolean("gifts", true)
-        totalMs = if (mode == 1) TetrisRules.MINUTES[opts.optInt("mins", 1).coerceIn(0, TetrisRules.MINUTES.size - 1)] * 60_000L else 0L
+        giftsOn = if (TetrisMode.giftsOptional(mode)) opts.optBoolean("gifts", mode == TetrisMode.SCORE) else true
+        totalMs = if (mode == TetrisMode.SCORE) TetrisRules.MINUTES[opts.optInt("mins", 1).coerceIn(0, TetrisRules.MINUTES.size - 1)] * 60_000L else 0L
+        target = if (mode == TetrisMode.SPRINT) TetrisRules.LINE_TARGETS[opts.optInt("tl", 1).coerceIn(0, TetrisRules.LINE_TARGETS.size - 1)] else 0
         gid++
         seed = random.nextLong()
         result = 0; reason = ""
@@ -621,7 +954,7 @@ class TetrisEngine(
     }
 
     private fun newGame(startsAt: Long) {
-        board = TetrisBoard(seed, level, giftsOn)
+        board = TetrisBoard(seed, level, giftsOn, mode)
         opp = null
         over = false
         startAt = startsAt
@@ -629,7 +962,7 @@ class TetrisEngine(
         lastSig = 0; lastSent = -1_000_000L
         sentGifts.clear(); sentCount = 0; seenGiftId = 0
         oppScore = 0; oppLines = 0; oppLevel = level; oppIncoming = 0; oppSent = 0; oppClearSerial = 0; oppLastClear = 0
-        clearSeq = 0; lastClearShown = 0; mySerialSeen = 0; lastClearByMe = true
+        clearSeq = 0; lastClearShown = 0; lastClearByMe = true; mySerialSeen = 0
     }
 
     // ------------------------------------------------------------------ the clock
@@ -671,7 +1004,7 @@ class TetrisEngine(
             lastClearShown = b.lastClear
             lastClearByMe = true
         }
-        val sig = (((b.type * 31 + b.rot) * 31 + b.px) * 31 + b.py) * 31 + b.lockSerial * 7 + b.score + (if (b.alive) 1 else 0) + b.incoming.size * 13
+        val sig = ((((b.type * 31 + b.rot) * 31 + b.px) * 31 + b.py) * 31 + b.lockSerial * 7 + b.score + (if (b.alive) 1 else 0) + b.incoming.size * 13 + b.tideRows * 17)
         if (sig != lastSig && now - lastSent >= TetrisRules.SEND_EVERY_MS) {
             lastSig = sig
             lastSent = now
@@ -691,7 +1024,7 @@ class TetrisEngine(
         val s = state
         val ns = s.copy(
             phase = if (over) GPhase.OVER else GPhase.PLAYING,
-            mode = mode, giftsOn = giftsOn, countdownMs = countdown, secsLeft = secsLeft,
+            mode = mode, giftsOn = giftsOn, target = target, countdownMs = countdown, secsLeft = secsLeft,
             myScore = b.score, myLines = b.lines, myLevel = b.level, myAlive = b.alive,
             myIncoming = b.incoming.size, mySent = b.giftsSent,
             theirScore = oppScore, theirLines = oppLines, theirLevel = oppLevel, theirAlive = o?.alive ?: true,
@@ -721,11 +1054,11 @@ class TetrisEngine(
     /** Reads the rival's board message (from either phone). */
     private fun readRival(o: JSONObject) {
         val g = o.getString("g")
-        if (g.length != TetrisRules.H * TetrisRules.W || g.any { it != '.' && it !in '1'..'7' && it != '9' }) return
-        val next = o.optJSONArray("n")?.let { a -> List(minOf(a.length(), 4)) { a.optInt(it, 0).coerceIn(0, 6) } } ?: emptyList()
+        if (g.length != TetrisRules.H * TetrisRules.W || !g.all { TetrisRules.validBoardChar(it) }) return
+        val next = o.optJSONArray("n")?.let { a -> List(minOf(a.length(), 4)) { a.optInt(it, 0).coerceIn(0, 7) } } ?: emptyList()
         opp = OppView(
             grid = g,
-            type = o.optInt("t", -1).coerceIn(-1, 6), rot = o.optInt("r", 0) and 3,
+            type = o.optInt("t", -1).coerceIn(-1, 7), rot = o.optInt("r", 0) and 3,
             x = o.optInt("x", 0).coerceIn(-4, 14), y = o.optInt("y", 0).coerceIn(-4, 30),
             gift = o.optBoolean("gf", false), hold = o.optInt("h", -1).coerceIn(-1, 6), next = next,
             alive = o.optBoolean("al", true),
@@ -745,7 +1078,7 @@ class TetrisEngine(
                 lastClearByMe = false
             }
         }
-        // gifts the rival sent me: apply each new one once
+        // gifts and curses the rival sent me: apply each new one once
         val arr = o.optJSONArray("gl")
         if (arr != null) {
             for (i in 0 until minOf(arr.length(), 16)) {
@@ -753,7 +1086,7 @@ class TetrisEngine(
                 val id = e.optInt(0)
                 if (id > seenGiftId && e.length() >= 4) {
                     seenGiftId = id
-                    board?.receive(Gift(e.optInt(1, 0).coerceIn(0, 6), e.optInt(2, 0), e.optInt(3, 0)))
+                    board?.receive(Gift(e.optInt(1, 0).coerceIn(0, 12), e.optInt(2, 0), e.optInt(3, 0)))
                 }
             }
         }
@@ -775,21 +1108,38 @@ class TetrisEngine(
         val guestDead = o != null && !o.alive
         val hostDead = !b.alive
         val byScore = if (b.score > oppScore) 1 else if (b.score < oppScore) 2 else 3
-        if (mode == 0) {
-            if (!hostDead && !guestDead) return
-            result = when {
-                hostDead && guestDead -> byScore
-                hostDead -> 2
-                else -> 1
+        when (mode) {
+            TetrisMode.SCORE -> {
+                // A stack that fills up just stops scoring; the match runs to the clock.
+                val bothDead = hostDead && guestDead
+                val timeUp = now >= endAt + TetrisRules.RESOLVE_GRACE_MS
+                if (!bothDead && !timeUp) return
+                result = byScore
+                reason = if (bothDead) "top" else "time"
             }
-            reason = "top"
-        } else {
-            // Score attack: a stack that fills up just stops scoring; the match runs to the clock.
-            val bothDead = hostDead && guestDead
-            val timeUp = now >= endAt + TetrisRules.RESOLVE_GRACE_MS
-            if (!bothDead && !timeUp) return
-            result = byScore
-            reason = if (bothDead) "top" else "time"
+            TetrisMode.SPRINT -> {
+                val hostDone = b.lines >= target
+                val guestDone = oppLines >= target
+                if (!hostDone && !guestDone && !hostDead && !guestDead) return
+                result = when {
+                    hostDone && guestDone -> byScore
+                    hostDone -> 1
+                    guestDone -> 2
+                    hostDead && guestDead -> byScore
+                    hostDead -> 2
+                    else -> 1
+                }
+                reason = if (hostDone || guestDone) "lines" else "top"
+            }
+            else -> {
+                if (!hostDead && !guestDead) return
+                result = when {
+                    hostDead && guestDead -> byScore
+                    hostDead -> 2
+                    else -> 1
+                }
+                reason = "top"
+            }
         }
         over = true
         publish()
@@ -799,7 +1149,7 @@ class TetrisEngine(
         val b = board
         val now = clock()
         val o = JSONObject()
-            .put("gid", gid).put("sd", seed).put("md", mode).put("lv", level).put("go", giftsOn).put("tm", totalMs)
+            .put("gid", gid).put("sd", seed).put("md", mode).put("lv", level).put("go", giftsOn).put("tm", totalMs).put("tg", target)
             .put("cd", (startAt - now).coerceAtLeast(0)).put("ov", over).put("rs", result).put("why", reason)
         if (b != null) o.put("b", boardJson(b))
         return o
@@ -814,10 +1164,11 @@ class TetrisEngine(
             if (newGid != gid) {
                 gid = newGid
                 seed = s.getLong("sd")
-                mode = s.optInt("md", 0).coerceIn(0, 1)
+                mode = s.optInt("md", 0).coerceIn(0, TetrisMode.COUNT - 1)
                 level = s.optInt("lv", 1).coerceIn(1, 20)
                 giftsOn = s.optBoolean("go", true)
                 totalMs = s.optLong("tm", 0).coerceIn(0, 3_600_000)
+                target = s.optInt("tg", 0).coerceIn(0, 200)
                 newGame(clock() + s.optLong("cd", 0).coerceIn(0, 10_000))
             }
             s.optJSONObject("b")?.let { readRival(it) }
@@ -838,12 +1189,16 @@ class TetrisEngine(
 
     private fun howText(mine: Int): String {
         val st = state
-        val stats = "You scored ${st.myScore} with ${st.myLines} lines and sent ${st.mySent} gift pieces; ${st.theirName} scored ${st.theirScore} with ${st.theirLines} lines and sent ${st.theirSent}."
+        val b = board
+        val extras = if (b != null) " Best combo ${if (b.lines > 0) b.maxCombo + 1 else 0}, ${b.tetrises} four-line clears, ${b.perfectClears} perfect clears." else ""
+        val stats = "You scored ${st.myScore} with ${st.myLines} lines and sent ${st.mySent} gift pieces; ${st.theirName} scored ${st.theirScore} with ${st.theirLines} lines and sent ${st.theirSent}.$extras"
+        val modeName = TetrisMode.info(mode).label
         return when {
+            reason == "lines" -> (if (mine == 1) "You were" else "${st.theirName} was") + " first to clear $target lines in $modeName! $stats"
             reason == "time" && mine == 3 -> "Time's up and the scores were level. $stats"
             reason == "time" -> "Time's up! " + (if (mine == 1) "You" else st.theirName) + " had the higher score. $stats"
-            mine == 1 -> "${st.theirName}'s stack reached the top! $stats"
-            mine == 2 -> "Your stack reached the top. $stats"
+            mine == 1 -> "${st.theirName}'s stack reached the top in $modeName! $stats"
+            mine == 2 -> "Your stack reached the top in $modeName. $stats"
             else -> "Both stacks reached the top, and the scores were level. $stats"
         }
     }
@@ -873,7 +1228,9 @@ class TetrisBrain(
         if (b.pieceSerial != serial) {
             serial = b.pieceSerial
             plan = null
-            if (!b.isGift && b.type >= 0) {
+            if (!b.isGift && b.type == TetrisRules.BOMB_TYPE) {
+                plan = TetrisAi.Plan(0, TetrisAi.bombColumn(b.copyGrid()), 0.0)
+            } else if (!b.isGift && b.type >= 0) {
                 val ranked = TetrisAi.rank(b.copyGrid(), b.type)
                 if (ranked.isNotEmpty()) {
                     val slip = when (skill) { Skill.EASY -> 28; Skill.NORMAL -> 8; Skill.HARD -> 0 }
