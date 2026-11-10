@@ -19,6 +19,19 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 
+/** One downloaded file found on the phone, and what the version check says about it. */
+data class UpdateFile(
+    val name: String,
+    val sizeBytes: Long,
+    /** The version inside the APK, or null if it could not be read. */
+    val versionName: String?,
+    val versionCode: Long?,
+    /** Plain-English reason it is (not) needed. */
+    val verdict: String,
+    val keep: Boolean,
+    val path: String,
+)
+
 /** What the "Check for updates" button found. */
 sealed class UpdateCheck {
     data class Available(val info: ReleaseInfo) : UpdateCheck()
@@ -59,9 +72,11 @@ class UpdateManager(private val context: Context) {
     /** Downloads the update into the app's private cache and checks it. Returns the file. */
     suspend fun download(info: ReleaseInfo, onProgress: (Float) -> Unit): File = withContext(Dispatchers.IO) {
         require(info.apkUrl.startsWith(UpdateRules.ASSET_PREFIX)) { "Unexpected download address." }
+        cleanUp() // only one update file is ever on the phone: remove anything older before starting
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-        dir.listFiles()?.forEach { it.delete() }
-        val file = File(dir, "update.apk")
+        // the version is part of the name, so a file can always be recognised: TimeKillerGames-v2.4.3.apk
+        val safeVersion = info.version.filter { it.isLetterOrDigit() || it == '.' || it == '-' }.take(24).ifEmpty { "new" }
+        val file = File(dir, "TimeKillerGames-v$safeVersion.apk")
         val conn = open(info.apkUrl)
         try {
             if (conn.responseCode != 200) throw IOException("The download failed (error ${conn.responseCode}).")
@@ -94,22 +109,68 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    /** Folders where a stray update file could ever be: the app's own cache (inside and next to the "updates" folder). */
+    /** Folders where an update file could ever be: the app's private cache (internal and external). */
     private fun cacheDirs(): List<File> = listOfNotNull(context.cacheDir, context.externalCacheDir)
 
-    private fun strays(): List<File> = cacheDirs().flatMap { dir ->
-        dir.listFiles().orEmpty().filter { it.isFile && (it.name.endsWith(".apk") || it.name.endsWith(".tmp") || it.name.endsWith(".part")) }
+    /** Every file that could be a leftover: the whole "updates" folder, plus stray .apk/.tmp/.part files next to it. */
+    private fun candidateFiles(): List<File> = cacheDirs().flatMap { dir ->
+        val inFolder = File(dir, "updates").takeIf { it.exists() }?.walkTopDown()?.filter { it.isFile }?.toList().orEmpty()
+        val strays = dir.listFiles().orEmpty().filter { it.isFile && (it.name.endsWith(".apk") || it.name.endsWith(".tmp") || it.name.endsWith(".part")) }
+        inFolder + strays
     }
 
-    /** Deletes every downloaded update file, and any stray .apk/.tmp/.part files, from the app's private cache. */
-    fun cleanUp() {
-        cacheDirs().forEach { File(it, "updates").deleteRecursively() }
-        strays().forEach { it.delete() }
+    private fun installedVersionCode(): Long =
+        PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0))
+
+    /**
+     * Looks at every downloaded file and decides whether it is still needed, by reading the version out of the
+     * APK itself and comparing it with the version that is installed right now. Only the file that is being
+     * installed at this moment ([inUse]) is ever kept.
+     */
+    fun inspect(inUse: File? = null): List<UpdateFile> {
+        val pm = context.packageManager
+        val mine = installedVersionCode()
+        val inUsePath = inUse?.let { runCatching { it.canonicalPath }.getOrNull() }
+        return candidateFiles().map { f ->
+            val size = f.length()
+            val info = if (f.name.endsWith(".apk")) {
+                try { pm.getPackageArchiveInfo(f.path, 0) } catch (e: Exception) { null }
+            } else null
+            val code = info?.let { PackageInfoCompat.getLongVersionCode(it) }
+            val name = info?.versionName
+            val isInUse = inUsePath != null && runCatching { f.canonicalPath }.getOrNull() == inUsePath
+            val (verdict, keep) = when {
+                !f.name.endsWith(".apk") -> "Unfinished download" to false
+                info == null || code == null -> "Damaged or unfinished" to false
+                info.packageName != context.packageName -> "Not this app" to false
+                code == mine -> "Already installed (v$name)" to false
+                code < mine -> "Older than the installed version (v$name)" to false
+                isInUse -> "Newer version, installing now (v$name)" to true
+                else -> "Newer version that was never installed (v$name)" to false
+            }
+            UpdateFile(f.name, size, name, code, verdict, keep, f.path)
+        }
     }
+
+    /** Deletes every downloaded file that is not needed (by default that is all of them). Returns what it found. */
+    fun sweep(inUse: File? = null): List<UpdateFile> {
+        val report = inspect(inUse)
+        report.filter { !it.keep }.forEach { runCatching { File(it.path).delete() } }
+        // tidy empty folders
+        cacheDirs().forEach { dir -> File(dir, "updates").takeIf { it.exists() && it.listFiles().isNullOrEmpty() }?.delete() }
+        return report
+    }
+
+    /** Deletes every downloaded update file. */
+    fun cleanUp() {
+        sweep(null)
+    }
+
+    /** What is stored right now (after any clean-up). */
+    fun stored(inUse: File? = null): List<UpdateFile> = inspect(inUse)
 
     /** How many bytes of downloaded update files are on the phone right now. */
-    fun storedBytes(): Long =
-        cacheDirs().sumOf { File(it, "updates").walkTopDown().filter { f -> f.isFile }.sumOf { f -> f.length() } } + strays().sumOf { it.length() }
+    fun storedBytes(): Long = candidateFiles().sumOf { it.length() }
 
     /** Returns null if the file is safe to hand to Android, otherwise a plain-English problem. */
     fun problemWith(file: File): String? {

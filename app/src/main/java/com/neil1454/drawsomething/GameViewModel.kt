@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething
 
+import com.neil1454.drawsomething.update.UpdateFile
 import com.neil1454.drawsomething.core.TetrisEngine
 import android.app.Application
 import android.content.Context
@@ -173,33 +174,56 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val appVersion: String = updater.currentVersion
     private var downloaded: File? = null
 
-    private val _updateBytes = MutableStateFlow(0L)
+    private val _updateFiles = MutableStateFlow<List<UpdateFile>>(emptyList())
 
-    /** How much space downloaded update files take on this phone (shown on the home screen). */
-    val updateFilesBytes: StateFlow<Long> = _updateBytes
+    /** The downloaded update files on this phone right now (shown on the home screen). Normally empty. */
+    val updateFiles: StateFlow<List<UpdateFile>> = _updateFiles
 
-    private fun refreshUpdateBytes() {
-        viewModelScope.launch(Dispatchers.IO) { _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L) }
+    private val _tidyNote = MutableStateFlow(prefs.getString("tidy_note", "") .orEmpty())
+
+    /** A sentence about the last tidy-up ("Removed 1 file: already installed…"). */
+    val tidyNote: StateFlow<String> = _tidyNote
+
+    private fun refreshUpdateFiles() {
+        viewModelScope.launch(Dispatchers.IO) { _updateFiles.value = runCatching { updater.stored(downloaded) }.getOrDefault(emptyList()) }
     }
 
-    init {
-        // A downloaded update is only needed until it has been installed. Anything left from last time is removed
-        // as soon as the app starts (the app restarts after an update, so this also clears the one just installed).
+    /**
+     * Looks at every downloaded file, reads the version out of each APK, compares it with the version that is installed,
+     * and deletes everything that is not needed. Only a file that is being downloaded or installed right now is left alone.
+     * This runs every time the app starts and every time it comes back to the screen.
+     */
+    fun sweepUpdateFiles() {
+        val s = _update.value
+        if (s is UpdateUi.Downloading) return // a half-written file is not leftover: it is being made
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { updater.cleanUp() }
-            _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L)
+            val report = runCatching { updater.sweep(downloaded) }.getOrDefault(emptyList())
+            val removed = report.filter { !it.keep }
+            val note = when {
+                removed.isEmpty() -> "Checked at start-up: nothing to remove."
+                else -> "Removed ${removed.size} file${if (removed.size == 1) "" else "s"} " +
+                    "(${"%.1f".format(removed.sumOf { it.sizeBytes } / 1_048_576.0)} MB): " +
+                    removed.joinToString("; ") { "${it.name} (${it.verdict})" }
+            }
+            prefs.edit().putString("tidy_note", note.take(600)).apply()
+            _tidyNote.value = note.take(600)
+            _updateFiles.value = runCatching { updater.stored(downloaded) }.getOrDefault(emptyList())
         }
     }
 
-    /** The "Clear" button: delete every downloaded update file now (not while one is downloading or being installed). */
+    init {
+        // A downloaded update is only needed until it has been installed. Whatever is left from last time is checked
+        // against the installed version and removed as soon as the app starts (the app restarts after an update, so this
+        // also clears the one just installed).
+        sweepUpdateFiles()
+    }
+
+    /** The "Delete all" button: delete every downloaded update file now (not while one is downloading or being installed). */
     fun clearUpdateFiles() {
         val s = _update.value
         if (s is UpdateUi.Downloading || s is UpdateUi.Installing) return
         downloaded = null
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { updater.cleanUp() }
-            _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L)
-        }
+        sweepUpdateFiles()
     }
 
     /** Asks GitHub for the newest release. Only ever runs when the player taps the button. */
@@ -247,7 +271,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: Exception) {
                 _update.value = UpdateUi.Failed(e.message ?: "The download failed.")
             } finally {
-                refreshUpdateBytes()
+                refreshUpdateFiles()
             }
         }
     }
@@ -287,10 +311,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         // (then it is removed the next time the app starts).
         if (state !is UpdateUi.Installing) {
             downloaded = null
-            viewModelScope.launch(Dispatchers.IO) {
-                runCatching { updater.cleanUp() }
-                _updateBytes.value = runCatching { updater.storedBytes() }.getOrDefault(0L)
-            }
+            sweepUpdateFiles()
         }
     }
 

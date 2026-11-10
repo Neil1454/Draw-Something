@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.update.UpdateFile
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -101,6 +102,39 @@ fun UpdateDialog(
                 is UpdateUi.Available -> TextButton(onClick = onClose) { Text("Not now") }
                 is UpdateUi.NeedPermission -> TextButton(onClick = onRetryInstall) { Text("Done, download now") }
                 else -> Unit
+            }
+        },
+    )
+}
+
+/** Shows exactly which update files are on the phone (normally none), and what the last tidy-up did. */
+@Composable
+fun UpdateFilesDialog(files: List<UpdateFile>, tidyNote: String, onClear: () -> Unit, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        confirmButton = { TextButton(onClick = onClose) { Text("Close") } },
+        dismissButton = { if (files.isNotEmpty()) TextButton(onClick = onClear) { Text("Delete all") } },
+        title = { Text("Update files on this phone") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (files.isEmpty()) {
+                    Text("None. Nothing is stored, which is how it should be.")
+                } else {
+                    files.forEach { f ->
+                        Text("• ${f.name}\n  ${"%.1f".format(f.sizeBytes / 1_048_576.0)} MB · ${f.verdict}")
+                    }
+                }
+                if (tidyNote.isNotBlank()) Text("Last tidy-up: $tidyNote", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Every time the app starts or comes back on screen it reads the version inside each downloaded file, compares it " +
+                        "with the version you have installed, and deletes anything that isn't needed.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    "These files live in the app's private storage, so a file manager cannot open them (that is normal on Android). " +
+                        "To check from outside the app, go to Settings → Apps → this app → Storage: the Cache size should be tiny.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         },
     )

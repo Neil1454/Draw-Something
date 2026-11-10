@@ -2,6 +2,7 @@
 
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.update.UpdateFile
 import com.neil1454.drawsomething.core.TetrisMode
 import com.neil1454.drawsomething.core.TetrisRules
 import androidx.compose.foundation.layout.Arrangement
@@ -102,9 +103,11 @@ fun HomeScreen(
     myRecord: String?,
     soundOn: Boolean,
     onSound: (Boolean) -> Unit,
-    updateBytes: Long,
+    updateFiles: List<UpdateFile>,
+    tidyNote: String,
     onClearUpdateFiles: () -> Unit,
 ) {
+    var showFiles by rememberSaveable { mutableStateOf(false) }
     var help by rememberSaveable { mutableStateOf(false) }
     var pickSkill by rememberSaveable { mutableStateOf(false) }
     var info by rememberSaveable { mutableStateOf<GameKind?>(null) }
@@ -186,13 +189,14 @@ fun HomeScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FunkyButton("🔄  Check for updates", onCheckUpdate, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Blue), fontSize = 16.sp)
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        val bytes = updateFiles.sumOf { it.sizeBytes }
                         Text(
-                            if (updateBytes <= 0L) "🧹 No update files stored on this phone"
-                            else "🧹 Update files stored: ${"%.1f".format(updateBytes / 1_048_576.0)} MB",
+                            if (updateFiles.isEmpty()) "🧹 No update files stored on this phone"
+                            else "🧹 Update files stored: ${"%.1f".format(bytes / 1_048_576.0)} MB",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (updateBytes > 0L) TextButton(onClick = onClearUpdateFiles) { Text("Clear") }
+                        TextButton(onClick = { showFiles = true }) { Text("Details") }
                     }
                     Text(
                         "Checking for updates is the only time this app uses the internet; the games never do. " +
@@ -212,6 +216,7 @@ fun HomeScreen(
         }
     }
     if (help) HowToPlayDialog { help = false }
+    if (showFiles) UpdateFilesDialog(updateFiles, tidyNote, onClear = onClearUpdateFiles, onClose = { showFiles = false })
     if (pickSkill) {
         AlertDialog(
             onDismissRequest = { pickSkill = false },

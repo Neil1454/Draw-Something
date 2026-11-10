@@ -47,6 +47,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Every time the app opens or comes back on screen: remove any downloaded update file that is no longer needed.
+        vm.sweepUpdateFiles()
+    }
+
     private fun withPermissions(action: () -> Unit) {
         val missing = requiredPermissions().filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED

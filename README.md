@@ -244,13 +244,18 @@ is newer, offers to download and install it. The first time, Android asks you to
 install updates (Settings → “Allow from this source”). It works without any login or key as long as
 the GitHub repository is **public**.
 
-**Tidying up:** the downloaded file is kept only in the app's private cache folder (one file, replaced on each
-download, never in your Downloads, gallery or files). Android's "allow installs from this app" switch is checked
-**before** anything is downloaded, so you are never made to download twice because of it. The file is deleted when it
-fails a check, when you close the update dialog, and every time the app starts, so the copy you just installed disappears
-the next time you open the app. Any stray `.apk`, `.tmp` or `.part` file in the app's cache is swept up too.
-The home screen shows how much space update files take ("No update files stored on this phone" is what you want to see),
-with a **Clear** button, and you can also use Android's Settings → Apps → this app → Storage → Clear cache.
+**Tidying up:** the downloaded file is kept only in the app's private cache folder (one file, never in your Downloads,
+gallery or files) and is named with its version, e.g. `TimeKillerGames-v2.4.3.apk`.
+* Android's "allow installs from this app" switch is checked **before** anything is downloaded, so you are never made to download twice because of it.
+* **Version cross-check:** every time the app starts, and every time it comes back on screen, it reads the version number
+  out of each downloaded APK (not just the name) and compares it with the version that is installed. A file is deleted if it is
+  the version you already have, an older version, a different app, damaged, or unfinished. Only a file that is being installed
+  right now is kept. A newer file that was never installed is also removed (the app downloads a fresh one if you ask again).
+* The home screen shows how much space update files take, and **Details** lists each file with the reason it is (not) needed,
+  what the last tidy-up removed, and a **Delete all** button.
+* These files are in the app's *private* storage (`/data/data/com.neil1454.drawsomething/cache`), which Android does not let file
+  managers open. That is by design. Check it from Settings → Apps → this app → Storage: the Cache size should be tiny, and
+  "Clear cache" empties it. Samsung's My Files "APK files" view only lists APKs in shared folders, so ours never appear there.
 
 ## Building
 
@@ -282,7 +287,7 @@ identical picture.
 
 ## Status
 
-Version 2.4.2. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 2.4.3. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits
