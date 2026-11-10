@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -72,7 +73,8 @@ fun TetrisHelp() {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Tetris, head to head! You each play your own board and see each other's live, side by side.")
         Text("• Turn and slide the falling piece to complete rows. A full row disappears.")
-        Text("• 🎁 Blow up 2 or more rows at once and the pieces you cleared are sent to your rival as GIFT PIECES. They fall onto their stack by themselves, in gold striped blocks, so they can see they came from you. 2 rows send 1, 3 rows send 2, 4 rows send 4. Gifts you send first cancel gifts waiting to fall on you.")
+        Text("• 🎁 Blow up 2 or more rows at once and the pieces you cleared are sent to your rival as GIFT PIECES: 2 rows send 2, 3 rows send 3, 4 rows send 5.")
+        Text("• Gifts wait in a meter for 3 seconds. Clear 2+ rows in that time to cancel them. The rest join your NEXT queue as gold striped pieces that you place yourself, at normal speed, like any other piece, and never two in a row.")
         Text("• Bonuses: back-to-back four-line clears send an extra gift, and a perfect clear (empty board) sends four.")
         Text("• Modes: ⚔️ Battle (last stack standing), ⏱ Score attack, 🏁 Sprint (first to clear the lines), 💣 Bomb Blitz (bomb pieces blast holes and send the blown-up blocks to your rival), 🌊 Rising Tide (junk rows rise on both boards), 🔥 Turbo (it keeps speeding up), ⚡ Power Surge (clear a row with a star block to dizzy, speed up or fog your rival).")
         Text("• Controls: ◀ ▶ slide, ⟲ ⟳ turn (or tap the board), ⬇ hold to fall faster, ⏬ drop instantly, HOLD saves a piece. You can also swipe on your board: sideways to slide, down to fall faster, a quick flick down to drop.")
@@ -204,7 +206,7 @@ private fun DrawScope.well(
 }
 
 @Composable
-private fun PiecePreview(type: Int, modifier: Modifier = Modifier, dim: Boolean = false) {
+private fun PiecePreview(type: Int, modifier: Modifier = Modifier, dim: Boolean = false, gift: Boolean = false) {
     Canvas(modifier.aspectRatio(1f)) {
         drawRoundRect(Color(0x33000000), cornerRadius = CornerRadius(size.width * 0.12f))
         if (type !in 0..7) return@Canvas
@@ -218,7 +220,7 @@ private fun PiecePreview(type: Int, modifier: Modifier = Modifier, dim: Boolean 
         val cs = size.width / 5f
         val ox = (size.width - (xs.max() - xs.min() + 1) * cs) / 2f - xs.min() * cs
         val oy = (size.height - (ys.max() - ys.min() + 1) * cs) / 2f - ys.min() * cs
-        for (i in 0 until 4) block(ox + s[i * 2] * cs, oy + s[i * 2 + 1] * cs, cs, type + 1, if (dim) 0.4f else 1f)
+        for (i in 0 until 4) block(ox + s[i * 2] * cs, oy + s[i * 2 + 1] * cs, cs, if (gift) TetrisRules.GIFT else type + 1, if (dim) 0.4f else 1f)
     }
 }
 
@@ -334,7 +336,7 @@ fun TetrisScreen(
     }
     LaunchedEffect(s.giftSeq) {
         if (s.giftSeq > 0) {
-            popups.add(Popup(popupId++, "🎁 GIFT LANDING!", Funk.Pink, 0.3f, 0.3f))
+            popups.add(Popup(popupId++, "🎁 GIFT INCOMING!", Funk.Pink, 0.3f, 0.3f))
             Sfx.play(Sound.BUZZ)
         }
     }
@@ -452,9 +454,12 @@ fun TetrisScreen(
                 }
             }
             val incoming: @Composable () -> Unit = {
+                val pending = (s.myIncoming - s.myQueued).coerceAtLeast(0)
                 val text = when {
-                    s.myIncoming > 0 -> "🎁 ×${s.myIncoming} incoming"
-                    mine != null && mine.giftsReceived > 0 -> "Gold blocks = gifts from ${s.theirName}"
+                    pending > 0 && s.myQueued > 0 -> "🎁 $pending coming (clear 2+ rows to cancel) · ${s.myQueued} next"
+                    pending > 0 -> "🎁 $pending coming: clear 2+ rows to cancel!"
+                    s.myQueued > 0 -> "🎁 ${s.myQueued} gold gift${if (s.myQueued == 1) "" else "s"} in your NEXT queue"
+                    mine != null && mine.giftsReceived > 0 -> "Gold pieces = gifts from ${s.theirName}"
                     else -> "${s.myLines} lines · sent ${s.mySent} 🎁"
                 }
                 Text(
@@ -463,15 +468,16 @@ fun TetrisScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 )
             }
-            val holdAndNext: @Composable () -> Unit = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(50.dp)) {
+            val holdAndNext: @Composable (Dp) -> Unit = { w ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(w)) {
                         Text("HOLD", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Bold)
                         PiecePreview(if (fog) -1 else (mine?.hold ?: -1), Modifier.fillMaxWidth(), dim = mine?.canHold == false)
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(50.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(w)) {
                         Text("NEXT", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Bold)
-                        (if (fog) listOf(-1, -1, -1) else (mine?.next(3) ?: emptyList())).forEach { PiecePreview(it, Modifier.fillMaxWidth()) }
+                        (if (fog) listOf(-1 to false, -1 to false, -1 to false) else (mine?.upcoming(3) ?: emptyList()))
+                            .forEach { (t, g) -> PiecePreview(t, Modifier.fillMaxWidth(), gift = g) }
                     }
                 }
             }
@@ -483,9 +489,12 @@ fun TetrisScreen(
             }
 
             if (!landscape) {
-                val availH = (maxHeight - 230.dp).coerceAtLeast(160.dp)
-                val myW = minOf(maxWidth * 0.56f, availH / 2f)
-                val rivalW = minOf(maxWidth * 0.30f, ((availH - 120.dp) / 2f).coerceAtLeast(60.dp))
+                // Your board takes most of the width (and as much height as fits); the rival is a smaller live copy beside it.
+                val availH = (maxHeight - 214.dp).coerceAtLeast(160.dp)
+                val myW = minOf(maxWidth * 0.70f, availH / 2f)
+                val rightW = (maxWidth - myW - 26.dp).coerceAtLeast(56.dp)
+                val rivalW = minOf(rightW, ((availH - 130.dp) / 2f).coerceAtLeast(56.dp))
+                val previewW = ((rightW - 6.dp) / 2f).coerceIn(28.dp, 46.dp)
                 Column(
                     Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -505,7 +514,7 @@ fun TetrisScreen(
                                 if (s.theirIncoming > 0) "🎁 ×${s.theirIncoming} coming" else "${s.theirLines} lines · sent ${s.theirSent} 🎁",
                                 fontSize = 10.sp, color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
                             )
-                            holdAndNext()
+                            holdAndNext(previewW)
                         }
                     }
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -541,12 +550,12 @@ fun TetrisScreen(
                     Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         pills(Modifier.fillMaxWidth())
                         modeLine()
-                        holdAndNext()
+                        holdAndNext(46.dp)
                         incoming()
                     }
-                    Column(Modifier.width(myW * 0.62f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(Modifier.width(myW * 0.5f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(s.theirName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Funk.Cyan, maxLines = 1)
-                        rivalWell(Modifier.width(myW * 0.62f))
+                        rivalWell(Modifier.width(myW * 0.5f))
                     }
                     Column(Modifier.width(92.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
                         PadButton("⟲", Modifier.fillMaxWidth().height(52.dp), CtlViolet) { engine.rotateBack() }

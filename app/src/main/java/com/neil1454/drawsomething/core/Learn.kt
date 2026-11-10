@@ -209,12 +209,12 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                         val n = s.lastClear
                         say(
                             "${who(s.lastClearByMe)} clear${if (s.lastClearByMe) "" else "s"} $n line${if (n == 1) "" else "s"}!" +
-                                (if (n >= 2) " The pieces blown up are sent to ${who(!s.lastClearByMe)} as GIFT PIECES (the gold, striped blocks). They fall by themselves onto the stack." else " Clear 2 or more lines at once to send gift pieces.") +
+                                (if (n >= 2) " The pieces blown up are sent to ${who(!s.lastClearByMe)} as GIFT PIECES (gold, striped). They join the queue to be placed like any other piece." else " Clear 2 or more lines at once to send gift pieces.") +
                                 tip(TETRIS_TIPS, 1 + s.clearSeq),
                         )
                     } else if (s.giftSeq != lastGift && s.giftSeq > 0) {
                         lastGift = s.giftSeq
-                        say("🎁 A gift piece lands on your board! Gift blocks stay gold until you clear their row.")
+                        say("🎁 Gift pieces are on their way! They wait a few seconds (clearing rows cancels them), then arrive in your NEXT queue as gold pieces you place yourself.")
                     }
                 }
             }
@@ -400,8 +400,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
         private val TETRIS_TIPS = listOf(
             "Move and turn the falling piece to fill gaps. Keep the stack low and flat.",
             "A full row disappears. The more rows at once, the bigger the score.",
-            "Clear 2 rows for 1 gift piece, 3 for 2, and 4 at once (a 'Tetris') sends 4!",
-            "Gifts you send first cancel any gifts waiting to fall on you.",
+            "Clear 2 rows for 2 gift pieces, 3 for 3, and 4 at once (a 'Tetris') sends 5!",
+            "Gifts you send first cancel gifts still waiting in your meter. Gold pieces then arrive one at a time in your NEXT queue.",
             "HOLD saves a piece for later, and the ghost outline shows where a piece will land.",
             "There are seven modes: Battle, Score attack, Sprint, Bomb Blitz, Rising Tide, Turbo and Power Surge. Try them all in the lobby!",
             "Clear four lines twice in a row for a back-to-back bonus, or empty the whole board for a perfect clear.",

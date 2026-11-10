@@ -13,7 +13,7 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     DICE("Lucky Dice", "🎲", "Push your luck. Bank it or bust."),
     FLIP("Flip Fight", "⚫", "Outflank and flip their discs. Easy to learn, hard to master."),
     HILO("Higher or Lower", "🎴", "Will the next card be higher or lower? Climb the prize ladder."),
-    TETRIS("Tetris", "🧱", "Falling blocks, side by side. Clear lines to rain gift pieces on your rival."),
+    TETRIS("Tetris", "🧱", "Falling blocks, side by side. Clear lines to send gift pieces to your rival."),
     HOLIDAY("Do you know your Holiday?", "🏝️", "A head-to-head quiz about where you're going. Quickest correct answer wins."),
 }
 

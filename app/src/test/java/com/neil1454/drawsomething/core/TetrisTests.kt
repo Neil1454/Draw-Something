@@ -78,52 +78,105 @@ class TetrisBoardTest {
         assertTrue((0 until W).all { b.cell(it, R - 1) == 0 })
     }
 
-    @Test fun twoLinesSendAGiftMadeOfTheBlownUpPieces() {
+    @Test fun twoLinesSendTwoGiftsMadeOfTheBlownUpPieces() {
         val b = board()
         for (y in R - 2..R - 1) for (x in 0..8) b.grid[y * W + x] = 3 // lots of "T" blocks
         b.forcePiece(0, 1, 7, R - 4) // upright long piece in column 9
         b.hardDrop()
         assertEquals(2, b.lines)
-        assertEquals(1, b.outgoing.size)
+        assertEquals(2, b.outgoing.size)
         assertEquals("the gift is the shape that was blown up most", 2, b.outgoing[0].type)
-        assertEquals(1, b.giftsSent)
+        assertEquals(2, b.giftsSent)
     }
 
-    @Test fun fourLinesSendFourGiftsAndLongCombosAddOne() {
+    @Test fun biggerClearsSendMoreAndLongCombosAddOne() {
         assertEquals(0, TetrisRules.gifts(1, 0))
-        assertEquals(1, TetrisRules.gifts(2, 0))
-        assertEquals(2, TetrisRules.gifts(3, 0))
-        assertEquals(4, TetrisRules.gifts(4, 0))
+        assertEquals(2, TetrisRules.gifts(2, 0))
+        assertEquals(3, TetrisRules.gifts(3, 0))
+        assertEquals(5, TetrisRules.gifts(4, 0))
         assertEquals(1, TetrisRules.gifts(1, 3))
-        assertEquals(5, TetrisRules.gifts(4, 5))
+        assertEquals(6, TetrisRules.gifts(4, 5))
     }
 
-    @Test fun giftsYouSendCancelGiftsAboutToFallOnYou() {
+    @Test fun giftsYouSendFirstCancelGiftsStillInYourMeter() {
         val b = board()
         b.receive(Gift(2, 0, 3))
+        assertEquals(1, b.pendingGifts.size)
         for (y in R - 2..R - 1) for (x in 0..8) b.grid[y * W + x] = 3
         b.forcePiece(0, 1, 7, R - 4)
         b.hardDrop()
-        assertEquals(0, b.incoming.size)
-        assertEquals(0, b.outgoing.size)
+        assertEquals("the incoming gift was cancelled", 0, b.pendingGifts.size)
+        assertEquals("two earned, one used to cancel, one sent", 1, b.outgoing.size)
     }
 
-    @Test fun incomingGiftsFallByThemselvesInTheirOwnColour() {
+    @Test fun aGiftWaitsInTheMeterThenJoinsYourQueueAndCanNoLongerBeCancelled() {
         val b = board()
-        b.receive(Gift(3, 0, 2))
-        b.hardDrop() // lock the normal piece without clearing a line
+        b.receive(Gift(3, 0, 0))
+        assertEquals(1, b.waiting)
+        assertEquals(0, b.incoming.size)
+        repeat(5) { b.advance(500) } // 2.5 s
+        assertEquals(1, b.pendingGifts.size)
+        repeat(2) { b.advance(500) } // 3.5 s
+        assertEquals(0, b.pendingGifts.size)
+        assertEquals(1, b.incoming.size)
+        // the preview shows it as a gift
+        assertTrue(b.upcoming(3).any { it.second && it.first == 3 })
+    }
+
+    @Test fun aGiftIsAnOrdinaryPieceThatFallsAtNormalSpeedAndYouSteerYourself() {
+        val b = board()
+        b.receive(Gift(3, 0, 0))
+        repeat(7) { b.advance(500) }
+        b.hardDrop() // lock the normal piece
         assertTrue("the next piece is the gift", b.isGift)
-        val before = b.lockSerial
-        // controls do nothing to a gift
-        assertFalse(b.moveLeft())
-        assertFalse(b.rotateCw())
-        b.advance(3000)
-        assertEquals(before + 1, b.lockSerial)
-        var gifts = 0
-        for (i in 0 until b.grid.size) if (b.grid[i] == TetrisRules.GIFT) gifts++
-        assertEquals(4, gifts)
-        assertFalse(b.isGift) // back to a normal piece
+        assertTrue("you can steer it", b.moveLeft())
+        assertTrue(b.rotateCw())
+        val y = b.py
+        b.advance(TetrisRules.gravityMs(1) + 20)
+        assertEquals("normal speed: one row", y + 1, b.py)
+        b.hardDrop()
+        assertEquals(4, (0 until b.grid.size).count { b.grid[it] == TetrisRules.GIFT })
+        assertFalse("then a normal piece, so gifts never come back to back", b.isGift)
         assertEquals(1, b.giftsReceived)
+    }
+
+    @Test fun giftsArriveAtMostEveryOtherPiece() {
+        val b = board()
+        repeat(4) { b.receive(Gift(it, 0, 0)) }
+        repeat(7) { b.advance(500) }
+        val kinds = ArrayList<Boolean>()
+        repeat(8) {
+            kinds.add(b.isGift)
+            if (!b.alive) return@repeat
+            b.hardDrop()
+        }
+        for (i in 1 until kinds.size) assertFalse("two gifts in a row at $i: $kinds", kinds[i] && kinds[i - 1])
+        assertTrue(kinds.count { it } >= 2)
+    }
+
+    @Test fun giftsCannotBeHeld() {
+        val b = board()
+        b.receive(Gift(3, 0, 0))
+        repeat(7) { b.advance(500) }
+        b.hardDrop()
+        assertTrue(b.isGift)
+        b.holdPiece()
+        assertEquals(-1, b.hold)
+    }
+
+    @Test fun aLongNoClockMatchSpeedsUpOnItsOwnSoItAlwaysEnds() {
+        val b = TetrisBoard(1, 1, true, TetrisMode.BATTLE)
+        assertFalse(b.overtime)
+        var t = 0L
+        while (t < TetrisRules.OVERTIME_START_MS + 45_000) {
+            b.advance(500); t += 500
+            if (b.py > 8) b.forcePiece(b.type, 0, 4, 0)
+        }
+        assertTrue(b.overtime)
+        assertTrue("level ${b.level}", b.level >= 3)
+        val timed = TetrisBoard(1, 1, true, TetrisMode.SCORE)
+        timed.advance(1)
+        assertFalse(timed.overtime)
     }
 
     @Test fun aFullStackEndsTheGame() {
@@ -248,20 +301,25 @@ class TetrisMatchTest {
         host.hardDrop()
     }
 
-    @Test fun clearedPiecesBecomeGiftsThatFallOnTheRival() {
+    @Test fun clearedPiecesBecomeGiftsThatTheRivalPlacesByHand() {
         val p = pair()
         p.go()
         p.clearTwoOnHost()
         p.advance(300)
-        assertEquals(1, p.host.state.mySent)
-        assertEquals(1, p.client.board!!.giftsReceived)
-        // the guest locks a normal piece, then the gift drops
+        assertEquals(2, p.host.state.mySent)
+        assertEquals(2, p.client.board!!.giftsReceived)
+        assertEquals("both are in the meter at first", 2, p.client.state.myIncoming)
+        assertEquals(0, p.client.state.myQueued)
+        repeat(8) { p.advance(500) } // the delay passes
+        assertEquals("then they are in the queue", 2, p.client.state.myQueued)
+        // the guest locks a normal piece; the next one is a gift they steer themselves
         p.client.hardDrop()
-        p.advance(2000)
+        assertTrue(p.client.board!!.isGift)
+        p.client.moveLeft()
+        p.client.hardDrop()
         val g = p.client.board!!
-        assertTrue((0 until g.grid.size).count { g.grid[it] == TetrisRules.GIFT } == 4)
-        assertEquals(1, p.client.state.giftSeq)
-        // and each phone knows a clear happened
+        assertEquals(4, (0 until g.grid.size).count { g.grid[it] == TetrisRules.GIFT })
+        assertEquals(2, p.client.state.giftSeq)
         assertTrue(p.host.state.clearSeq >= 1 && p.client.state.clearSeq >= 1)
         assertFalse(p.client.state.lastClearByMe)
     }
@@ -545,11 +603,11 @@ class TetrisModesTest {
         val b = board(TetrisMode.BATTLE)
         tetris(b)
         val first = b.score
-        assertEquals(4, b.outgoing.size)
+        assertEquals(5, b.outgoing.size)
         b.outgoing.clear()
         tetris(b)
         assertEquals(1, b.b2bSerial)
-        assertEquals(5, b.outgoing.size) // 4 + 1 back-to-back
+        assertEquals(6, b.outgoing.size) // 5 + 1 back-to-back
         assertTrue(b.score - first > first)
         assertEquals(2, b.tetrises)
     }
@@ -647,18 +705,23 @@ class TetrisModeMatchTest {
         assertTrue("some power should have been a curse within $tries tries", p.client.board!!.fxSerial > 0 || p.host.board!!.giftsSent > 0)
     }
 
-    @Test fun computersCanPlayTheOtherModesToTheEnd() {
-        for (mode in listOf(TetrisMode.BOMB, TetrisMode.TIDE, TetrisMode.TURBO, TetrisMode.SURGE, TetrisMode.SPRINT)) {
+    @Test fun computersCanPlayEveryModeAndTheTimedOnesAlwaysFinish() {
+        for (mode in 0 until TetrisMode.COUNT) {
             val d = Duel(11, Skill.NORMAL, Skill.NORMAL)
-            d.host.tetris.start(JSONObject().put("mode", mode).put("lvl", 1).put("tl", 0))
+            d.host.tetris.start(JSONObject().put("mode", mode).put("lvl", 1).put("tl", 0).put("mins", 0))
             var guard = 0
-            while (d.host.tetris.state.phase != GPhase.OVER && guard++ < 24000) d.advance(50)
+            // A perfect-playing pair of computers can survive for ever in the "last stack standing" modes, so
+            // those run for ten virtual minutes; the clock and the race always end.
+            while (d.host.tetris.state.phase != GPhase.OVER && guard++ < 12000) d.advance(50)
             val h = d.host.tetris.state
             val g = d.guest.tetris.state
-            assertEquals("mode $mode should finish", GPhase.OVER, h.phase)
-            assertEquals(GPhase.OVER, g.phase)
-            assertEquals(h.result, when (g.result) { 1 -> 2; 2 -> 1; else -> g.result })
-            assertTrue(h.how.isNotBlank())
+            if (mode == TetrisMode.SCORE || mode == TetrisMode.SPRINT) assertEquals("mode $mode should finish", GPhase.OVER, h.phase)
+            if (h.phase == GPhase.OVER) {
+                assertEquals(GPhase.OVER, g.phase)
+                assertEquals(h.result, when (g.result) { 1 -> 2; 2 -> 1; else -> g.result })
+                assertTrue(h.how.isNotBlank())
+            }
+            assertTrue("the computers should clear lines in mode $mode", h.myLines + h.theirLines > 5)
         }
     }
 }

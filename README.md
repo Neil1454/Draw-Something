@@ -80,8 +80,13 @@ Every sound effect is generated in code (`core/Synth.kt`), so there are no audio
 
 Tetris played side by side: you each play your own board, and each phone shows the other player's board live.
 Turn and slide the pieces to complete rows. Blow up **2 or more rows at once** and the pieces you cleared are sent to your rival as
-**gift pieces** (2 rows = 1 gift, 3 rows = 2, 4 rows = 4, long combos add one). The gifts fall onto their stack by themselves, drawn as
-gold striped blocks so they can see where they came from. Gifts you send first cancel any waiting to fall on you.
+**gift pieces**: 2 rows send 2, 3 rows send 3, 4 rows send 5, and a long combo adds one.
+
+How gifts work (modelled on how other versus Tetris games handle attacks, but with pieces you control instead of rising junk rows):
+* Gifts wait in a **meter** for 3 seconds. Clearing 2+ rows in that time **cancels** them (oldest first), as in Tetris 99 and similar games.
+* The rest join your **NEXT queue** as gold striped pieces. You place them yourself, at normal speed, with full control, like any other piece.
+* They arrive **at most every other piece** and not straight after you clear a row, so you always get breathing room.
+* Long no-clock matches speed up on their own after 5 minutes ("overtime"), so a match always ends.
 
 Seven game modes:
 
@@ -269,7 +274,7 @@ identical picture.
 
 ## Status
 
-Version 2.3. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 2.4. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits
