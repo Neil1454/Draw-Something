@@ -400,7 +400,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
         private val TETRIS_TIPS = listOf(
             "Move and turn the falling piece to fill gaps. Keep the stack low and flat.",
             "A full row disappears. The more rows at once, the bigger the score.",
-            "Clear 2 rows for 1 gift piece, 3 for 2, and 4 at once (a 'Block Battle') sends 4!",
+            "Clear 2 rows for 1 gift piece, 3 for 2, and 4 at once (a 'Tetris') sends 4!",
             "Gifts you send first cancel any gifts waiting to fall on you.",
             "HOLD saves a piece for later, and the ghost outline shows where a piece will land.",
         )
@@ -420,7 +420,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.DICE -> "🎲 Lucky Dice: roll to build points, then bank them before you bust. You are Player 1."
             GameKind.FLIP -> "⚫ Flip Fight: trap the other player's discs to flip them. You are Player 1 (black)."
             GameKind.HILO -> "🎴 Higher or Lower: guess whether each next card is higher or lower, and climb the prize ladder. You are Player 1."
-            GameKind.TETRIS -> "🧱 Block Battle: falling blocks, side by side. You are Player 1 (the left board). Clear lines and the pieces you blow up are sent to your rival."
+            GameKind.TETRIS -> "🧱 Tetris: falling blocks, side by side. You are Player 1 (the left board). Clear lines and the pieces you blow up are sent to your rival."
             GameKind.HOLIDAY -> "🏝️ Do you know your Holiday? A quiz about where you're going. You are Player 1; the quickest correct answer wins the most points."
         }
 

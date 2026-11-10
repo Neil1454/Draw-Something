@@ -5,7 +5,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Block Battle: falling blocks, side by side against a friend.
+// Tetris: falling blocks, side by side against a friend.
 //
 // Both phones play their OWN board (so the controls feel instant) from the same piece sequence,
 // and show each other's board live. Clear lines and the pieces you "blow up" are sent to your

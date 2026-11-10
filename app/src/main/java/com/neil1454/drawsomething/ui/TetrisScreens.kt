@@ -233,7 +233,7 @@ fun TetrisScreen(
 
     LaunchedEffect(s.clearSeq) {
         if (s.clearSeq == 0 || s.lastClear == 0) return@LaunchedEffect
-        val names = listOf("", "SINGLE", "DOUBLE", "TRIPLE", "BLOCK BATTLE!")
+        val names = listOf("", "SINGLE", "DOUBLE", "TRIPLE", "TETRIS!")
         val text = names[s.lastClear.coerceIn(0, 4)]
         if (s.lastClearByMe) {
             popups.add(Popup(popupId++, text, if (s.lastClear >= 4) Funk.Sun else Funk.Lime, 0.3f, 0.4f))

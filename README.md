@@ -76,7 +76,7 @@ don't count; scores live only on the phone (and can be reset).
 
 Every sound effect is generated in code (`core/Synth.kt`), so there are no audio files. There is a mute button on the home screen.
 
-## Block Battle (falling blocks, head to head)
+## Tetris (falling blocks, head to head)
 
 Falling blocks, played side by side: you each play your own board, and each phone shows the other player's board live.
 Turn and slide the pieces to complete rows. Blow up **2 or more rows at once** and the pieces you cleared are sent to your rival as
@@ -257,7 +257,7 @@ identical picture.
 
 ## Status
 
-Version 2.2. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 2.2.1. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits
