@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.neil1454.drawsomething.core.GameKind
+import com.neil1454.drawsomething.core.availableGames
 import com.neil1454.drawsomething.core.LearnSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -60,7 +61,7 @@ fun LearnMenu(onPick: (GameKind) -> Unit, onBack: () -> Unit) {
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            GameGrid(GameKind.values().toList(), selected = null, enabled = true, onClick = onPick)
+            GameGrid(availableGames(), selected = null, enabled = true, onClick = onPick)
             TextButton(onClick = onBack) { Text("Back") }
         }
     }
@@ -186,5 +187,6 @@ private fun LearnGameView(kind: GameKind, session: LearnSession, tick: Int, rest
         GameKind.DICE -> DiceScreen(host.dice.state, host.dice, restart, onBack, onBack)
         GameKind.FLIP -> FlipScreen(host.flip.state, host.flip, restart, onBack, onBack)
         GameKind.HILO -> HiLoScreen(host.hilo.state, host.hilo, restart, onBack, onBack)
+        GameKind.HOLIDAY -> HolidayScreen(host.holiday.state, host.holiday, restart, onBack, onBack)
     }
 }

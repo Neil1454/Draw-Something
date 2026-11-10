@@ -1,5 +1,7 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateIntAsState
@@ -101,7 +103,7 @@ fun EndOverlay(
     onLeave: () -> Unit,
 ) {
     var confetti by remember { mutableIntStateOf(0) }
-    LaunchedEffect(win) { if (win) confetti++ }
+    LaunchedEffect(win) { if (win) confetti++ else Sfx.play(Sound.LOSE) }
     Box(Modifier.fillMaxSize().background(Color(0xD90B0624)), contentAlignment = Alignment.Center) {
         ConfettiBurst(confetti)
         Column(

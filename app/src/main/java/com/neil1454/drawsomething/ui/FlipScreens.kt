@@ -1,5 +1,7 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -54,6 +56,7 @@ fun FlipScreen(
     onLeave: () -> Unit,
 ) {
     val over = s.phase == GPhase.OVER
+    LaunchedEffect(s.moves) { if (s.moves > 0) Sfx.play(Sound.FLIP) }
     val theirDisc = if (s.myDisc == '1') '2' else '1'
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight

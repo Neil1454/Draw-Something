@@ -12,6 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -46,6 +51,10 @@ import com.neil1454.drawsomething.core.DiceTarget
 import com.neil1454.drawsomething.core.DropSize
 import com.neil1454.drawsomething.core.FlipSize
 import com.neil1454.drawsomething.core.HiLoRows
+import com.neil1454.drawsomething.core.HolidayLength
+import com.neil1454.drawsomething.core.HolidayPacks
+import com.neil1454.drawsomething.core.HolidayRules
+import com.neil1454.drawsomething.core.availableGames
 import com.neil1454.drawsomething.core.MemorySize
 import com.neil1454.drawsomething.core.MemoryThemes
 import com.neil1454.drawsomething.core.QuickMatch
@@ -86,6 +95,10 @@ fun HomeScreen(
     onCheckUpdate: () -> Unit,
     onSolo: (Skill) -> Unit,
     onLearn: () -> Unit,
+    onBoards: () -> Unit,
+    myRecord: String?,
+    soundOn: Boolean,
+    onSound: (Boolean) -> Unit,
 ) {
     var help by rememberSaveable { mutableStateOf(false) }
     var pickSkill by rememberSaveable { mutableStateOf(false) }
@@ -96,64 +109,87 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("v$appVersion", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.weight(1f))
+                RoundIconButton(if (soundOn) "🔊" else "🔇", { onSound(!soundOn) })
+            }
+            // ---- hero
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                GameKind.values().forEachIndexed { i, k ->
+                availableGames().forEachIndexed { i, k ->
                     val b = bobbing(phase = if (i % 2 == 0) 0f else 1f, amount = 6f, millis = 1100 + i * 90)
-                    Text(k.emoji, Modifier.graphicsLayer { translationY = b * density }, fontSize = 26.sp)
+                    Text(k.emoji, Modifier.graphicsLayer { translationY = b * density }, fontSize = 24.sp)
                 }
             }
-            GradientText(APP_NAME, fontSize = 36.sp)
+            GradientText(APP_NAME, fontSize = 34.sp)
             Text(
                 "✈️ $APP_TAGLINE",
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.SemiBold,
                 color = Funk.Sun,
+                fontSize = 14.sp,
             )
-            Text(
-                "Two-player games. No internet needed.",
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(4.dp))
-            OutlinedTextField(
-                value = ui.name,
-                onValueChange = onName,
-                label = { Text("Your name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            ui.notice?.let { NoticeCard(it, onDismissNotice) }
-            FunkyButton("🎮  Host a game", onHost, Modifier.fillMaxWidth(), listOf(Funk.Pink, Funk.Orange), fontSize = 20.sp)
-            FunkyButton("🔎  Join a game", onJoin, Modifier.fillMaxWidth(), listOf(Funk.Cyan, Funk.Blue), fontSize = 20.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FunkyButton("🤖  Solo vs computer", { pickSkill = true }, Modifier.weight(1f), listOf(Funk.Mint, Funk.Cyan), fontSize = 15.sp)
-                FunkyButton("📖  Learn to play", onLearn, Modifier.weight(1f), listOf(Funk.Sun, Funk.Orange), fontSize = 15.sp)
+
+            // ---- who are you
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(
+                            Modifier.size(46.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Funk.Pink, Funk.Orange))),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(ui.name.trim().take(1).uppercase().ifEmpty { "?" }, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        }
+                        OutlinedTextField(
+                            value = ui.name,
+                            onValueChange = onName,
+                            label = { Text("Your name") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (myRecord != null) {
+                        Text(myRecord, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Funk.Sun)
+                    }
+                }
             }
-            Text("The games", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
+            ui.notice?.let { NoticeCard(it, onDismissNotice) }
+
+            // ---- play
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ActionCard("🎮", "Host", "Start a game for a friend nearby", listOf(Funk.Pink, Funk.Orange), onHost, Modifier.weight(1f))
+                ActionCard("🔎", "Join", "Find a friend's game", listOf(Funk.Cyan, Funk.Blue), onJoin, Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ActionCard("🤖", "Solo", "Play the computer", listOf(Funk.Mint, Color(0xFF0E8F9F)), { pickSkill = true }, Modifier.weight(1f), big = false)
+                ActionCard("📖", "Learn", "Watch & learn", listOf(Funk.Sun, Funk.Orange), onLearn, Modifier.weight(1f), big = false)
+                ActionCard("🏆", "Scores", "Leaderboards", listOf(Funk.Violet, Funk.Pink), onBoards, Modifier.weight(1f), big = false)
+            }
+
+            // ---- the games
+            Text("The games", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 6.dp))
             Text(
                 "Tap one to see how it works.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            GameGrid(GameKind.values().toList(), selected = null, enabled = true) { info = it }
+            GameGrid(availableGames(), selected = null, enabled = true) { info = it }
             TextButton(onClick = { help = true }) { Text("How to play & scoring") }
-            FunkyButton("🔄  Check for updates", onCheckUpdate, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Blue), fontSize = 16.sp)
-            Text(
-                "Version $appVersion. Checking for updates is the only time this app uses the internet; the games never do.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                "Both devices just need Bluetooth and/or Wi-Fi switched on. No internet or mobile signal " +
-                    "is needed, so it works on a plane (turn Bluetooth back on after enabling airplane mode). " +
-                    "On Android 11 or older, Location must also be on.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
+
+            // ---- footer
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FunkyButton("🔄  Check for updates", onCheckUpdate, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Blue), fontSize = 16.sp)
+                    Text(
+                        "Checking for updates is the only time this app uses the internet; the games never do. " +
+                            "Both phones just need Bluetooth and/or Wi-Fi on, so it works on a plane (turn Bluetooth back on after " +
+                            "enabling airplane mode). On Android 11 or older, Location must also be on.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             Text(
                 "© $CREATOR",
                 style = MaterialTheme.typography.bodySmall,
@@ -218,6 +254,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.DICE -> DiceHelp()
                     GameKind.FLIP -> FlipHelp()
                     GameKind.HILO -> HiLoHelp()
+                    GameKind.HOLIDAY -> HolidayHelp()
                 }
             }
         },
@@ -473,7 +510,7 @@ fun GameBrowser(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        GameGrid(GameKind.values().toList(), selected = selected, enabled = canPick) { onSelect(it) }
+        GameGrid(availableGames(), selected = selected, enabled = canPick) { onSelect(it) }
         when (selected) {
             GameKind.DRAW -> DrawLobby(ui, game, act, onSettings, onStartDraw)
             GameKind.MINES -> MinesLobby(ui, connected, onSettings, onStartMines)
@@ -484,6 +521,7 @@ fun GameBrowser(
             GameKind.DICE -> DiceLobby(ui, connected, onSettings, onStartSync)
             GameKind.FLIP -> FlipLobby(ui, connected, onSettings, onStartSync)
             GameKind.HILO -> HiLoLobby(ui, connected, onSettings, onStartSync)
+            GameKind.HOLIDAY -> HolidayLobby(ui, connected, onSettings, onStartSync)
         }
     }
 }
@@ -814,4 +852,33 @@ private fun HiLoLobby(ui: UiState, connected: Boolean, onSettings: (LobbySetting
         ChipRow("Rows each", HiLoRows.values().map { it.rows.toString() }, set.hiloRows) { onSettings(set.copy(hiloRows = it)) }
         ToggleChip("📊 Show the odds", set.hiloOdds) { onSettings(set.copy(hiloOdds = it)) }
     }) { onStart(GameKind.HILO, JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)) }
+}
+
+@Composable
+private fun HolidayLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    val packs = HolidayPacks.all()
+    val packIdx = packs.indexOfFirst { it.id == set.holidayPack }.coerceAtLeast(0)
+    val secsIdx = set.holidaySecs.coerceIn(0, HolidayRules.SECONDS.lastIndex)
+    SyncLobby(ui, connected && packs.isNotEmpty(), GameKind.HOLIDAY, { HolidayHelp() }, {
+        if (packs.isEmpty()) {
+            Text("No holidays are installed in this version.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            if (packs.size > 1) {
+                ChipRow("Holiday", packs.map { "${it.emoji} ${it.title}" }, packIdx) { onSettings(set.copy(holidayPack = packs[it].id)) }
+            } else {
+                Text("${packs[0].emoji} ${packs[0].title}  ·  ${packs[0].questions.size} questions to draw from", fontWeight = FontWeight.SemiBold)
+            }
+            packs.getOrNull(packIdx)?.blurb?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+            ChipRow("Questions", HolidayLength.values().map { it.label }, set.holidayLen) { onSettings(set.copy(holidayLen = it)) }
+            ChipRow("Time per question", HolidayRules.SECONDS.map { "${it}s" }, secsIdx) { onSettings(set.copy(holidaySecs = it)) }
+        }
+    }) {
+        onStart(
+            GameKind.HOLIDAY,
+            JSONObject().put("pack", packs.getOrNull(packIdx)?.id ?: "").put("len", set.holidayLen).put("secs", HolidayRules.SECONDS[secsIdx]),
+        )
+    }
 }

@@ -25,6 +25,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
 
     private var started = false
     private var last = -1
+    private var lastSeq = -1
     private var finishedAt = 0L
 
     /** Move the demo forward by [ms] (virtual milliseconds). */
@@ -51,6 +52,12 @@ class LearnSession(val kind: GameKind, val seed: Int) {
         say(text)
     }
 
+    private fun deltaText(delta: Int, choice: Int, correct: Int) = when {
+        choice == -1 -> "didn't answer in time"
+        choice == correct -> "got it right (+$delta)"
+        else -> "got it wrong ($delta)"
+    }
+
     private fun who(mine: Boolean) = if (mine) "You" else "Player 2"
 
     private fun tip(tips: List<String>, n: Int): String = tips.getOrNull(n - 1)?.let { "\n💡 $it" } ?: ""
@@ -69,6 +76,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.DICE -> h.dice.start(JSONObject().put("target", 0).put("two", false))
             GameKind.FLIP -> h.flip.start(JSONObject().put("size", 1))
             GameKind.HILO -> h.hilo.start(JSONObject().put("rows", 0).put("odds", true))
+            GameKind.HOLIDAY -> h.holiday.start(JSONObject().put("len", 0).put("secs", 15))
         }
     }
 
@@ -185,6 +193,23 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                     }
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.HOLIDAY -> {
+                val s = duel.host.holiday.state
+                if (s.phase == GPhase.OVER) {
+                    finish(outro(kind))
+                } else if (s.step == "ASK" && s.seq != lastSeq) {
+                    lastSeq = s.seq
+                    say("Question ${s.index} of ${s.total} · ${s.category.ifEmpty { "Holiday" }}\n${s.question}\nPick the right answer before time runs out. Quickest correct answer scores the most." + tip(HOLIDAY_TIPS, s.index))
+                } else if (s.step == "REVEAL" && s.moves != last) {
+                    last = s.moves
+                    val right = s.options.getOrNull(s.correct) ?: "?"
+                    say(
+                        "The answer: $right.\n" +
+                            "You ${deltaText(s.myDelta, s.myChoice, s.correct)}; Player 2 ${deltaText(s.theirDelta, s.theirChoice, s.correct)}." +
+                            (if (s.fact.isNotBlank()) "\n💡 ${s.fact}" else ""),
+                    )
+                }
             }
             GameKind.MINES -> {
                 val s = duel.host.mines.state
@@ -342,6 +367,12 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "A card of the SAME value counts as wrong, so middling cards are risky.",
             "You can Change the face-up card once per game. It's handy when it's a 7, 8 or 9.",
         )
+        private val HOLIDAY_TIPS = listOf(
+            "Both players see the same question at the same time.",
+            "The first correct answer scores 100 plus up to 100 for speed. A slower right answer still earns 40.",
+            "A wrong answer costs 25 points, so don't just guess wildly!",
+            "After each answer a 'did you know' fact appears: great for learning before you land.",
+        )
         private val SEA_TIPS = listOf(
             "When you hit, you fire again, so a hit near a hit is a good bet.",
             "Ships run in straight lines, so line up your shots once you find one.",
@@ -358,6 +389,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.DICE -> "🎲 Lucky Dice: roll to build points, then bank them before you bust. You are Player 1."
             GameKind.FLIP -> "⚫ Flip Fight: trap the other player's discs to flip them. You are Player 1 (black)."
             GameKind.HILO -> "🎴 Higher or Lower: guess whether each next card is higher or lower, and climb the prize ladder. You are Player 1."
+            GameKind.HOLIDAY -> "🏝️ Do you know your Holiday? A quiz about where you're going. You are Player 1; the quickest correct answer wins the most points."
         }
 
         fun outro(kind: GameKind): String = "🎉 That's ${kind.label}! Tap Play again to watch another game, or go back and try it for real."

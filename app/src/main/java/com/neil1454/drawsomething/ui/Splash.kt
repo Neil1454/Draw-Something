@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,21 +27,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 
-private val SplashEmoji = listOf("🎨", "💣", "🚢", "🔴", "🃏", "⚡", "🎲", "⚫")
+private val SplashEmoji = listOf("🎨", "💣", "🚢", "🔴", "🃏", "⚡", "🎲", "🎴", "🏝️")
 
-/** Shown for a few seconds when the app opens (tap to skip). */
+/** Shown when the app opens. It stays until the player taps the screen. */
 @Composable
 fun SplashScreen(onDone: () -> Unit) {
-    LaunchedEffect(Unit) {
-        delay(4_500)
-        onDone()
-    }
     val t = rememberInfiniteTransition(label = "splash")
     val wave by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart), label = "wave")
     val pulse by t.animateFloat(0.96f, 1.06f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "pulse")
-    Box(Modifier.fillMaxSize().clickable(onClick = onDone), contentAlignment = Alignment.Center) {
+    val blink by t.animateFloat(0.35f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "blink")
+    Box(Modifier.fillMaxSize().clickable { Sfx.play(Sound.WHOOSH); onDone() }, contentAlignment = Alignment.Center) {
         Column(
             Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -99,7 +96,12 @@ fun SplashScreen(onDone: () -> Unit) {
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(28.dp))
-            Text("Tap to start", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
+            Text(
+                "👆 Tap anywhere to start",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = blink),
+            )
         }
     }
 }

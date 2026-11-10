@@ -1,5 +1,7 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -72,6 +74,7 @@ fun HiLoScreen(
     val shake = rememberBurst(bad, 600)
     val flash = rememberBurst(bad, 700)
 
+    LaunchedEffect(s.moves) { if (s.moves > 0) Sfx.play(Sound.CARD) }
     LaunchedEffect(s.moves) {
         if (s.moves == 0) { popups.clear(); return@LaunchedEffect }
         val colour = if (s.resultByMe) Funk.Lime else Funk.Cyan

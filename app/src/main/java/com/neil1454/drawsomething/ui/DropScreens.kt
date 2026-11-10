@@ -1,5 +1,7 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
@@ -109,6 +111,7 @@ fun DropScreen(
     val scope = rememberCoroutineScope()
     val shake = rememberBurst(boom, 600)
 
+    LaunchedEffect(s.moves) { if (s.moves > 0) Sfx.play(Sound.DROP) }
     LaunchedEffect(s.moves) {
         if (s.moves == 0) {
             fx.clear(); popups.clear(); power = 0; hover = -1

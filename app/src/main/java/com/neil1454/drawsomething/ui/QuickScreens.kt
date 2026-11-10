@@ -1,5 +1,8 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -53,6 +56,13 @@ fun QuickScreen(
     onLeave: () -> Unit,
 ) {
     val over = s.phase == GPhase.OVER
+    LaunchedEffect(s.seq, s.step) {
+        when (s.step) {
+            "GO" -> Sfx.play(Sound.GO)
+            "FAKE" -> Sfx.play(Sound.TICK)
+            "RESULT" -> Sfx.play(if (s.roundWin == 1) Sound.GOOD else if (s.roundWin == 2) Sound.BUZZ else Sound.POP)
+        }
+    }
     val pulse = rememberInfiniteTransition(label = "quick")
     val beat by pulse.animateFloat(0.92f, 1.08f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "beat")
     val colours = when (s.step) {

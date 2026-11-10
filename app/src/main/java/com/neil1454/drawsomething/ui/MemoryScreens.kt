@@ -1,5 +1,7 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -60,6 +62,7 @@ fun MemoryScreen(
     val over = s.phase == GPhase.OVER
     val popups = remember { mutableStateListOf<Popup>() }
     var popupId by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(s.moves) { if (s.moves > 0) Sfx.play(Sound.CARD) }
     LaunchedEffect(s.moves) {
         if (s.moves == 0) { popups.clear(); return@LaunchedEffect }
         when (s.event) {

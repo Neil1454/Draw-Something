@@ -23,12 +23,17 @@ import com.neil1454.drawsomething.core.FlipState
 import com.neil1454.drawsomething.core.GameKind
 import com.neil1454.drawsomething.core.HiLoEngine
 import com.neil1454.drawsomething.core.HiLoState
+import com.neil1454.drawsomething.core.HolidayEngine
+import com.neil1454.drawsomething.core.HolidayRules
+import com.neil1454.drawsomething.core.HolidayState
 import com.neil1454.drawsomething.core.MemoryEngine
 import com.neil1454.drawsomething.core.MemoryState
 import com.neil1454.drawsomething.core.MinesPhase
 import com.neil1454.drawsomething.core.QuickEngine
 import com.neil1454.drawsomething.core.QuickState
 import com.neil1454.drawsomething.core.SyncEngine
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import org.json.JSONObject
 import com.neil1454.drawsomething.core.SeaPhase
 import com.neil1454.drawsomething.Stage
@@ -39,6 +44,14 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
     val act: Act = { vm.game(it) }
     var confirmLeave by remember { mutableStateOf(false) }
     var showSplash by rememberSaveable { mutableStateOf(true) }
+    var showBoards by rememberSaveable { mutableStateOf(false) }
+    var soundOn by remember { mutableStateOf(Sfx.enabled) }
+    val statsVersion by vm.stats.version.collectAsStateWithLifecycle()
+    val myRecord = remember(statsVersion, ui.name) {
+        val rows = vm.stats.book.dominator()
+        val i = rows.indexOfFirst { it.name.equals(ui.name.trim(), ignoreCase = true) }
+        if (i < 0) null else "🏆 Rank ${i + 1} of ${rows.size} · ${rows[i].won} wins · ${rows[i].rating} Dominator points"
+    }
 
     BackHandler(enabled = ui.stage != Stage.HOME) {
         if (ui.stage == Stage.PLAYING) confirmLeave = true else vm.leave()
@@ -57,6 +70,11 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
     BackHandler(enabled = learnMode && ui.stage == Stage.HOME) {
         if (learnKind != null) learnKind = null else learnMode = false
     }
+    BackHandler(enabled = showBoards && ui.stage == Stage.HOME) { showBoards = false }
+    if (showBoards && ui.stage == Stage.HOME) {
+        LeaderboardScreen(vm.stats, ui.name, onBack = { showBoards = false })
+        return
+    }
     if (learnMode && ui.stage == Stage.HOME) {
         val kind = learnKind
         if (kind == null) LearnMenu(onPick = { learnKind = it }, onBack = { learnMode = false })
@@ -65,7 +83,11 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
     }
 
     when (ui.stage) {
-        Stage.HOME -> HomeScreen(ui, vm::setName, onHost, onJoin, vm::clearNotice, vm.appVersion, vm::checkForUpdate, vm::startSolo) { learnMode = true }
+        Stage.HOME -> HomeScreen(
+            ui, vm::setName, onHost, onJoin, vm::clearNotice, vm.appVersion, vm::checkForUpdate, vm::startSolo,
+            onLearn = { learnMode = true }, onBoards = { showBoards = true }, myRecord = myRecord,
+            soundOn = soundOn, onSound = { soundOn = it; Sfx.setEnabled(it); if (it) Sfx.play(Sound.CHIME) },
+        )
         Stage.HOSTING -> HostingScreen(
             ui, vm::acceptJoin, vm::declineJoin, vm::leave, vm::clearNotice,
             browse = { BrowseGames(ui, vm::pickGame, vm::setSettings) },
@@ -150,6 +172,8 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.QUICK -> JSONObject().put("match", set.quickMatch).put("fake", set.quickFake)
             GameKind.DICE -> JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)
             GameKind.HILO -> JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)
+            GameKind.HOLIDAY -> JSONObject().put("pack", set.holidayPack).put("len", set.holidayLen)
+                .put("secs", HolidayRules.SECONDS[set.holidaySecs.coerceIn(0, HolidayRules.SECONDS.lastIndex)])
             else -> JSONObject().put("size", set.flipSize)
         }
         vm.startSync(engine.kind, options)
@@ -161,5 +185,6 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is DiceEngine && state is DiceState -> DiceScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is FlipEngine && state is FlipState -> FlipScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HiLoEngine && state is HiLoState -> HiLoScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is HolidayEngine && state is HolidayState -> HolidayScreen(state, engine, again, vm::backToGames, vm::leave)
     }
 }

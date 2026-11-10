@@ -1,0 +1,524 @@
+{
+ "id": "cape_verde_sal",
+ "title": "Cape Verde · Sal",
+ "emoji": "🏝️",
+ "blurb": "Things worth knowing before (and while) you visit the island of Sal, Cape Verde.",
+ "questions": [
+  {
+   "q": "Cape Verde (Cabo Verde) lies off the coast of which part of Africa?",
+   "a": [
+    "Southern Africa",
+    "North Africa",
+    "West Africa",
+    "East Africa"
+   ],
+   "c": 2,
+   "fact": "The islands sit in the Atlantic Ocean roughly 570 km west of Senegal.",
+   "cat": "Basics"
+  },
+  {
+   "q": "How many of Cape Verde's ten main islands are inhabited?",
+   "a": [
+    "Seven",
+    "Eight",
+    "All ten",
+    "Nine"
+   ],
+   "c": 3,
+   "fact": "Santa Luzia is the only main island without permanent residents.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What is the capital city of Cape Verde?",
+   "a": [
+    "Mindelo",
+    "Praia",
+    "Santa Maria",
+    "Espargos"
+   ],
+   "c": 1,
+   "fact": "Praia is on the island of Santiago, not on Sal.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What does the name 'Sal' mean in Portuguese?",
+   "a": [
+    "Sail",
+    "Sun",
+    "Salt",
+    "Sand"
+   ],
+   "c": 2,
+   "fact": "Salt mining shaped the island's history long before tourism.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What do the ten stars on the Cape Verde flag stand for?",
+   "a": [
+    "The ten original towns",
+    "The main islands",
+    "The first ten settlers",
+    "The ten independence leaders"
+   ],
+   "c": 1,
+   "fact": "They form a ring on the blue band, which stands for the sea and sky.",
+   "cat": "Basics"
+  },
+  {
+   "q": "In which year did Cape Verde become independent from Portugal?",
+   "a": [
+    "1982",
+    "1991",
+    "1975",
+    "1960"
+   ],
+   "c": 2,
+   "fact": "Independence leader Amílcar Cabral did not live to see it; he was killed in 1973.",
+   "cat": "History"
+  },
+  {
+   "q": "Sal's international airport is named after which independence leader?",
+   "a": [
+    "Pedro Pires",
+    "Eugénio Tavares",
+    "Cesária Évora",
+    "Amílcar Cabral"
+   ],
+   "c": 3,
+   "fact": "Amílcar Cabral International Airport is close to Espargos.",
+   "cat": "History"
+  },
+  {
+   "q": "What did the Portuguese find when they reached the islands in the 1400s?",
+   "a": [
+    "Abandoned forts",
+    "Uninhabited islands",
+    "A Moorish trading post",
+    "Fishing villages"
+   ],
+   "c": 1,
+   "fact": "People were brought to settle and work the islands, which is why Cape Verdean culture blends Portuguese and West African roots.",
+   "cat": "History"
+  },
+  {
+   "q": "What is the main tourist resort town on Sal?",
+   "a": [
+    "Espargos",
+    "Palmeira",
+    "Santa Maria",
+    "Pedra de Lume"
+   ],
+   "c": 2,
+   "fact": "Santa Maria sits at the southern tip, beside the long beach and the pier.",
+   "cat": "Sal"
+  },
+  {
+   "q": "Which town is Sal's administrative centre, close to the airport?",
+   "a": [
+    "Santa Maria",
+    "Palmeira",
+    "Murdeira",
+    "Espargos"
+   ],
+   "c": 3,
+   "fact": "Most locals live in or near Espargos; the resorts are further south.",
+   "cat": "Sal"
+  },
+  {
+   "q": "What is the airport code for Sal's airport?",
+   "a": [
+    "SMA",
+    "SID",
+    "SAL",
+    "CPV"
+   ],
+   "c": 1,
+   "fact": "SAL, the obvious guess, is actually the code for El Salvador's airport.",
+   "cat": "Sal"
+  },
+  {
+   "q": "Roughly how long is the island of Sal from north to south?",
+   "a": [
+    "About 100 km",
+    "About 12 km",
+    "About 60 km",
+    "About 30 km"
+   ],
+   "c": 3,
+   "fact": "It is long and thin, so almost everywhere is a short drive from the sea.",
+   "cat": "Sal"
+  },
+  {
+   "q": "What is the highest point on Sal?",
+   "a": [
+    "Topo da Coroa",
+    "Monte Verde",
+    "Monte Grande",
+    "Pico do Fogo"
+   ],
+   "c": 2,
+   "fact": "Monte Grande is only about 400 metres high. Sal is one of the flattest islands in Cape Verde.",
+   "cat": "Sal"
+  },
+  {
+   "q": "Which island group, named after a wind direction, does Sal belong to?",
+   "a": [
+    "Sotavento (leeward)",
+    "Ponente (western)",
+    "Barlavento (windward)",
+    "Levante (eastern)"
+   ],
+   "c": 2,
+   "fact": "Barlavento means 'windward': the northern islands face the trade winds.",
+   "cat": "Sal"
+  },
+  {
+   "q": "Which neighbouring island is known for huge sand dunes and its main town, Sal Rei?",
+   "a": [
+    "Maio",
+    "São Nicolau",
+    "Brava",
+    "Boa Vista"
+   ],
+   "c": 3,
+   "fact": "Boa Vista is a short flight or ferry ride from Sal.",
+   "cat": "Sal"
+  },
+  {
+   "q": "Where does most of Sal's drinking water come from?",
+   "a": [
+    "Desalinated seawater",
+    "Mountain springs",
+    "Underground lakes",
+    "Rivers"
+   ],
+   "c": 0,
+   "fact": "Sal has no rivers and very little rain, so water is precious: don't waste it.",
+   "cat": "Nature"
+  },
+  {
+   "q": "Which landscape best describes most of Sal?",
+   "a": [
+    "Flat, dry and desert-like",
+    "Wetlands and lagoons",
+    "Rolling green hills",
+    "Dense tropical forest"
+   ],
+   "c": 0,
+   "fact": "Sal is one of the driest places in Cape Verde, with sunshine nearly every day.",
+   "cat": "Nature"
+  },
+  {
+   "q": "When does Sal get what little rain it has?",
+   "a": [
+    "Evenly through the year",
+    "Late summer to autumn",
+    "Midwinter",
+    "Early spring"
+   ],
+   "c": 1,
+   "fact": "Even then, showers are short and rare.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What sometimes makes the sky hazy over Cape Verde?",
+   "a": [
+    "Salt spray from the surf",
+    "Dust blown from the Sahara",
+    "Sea fog from cold currents",
+    "Smoke from volcano eruptions"
+   ],
+   "c": 1,
+   "fact": "The dusty haze is sometimes called 'bruma seca'.",
+   "cat": "Nature"
+  },
+  {
+   "q": "Which turtle species nests on Sal's beaches in summer?",
+   "a": [
+    "Olive ridley",
+    "Leatherback",
+    "Hawksbill",
+    "Loggerhead"
+   ],
+   "c": 3,
+   "fact": "Cape Verde is one of the world's most important loggerhead nesting sites. Never shine bright lights on nesting beaches at night.",
+   "cat": "Nature"
+  },
+  {
+   "q": "Which sharks do visitors usually see in the shallows at Shark Bay near Palmeira?",
+   "a": [
+    "Lemon sharks",
+    "Hammerheads",
+    "Great whites",
+    "Tiger sharks"
+   ],
+   "c": 0,
+   "fact": "Follow your guide's rules and keep calm; most sharks there are young and shy.",
+   "cat": "Nature"
+  },
+  {
+   "q": "Which huge animals visit Cape Verde's waters in late winter and spring?",
+   "a": [
+    "Blue whales",
+    "Humpback whales",
+    "Sperm whales",
+    "Orcas"
+   ],
+   "c": 1,
+   "fact": "Trips from Sal and neighbouring Boa Vista sometimes get a glimpse of them.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What do the steady north-east trade winds make Sal famous for?",
+   "a": [
+    "Paragliding and ballooning",
+    "Sandboarding and hang-gliding",
+    "Sailing regattas only",
+    "Kitesurfing and windsurfing"
+   ],
+   "c": 3,
+   "fact": "Kite Beach near Ponta Preta is a favourite spot.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What makes the crater at Pedra de Lume special?",
+   "a": [
+    "A natural hot spring",
+    "A salt lake you can float in",
+    "A cave full of bats",
+    "A black-sand beach inside a volcano"
+   ],
+   "c": 1,
+   "fact": "Salt was mined from the crater; today you can bob in the very salty water.",
+   "cat": "Sights"
+  },
+  {
+   "q": "The 'Blue Eye' at Buracona looks its bluest when…",
+   "a": [
+    "the moon is full",
+    "the sun is high overhead",
+    "the tide is lowest at dawn",
+    "the wind drops at sunset"
+   ],
+   "c": 1,
+   "fact": "Daylight pours into the lava pool through a gap in the rock.",
+   "cat": "Sights"
+  },
+  {
+   "q": "What is the wooden pier in Santa Maria best known for today?",
+   "a": [
+    "Loading salt ships",
+    "Ferries to Brazil",
+    "Cruise ship arrivals",
+    "Fishermen landing their catch"
+   ],
+   "c": 3,
+   "fact": "It's a lively spot early in the day and a popular place to watch the sunset.",
+   "cat": "Sights"
+  },
+  {
+   "q": "What is Cape Verde's national dish?",
+   "a": [
+    "Cachupa",
+    "Feijoada",
+    "Piri-piri chicken",
+    "Jollof rice"
+   ],
+   "c": 0,
+   "fact": "A slow-cooked stew of corn and beans with fish or meat. Leftovers are fried for breakfast.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Which two things are the base of a traditional cachupa?",
+   "a": [
+    "Dried corn and beans",
+    "Rice and plantain",
+    "Cassava and peanuts",
+    "Potato and cabbage"
+   ],
+   "c": 0,
+   "fact": "It cooks for hours, so locals often make it in big batches.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Grogue, the local spirit, is made from what?",
+   "a": [
+    "Corn",
+    "Grapes",
+    "Palm sap",
+    "Sugar cane"
+   ],
+   "c": 3,
+   "fact": "Mixed with honey or molasses it becomes 'ponche'. It is stronger than it tastes, so take it easy.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Which Cape Verdean singer was known as the 'Barefoot Diva'?",
+   "a": [
+    "Amália Rodrigues",
+    "Cesária Évora",
+    "Miriam Makeba",
+    "Angélique Kidjo"
+   ],
+   "c": 1,
+   "fact": "She came from Mindelo on São Vicente and made morna famous worldwide.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "Which slow, soulful music style is Cape Verde best known for?",
+   "a": [
+    "Samba",
+    "Fado",
+    "Flamenco",
+    "Morna"
+   ],
+   "c": 3,
+   "fact": "Morna songs are often about love, the sea and leaving home.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "What does the Cape Verdean word 'sodade' mean?",
+   "a": [
+    "Deep longing or nostalgia",
+    "A warm welcome",
+    "Sunny weather",
+    "A celebration"
+   ],
+   "c": 0,
+   "fact": "It is the same idea as the Portuguese 'saudade' and the title of Cesária Évora's best-known song.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "Which lively accordion-driven dance music is popular at Cape Verdean parties?",
+   "a": [
+    "Merengue",
+    "Bachata",
+    "Funaná",
+    "Tango"
+   ],
+   "c": 2,
+   "fact": "Funaná comes from the island of Santiago.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "Which island is considered Cape Verde's cultural capital, famous for its carnival?",
+   "a": [
+    "Sal",
+    "Maio",
+    "São Vicente",
+    "Fogo"
+   ],
+   "c": 2,
+   "fact": "Its main town, Mindelo, has a music scene that the whole country is proud of.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "Which Santiago town is a UNESCO World Heritage Site?",
+   "a": [
+    "Tarrafal",
+    "Mindelo",
+    "Cidade Velha",
+    "Assomada"
+   ],
+   "c": 2,
+   "fact": "It was the first European colonial town in the tropics.",
+   "cat": "Music & culture"
+  },
+  {
+   "q": "Cape Verdean Creole (Kriolu) is based mainly on which language?",
+   "a": [
+    "Spanish",
+    "Dutch",
+    "Portuguese",
+    "French"
+   ],
+   "c": 2,
+   "fact": "Portuguese is the official language, but Kriolu is what people speak at home.",
+   "cat": "Language"
+  },
+  {
+   "q": "How do you say 'thank you' in Portuguese?",
+   "a": [
+    "Obrigado (obrigada if you're a woman)",
+    "De nada",
+    "Por favor",
+    "Desculpe"
+   ],
+   "c": 0,
+   "fact": "A few Portuguese words go a long way: bom dia means good morning.",
+   "cat": "Language"
+  },
+  {
+   "q": "Which of these is the local currency?",
+   "a": [
+    "Portuguese real",
+    "West African CFA franc",
+    "Cape Verdean dollar",
+    "Cape Verdean escudo"
+   ],
+   "c": 3,
+   "fact": "Euros are often accepted in tourist areas, but change usually comes back in escudos.",
+   "cat": "Practical"
+  },
+  {
+   "q": "The escudo is fixed in value to which currency?",
+   "a": [
+    "The euro",
+    "The US dollar",
+    "The pound sterling",
+    "The Moroccan dirham"
+   ],
+   "c": 0,
+   "fact": "It is about 110 escudos to the euro.",
+   "cat": "Practical"
+  },
+  {
+   "q": "Cape Verde is UTC−1 all year, with no clock changes. How far behind the UK is it in British summer time?",
+   "a": [
+    "2 hours",
+    "3 hours",
+    "No difference",
+    "1 hour"
+   ],
+   "c": 0,
+   "fact": "In UK winter it is just 1 hour behind.",
+   "cat": "Practical"
+  },
+  {
+   "q": "What plugs do you need in Cape Verde?",
+   "a": [
+    "Two round pins (types C and F)",
+    "Two flat pins (US type A)",
+    "Three flat pins (UK type G)",
+    "Three round pins (type D)"
+   ],
+   "c": 0,
+   "fact": "It runs at 230 V like the UK, so you only need an adaptor.",
+   "cat": "Practical"
+  },
+  {
+   "q": "What's a sensible habit before getting into a taxi on Sal?",
+   "a": [
+    "Insist on paying by card",
+    "Ask to share with strangers",
+    "Agree the fare first",
+    "Pay the driver in advance"
+   ],
+   "c": 2,
+   "fact": "Many taxis don't use meters, so agree the price before you set off.",
+   "cat": "Practical"
+  },
+  {
+   "q": "What should you do before swimming at an Atlantic beach on Sal?",
+   "a": [
+    "Ask if jellyfish are in season",
+    "Wear a wetsuit",
+    "Check the flags and the currents",
+    "Wait one hour after sunset"
+   ],
+   "c": 2,
+   "fact": "Waves and currents can be strong. Red flag: don't swim.",
+   "cat": "Practical"
+  }
+ ]
+}

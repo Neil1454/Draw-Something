@@ -61,6 +61,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.neil1454.drawsomething.core.GameKind
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -121,7 +123,7 @@ fun FunkyButton(
             .clip(shape)
             .background(Brush.horizontalGradient(if (enabled) colors else listOf(Color(0xFF6A5FA8), Color(0xFF55498F))))
             .border(2.dp, Color.White.copy(alpha = 0.38f), shape)
-            .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = onClick)
+            .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = { Sfx.play(Sound.TAP); onClick() })
             .defaultMinSize(minHeight = 54.dp)
             .padding(horizontal = 22.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
@@ -148,6 +150,7 @@ fun GameKind.colors(): List<Color> = when (this) {
     GameKind.DICE -> listOf(Funk.Mint, Color(0xFF0E8F9F))
     GameKind.FLIP -> listOf(Color(0xFF4B35B0), Funk.Blue)
     GameKind.HILO -> listOf(Color(0xFF0E8A56), Color(0xFFB88A00))
+    GameKind.HOLIDAY -> listOf(Color(0xFF00A99D), Color(0xFFFF8A3D))
 }
 
 @Composable
@@ -163,7 +166,7 @@ fun GameTile(kind: GameKind, selected: Boolean, enabled: Boolean, modifier: Modi
             .clip(shape)
             .background(Brush.linearGradient(kind.colors()))
             .border(if (selected) 4.dp else 1.5.dp, if (selected) Color.White else Color.White.copy(alpha = 0.35f), shape)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled, onClick = { Sfx.play(Sound.POP); onClick() })
             .heightIn(min = 138.dp)
             .padding(14.dp),
     ) {
@@ -293,6 +296,7 @@ fun ConfettiBurst(trigger: Int, modifier: Modifier = Modifier) {
     val p = remember { Animatable(1f) }
     LaunchedEffect(trigger) {
         if (trigger > 0) {
+            Sfx.play(Sound.WIN)
             p.snapTo(0f)
             p.animateTo(1f, tween(2800, easing = LinearEasing))
         }
@@ -333,10 +337,28 @@ fun PopupLayer(popups: List<Popup>, onDone: (Long) -> Unit, modifier: Modifier =
     }
 }
 
+/** Picks a sound effect to match a floating score message. */
+private fun soundFor(p: Popup): Sound {
+    val t = p.text
+    return when {
+        "💥" in t || "💣" in t -> Sound.EXPLODE
+        "💦" in t || t.uppercase().contains("MISS") -> Sound.SPLASH
+        "🏆" in t || "🎉" in t -> Sound.WIN
+        "❌" in t || "😬" in t || "🐍" in t -> Sound.BAD
+        "✅" in t -> Sound.GOOD
+        "🏦" in t || "✨" in t -> Sound.COIN
+        "💨" in t -> Sound.WHOOSH
+        p.color == Funk.Red || p.color == Funk.Orange -> Sound.BAD
+        p.color == Funk.Sun -> Sound.COIN
+        else -> Sound.POP
+    }
+}
+
 @Composable
 private fun PopupText(p: Popup, w: Dp, h: Dp, onDone: (Long) -> Unit) {
     val prog = remember { Animatable(0f) }
     LaunchedEffect(p.id) {
+        Sfx.play(soundFor(p))
         prog.animateTo(1f, tween(1500, easing = LinearOutSlowInEasing))
         onDone(p.id)
     }
@@ -393,7 +415,7 @@ fun RoundIconButton(label: String, onClick: () -> Unit, modifier: Modifier = Mod
             .clip(RoundedCornerShape(50))
             .background(Color(0x66000000))
             .border(1.5.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(50))
-            .clickable(onClick = onClick)
+            .clickable(onClick = { Sfx.play(Sound.TAP); onClick() })
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) { Text(label, fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold) }
@@ -409,4 +431,52 @@ fun bobbing(phase: Float = 0f, amount: Float = 8f, millis: Int = 1600): Float {
         label = "bobv",
     )
     return v * (if (phase == 0f) 1f else -1f)
+}
+
+/** A big, friendly card for the main choices on the home screen. */
+@Composable
+fun ActionCard(
+    emoji: String,
+    title: String,
+    subtitle: String,
+    colors: List<Color>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    big: Boolean = true,
+) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "card")
+    val shape = RoundedCornerShape(26.dp)
+    Column(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(shape)
+            .background(Brush.linearGradient(colors))
+            .border(2.dp, Color.White.copy(alpha = 0.38f), shape)
+            .clickable(interactionSource = source, indication = null, onClick = { Sfx.play(Sound.TAP); onClick() })
+            .padding(horizontal = 12.dp, vertical = if (big) 18.dp else 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(emoji, fontSize = if (big) 40.sp else 28.sp)
+        Text(title, fontSize = if (big) 21.sp else 16.sp, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center)
+        Text(subtitle, fontSize = 12.sp, color = Color.White.copy(alpha = 0.88f), textAlign = TextAlign.Center, lineHeight = 15.sp)
+    }
+}
+
+/** A frosted card to group related things. */
+@Composable
+fun GlassCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(22.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .background(Color(0x33FFFFFF))
+            .border(1.dp, Color.White.copy(alpha = 0.25f), shape)
+            .padding(14.dp),
+    ) { content() }
 }

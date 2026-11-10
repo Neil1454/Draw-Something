@@ -17,6 +17,8 @@ class PlayerSide(
     private val secretWord: () -> String?,
     private val clock: () -> Long,
     random: Random = Random.Default,
+    /** Quiz only: the right answer to the question on screen, as known by the host's phone. */
+    holidayKey: () -> Int? = { null },
 ) {
     private val inbox = ArrayDeque<ByteArray>()
 
@@ -30,10 +32,11 @@ class PlayerSide(
     val dice = DiceEngine(myName, theirName, isHost, send, random, clock)
     val flip = FlipEngine(myName, theirName, isHost, send, random, clock)
     val hilo = HiLoEngine(myName, theirName, isHost, send, random, clock)
+    val holiday = HolidayEngine(myName, theirName, isHost, send, random, clock)
 
     private val syncByKind: Map<GameKind, SyncEngine> = mapOf(
         GameKind.DROP to drop, GameKind.MEMORY to memory, GameKind.QUICK to quick,
-        GameKind.DICE to dice, GameKind.FLIP to flip, GameKind.HILO to hilo,
+        GameKind.DICE to dice, GameKind.FLIP to flip, GameKind.HILO to hilo, GameKind.HOLIDAY to holiday,
     )
 
     /** The Draw Something guesser only makes sense on the guest side (the host is the drawer). */
@@ -47,6 +50,7 @@ class PlayerSide(
         DiceBrain(dice, skill, random),
         FlipBrain(flip, skill, random),
         HiLoBrain(hilo, skill, random),
+        HolidayBrain(holiday, isHost, holidayKey, skill, random),
     )
 
     /** The computer agrees to the Draw Something rules straight away. */
@@ -115,8 +119,8 @@ class Duel(seed: Int, hostSkill: Skill = Skill.NORMAL, guestSkill: Skill = Skill
         private set
 
     init {
-        host = PlayerSide(true, "Player 1", "Player 2", hostSkill, { guest.receive(it) }, { guest.draw.board.strokes.size.let { null } }, { now }, Random(seed))
-        guest = PlayerSide(false, "Player 2", "Player 1", guestSkill, { host.receive(it) }, { host.draw.state.word?.text }, { now }, Random(seed + 1))
+        host = PlayerSide(true, "Player 1", "Player 2", hostSkill, { guest.receive(it) }, { guest.draw.board.strokes.size.let { null } }, { now }, Random(seed), holidayKey = { null })
+        guest = PlayerSide(false, "Player 2", "Player 1", guestSkill, { host.receive(it) }, { host.draw.state.word?.text }, { now }, Random(seed + 1), holidayKey = { host.holiday.secretCorrect() })
         guest.start()
         host.start()
         advance(0)

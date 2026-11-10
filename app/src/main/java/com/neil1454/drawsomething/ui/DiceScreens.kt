@@ -1,5 +1,7 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.Sound
+import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -73,6 +75,7 @@ fun DiceScreen(
     val shake = rememberBurst(bad, 600)
     val flash = rememberBurst(bad, 700)
 
+    LaunchedEffect(s.moves) { if (s.moves > 0) Sfx.play(Sound.ROLL) }
     // Tumble the dice, then settle on the real roll; then show what it meant.
     LaunchedEffect(s.moves) {
         if (s.moves == 0 || s.dice.isEmpty()) {

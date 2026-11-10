@@ -32,6 +32,50 @@ and you can switch games without reconnecting.
   tips), instead of reading the rules. Pause, step through one caption at a time, or speed it up. Nothing
   needs connecting and nobody else needs to be there.
 
+## Do you know your Holiday? (quiz)
+
+A head-to-head quiz about where you're going. Both phones see the same question and four answers; the
+**first correct answer** earns 100 points plus up to 100 for speed, a slower right answer still earns 40, and a
+wrong answer costs 25. After each question the right answer and a "did you know" fact appear. The correct answer
+is never sent to the other phone until it is revealed, and the answers are shuffled every time.
+
+The first holiday is **Cape Verde · Sal**. The questions are written from general knowledge, so double-check
+anything time-sensitive (entry rules, prices) before you travel.
+
+### Adding another holiday
+Drop a JSON file in `app/src/main/assets/holidays/`; the app finds it on start-up (it then shows up as a choice in the lobby).
+
+```json
+{
+  "id": "tenerife",
+  "title": "Tenerife",
+  "emoji": "🌋",
+  "blurb": "One line shown in the lobby.",
+  "questions": [
+    { "q": "Which volcano towers over Tenerife?", "a": ["Teide", "Etna", "Vesuvius", "Fuji"], "c": 0,
+      "fact": "Shown after the answer.", "cat": "Nature" }
+  ]
+}
+```
+Each question needs 3 or 4 different answers; `c` is the position (from 0) of the right one. The app shuffles them.
+Questions that don't make sense are skipped, and `HolidayTests` checks every bundled pack (at least 30 questions, four unique
+answers, the right answer not always in the same slot or always the longest).
+
+### Removing the feature
+Set `Features.HOLIDAY` to `false` in `core/Holiday.kt` and the quiz disappears from every menu. To remove it for good, delete
+`core/Holiday.kt`, `ui/HolidayScreens.kt`, `assets/holidays/` and the `HOLIDAY` lines the compiler then points at.
+
+## Scores, leaderboards and the Dominator
+
+Every finished game is recorded on both phones for both players (by name). **Scores** on the home screen shows a
+leaderboard for each game (ranked by wins, then points) and the overall **Dominator** table: a win is worth 100, a draw 40,
+a loss 10, plus up to 25 for the points you scored in the game. Games against an Easy computer, and Draw Something practice,
+don't count; scores live only on the phone (and can be reset).
+
+## Sound
+
+Every sound effect is generated in code (`core/Synth.kt`), so there are no audio files. There is a mute button on the home screen.
+
 ## Bomb Find (minesweeper for two)
 
 A shared grid (6×6, 8×8, 10×10 or 12×12). You **take turns** tapping a square; a number tells you how
@@ -200,7 +244,7 @@ identical picture.
 
 ## Status
 
-Version 1.8.1. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
+Version 2.0. Two players (or solo vs the computer), nine games, in-app updates, learn mode. The game logic is covered by unit tests; the Bluetooth/Wi-Fi link
 and the touch UI need testing on two real devices.
 
 ## Credits

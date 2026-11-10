@@ -16,6 +16,13 @@ import com.neil1454.drawsomething.core.DiceEngine
 import com.neil1454.drawsomething.core.DropEngine
 import com.neil1454.drawsomething.core.FlipEngine
 import com.neil1454.drawsomething.core.HiLoEngine
+import com.neil1454.drawsomething.core.HolidayEngine
+import com.neil1454.drawsomething.core.HolidayPack
+import com.neil1454.drawsomething.core.HolidayPacks
+import com.neil1454.drawsomething.core.Features
+import com.neil1454.drawsomething.core.Outcomes
+import com.neil1454.drawsomething.sound.Sfx
+import com.neil1454.drawsomething.stats.StatsStore
 import com.neil1454.drawsomething.core.GMsg
 import com.neil1454.drawsomething.core.MemoryEngine
 import com.neil1454.drawsomething.core.QuickEngine
@@ -89,6 +96,9 @@ data class LobbySettings(
     val flipSize: Int = 0,
     val hiloRows: Int = 1,
     val hiloOdds: Boolean = true,
+    val holidayPack: String = "",
+    val holidayLen: Int = 1,
+    val holidaySecs: Int = 1,
 )
 
 data class UiState(
@@ -121,6 +131,33 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("draw_something", Context.MODE_PRIVATE)
     private val _ui = MutableStateFlow(UiState(name = prefs.getString("name", "").orEmpty()))
     val ui: StateFlow<UiState> = _ui
+
+    /** Wins, losses and the leaderboards, kept on this phone. */
+    val stats = StatsStore(app)
+
+    init {
+        Sfx.init(app)
+        if (Features.HOLIDAY) loadHolidayPacks(app)
+    }
+
+    /** Every JSON file in assets/holidays is a holiday for the quiz. A bad file is skipped, never fatal. */
+    private fun loadHolidayPacks(app: Application) {
+        val found = ArrayList<HolidayPack>()
+        try {
+            for (name in app.assets.list("holidays").orEmpty()) {
+                if (!name.endsWith(".json")) continue
+                try {
+                    val text = app.assets.open("holidays/$name").bufferedReader().use { it.readText() }
+                    HolidayPack.parse(text)?.let { found.add(it) }
+                } catch (e: Exception) {
+                    // skip this file
+                }
+            }
+        } catch (e: Exception) {
+            // no packs
+        }
+        HolidayPacks.install(found)
+    }
 
     // ---------------------------------------------------------------- updates (the only use of the internet)
 
@@ -215,6 +252,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             sendBytes = { bytes -> onTransportEvent(TransportEvent.Received(bytes)) },
             secretWord = { engine?.state?.word?.text },
             clock = { SystemClock.elapsedRealtime() },
+            holidayKey = { (syncEngines[GameKind.HOLIDAY] as? HolidayEngine)?.secretCorrect() },
         )
         startSession(COMPUTER_NAME)
         computer?.start()
@@ -472,6 +510,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             DiceEngine(me, partner, host, sendG, clock = clock),
             FlipEngine(me, partner, host, sendG, clock = clock),
             HiLoEngine(me, partner, host, sendG, clock = clock),
+            HolidayEngine(me, partner, host, sendG, clock = clock),
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }
@@ -497,6 +536,36 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (s.isHost) sendBytes(LobbyMsg.encodePick(_ui.value.lobbyGame))
     }
 
+    private val recorded = HashSet<GameKind>()
+
+    /** When a game has just finished, add it to the score book (once). */
+    private fun recordFinished() {
+        val s = _ui.value
+        val me = s.name.trim()
+        val opp = s.partnerName.trim()
+        if (me.isEmpty() || opp.isEmpty()) return
+        val states = buildList<Pair<GameKind, Any?>> {
+            add(GameKind.DRAW to engine?.state)
+            add(GameKind.MINES to minesEngine?.state)
+            add(GameKind.SEA to seaEngine?.state)
+            syncEngines.forEach { (k, e) -> add(k to e.stateAny) }
+        }
+        for ((kind, state) in states) {
+            val o = Outcomes.of(state)
+            if (o == null) {
+                recorded.remove(kind)
+            } else if (recorded.add(kind)) {
+                if (s.solo) {
+                    // Practice rounds against an easy computer, and drawing practice, don't count.
+                    if (s.soloSkill == Skill.EASY || kind == GameKind.DRAW) continue
+                    stats.record(me, opp, o, recordOpponent = false)
+                } else {
+                    stats.record(me, opp, o, recordOpponent = true)
+                }
+            }
+        }
+    }
+
     /** Copy every engine's state into the UI. We are "playing" if any game is under way. */
     private fun publishAll() {
         val d = engine ?: return
@@ -517,9 +586,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
         }
+        recordFinished()
     }
 
     private fun teardown() {
+        recorded.clear()
         computer = null
         acceptedId = null
         tickJob?.cancel()

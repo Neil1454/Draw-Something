@@ -13,7 +13,14 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     DICE("Lucky Dice", "🎲", "Push your luck. Bank it or bust."),
     FLIP("Flip Fight", "⚫", "Outflank and flip their discs. Easy to learn, hard to master."),
     HILO("Higher or Lower", "🎴", "Will the next card be higher or lower? Climb the prize ladder."),
+    HOLIDAY("Do you know your Holiday?", "🏝️", "A head-to-head quiz about where you're going. Quickest correct answer wins."),
 }
+
+/** Games that are switched on. The holiday quiz can be switched off in one place: see [Features]. */
+fun GameKind.isAvailable(): Boolean = this != GameKind.HOLIDAY || Features.HOLIDAY
+
+/** Every game that should appear in menus. */
+fun availableGames(): List<GameKind> = GameKind.values().filter { it.isAvailable() }
 
 /** Host -> partner: "I've picked this game" (so both lobbies show the same thing). */
 object LobbyMsg {
