@@ -447,41 +447,22 @@ private fun SeaDetails(s: SeaState, log: List<String>, onClose: () -> Unit) {
 @Composable
 fun SeaOverScreen(s: SeaState, onPlayAgain: () -> Unit, onBackToGames: () -> Unit, onLeave: () -> Unit) {
     val won = s.iWon == true
-    var win by remember { mutableIntStateOf(0) }
-    LaunchedEffect(won) { if (won) win++ }
+    val total = s.size.fleet.size
+    val sunk = total - s.theirShipsLeft
+    val lost = total - s.myShipsLeft
+    val acc = if (s.shots > 0) (100 * s.hits / s.shots) else 0
     Box(Modifier.fillMaxSize()) {
-        ConfettiBurst(win)
-        Page {
-            Column(
-                Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Spacer(Modifier.height(16.dp))
-                GradientText(
-                    if (won) "🏆 VICTORY!" else "💀 ${s.theirName.uppercase()} WINS",
-                    fontSize = 36.sp,
-                    colors = if (won) listOf(Funk.Sun, Funk.Lime, Funk.Cyan) else listOf(Funk.Red, Funk.Pink, Funk.Violet),
-                )
-                s.note?.let { Text(it, textAlign = TextAlign.Center) }
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0x33FFFFFF)).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    val acc = if (s.shots > 0) (100 * s.hits / s.shots) else 0
-                    Text("Your shots: ${s.shots} · hits: ${s.hits} · accuracy: $acc%")
-                    Text("Enemy ships you sank: ${s.size.fleet.size - s.theirShipsLeft} of ${s.size.fleet.size}")
-                    Text("Your ships left: ${s.myShipsLeft} of ${s.size.fleet.size}")
-                }
-                if (s.isHost) {
-                    FunkyButton("🔁  Play again (${s.size.label})", onPlayAgain, Modifier.fillMaxWidth(), listOf(Funk.Cyan, Funk.Blue))
-                } else {
-                    Text("${s.theirName} can start a rematch…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                FunkyButton("🎮  Choose another game", onBackToGames, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Pink))
-                TextButton(onClick = onLeave) { Text("Leave") }
-            }
-        }
+        // the finished boards stay underneath, so "See the board" shows where the ships went down
+        SeaBattleScreen(s) { }
+        EndOverlay(
+            title = if (won) "🏆 VICTORY!" else "💀 ${s.theirName.uppercase()} WINS",
+            subtitle = "Ships sunk: you $sunk of $total  ·  ${s.theirName} $lost of $total",
+            win = won, isHost = s.isHost, theirName = s.theirName,
+            playAgainLabel = "Play again (${s.size.label})", colors = listOf(Funk.Cyan, Funk.Blue),
+            onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
+            how = if (won) "You sank the last enemy ship after ${s.shots} shots: ${s.hits} hits, $acc% accuracy. The finished boards show where every ship went down."
+            else "${s.theirName} sank your last ship. You had sunk $sunk of their $total with ${s.hits} hits from ${s.shots} shots.",
+        )
     }
 }
 

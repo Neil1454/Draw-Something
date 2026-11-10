@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.WinStory
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -150,6 +151,9 @@ fun HolidayScreen(
             EndOverlay(
                 title = when (s.result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${s.theirName.uppercase()} WINS!"; else -> "🤝 IT'S A DRAW!" },
                 subtitle = "You ${s.myScore} (${s.myRight} right)  ·  ${s.theirName} ${s.theirScore} (${s.theirRight} right)",
+                how = if (s.result == 3) "After ${s.total} questions you were level on points."
+                else "Over ${s.total} questions, " + (if (s.result == 1) "you" else s.theirName) + " scored more by answering quicker and more accurately, winning " +
+                    WinStory.by(maxOf(s.myScore, s.theirScore), minOf(s.myScore, s.theirScore), "point") + ".",
                 win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Another quiz", colors = listOf(Teal, Coral),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,

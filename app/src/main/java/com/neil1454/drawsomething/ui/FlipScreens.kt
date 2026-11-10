@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.WinStory
 import com.neil1454.drawsomething.core.Sound
 import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.Animatable
@@ -134,6 +135,10 @@ fun FlipScreen(
             EndOverlay(
                 title = when (s.result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${s.theirName.uppercase()} WINS!"; else -> "🤝 DRAW!" },
                 subtitle = "You ${s.myCount}  ·  ${s.theirName} ${s.theirCount}",
+                how = if (s.result == 3) "Both players finished with ${s.myCount} discs."
+                else (if (s.result == 1) "You" else s.theirName) + " finished with the most discs, winning " +
+                    WinStory.by(maxOf(s.myCount, s.theirCount), minOf(s.myCount, s.theirCount), "disc") +
+                    if (s.myCount + s.theirCount >= s.n * s.n) ". The board filled up." else ". Neither player could make another move.",
                 win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Play again", colors = listOf(Funk.Violet, Funk.Blue),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,

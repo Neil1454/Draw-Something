@@ -2,6 +2,7 @@
 
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.WinStory
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
@@ -427,27 +428,16 @@ private fun MineCell(
 /** Shown over the map when the game ends. */
 @Composable
 private fun MinesOverlay(s: MinesState, win: Int, onPlayAgain: () -> Unit, onBackToGames: () -> Unit, onLeave: () -> Unit) {
-    val title = when {
-        s.myScore > s.theirScore -> "🏆 YOU WIN!"
-        s.myScore < s.theirScore -> "🏆 ${s.theirName.uppercase()} WINS!"
-        else -> "🤝 IT'S A DRAW!"
-    }
-    Box(Modifier.fillMaxSize().background(Color(0xCC0B0624)), contentAlignment = Alignment.Center) {
-        ConfettiBurst(win)
-        Column(
-            Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            GradientText(title, fontSize = 36.sp)
-            Text("You ${s.myScore}   ·   ${s.theirName} ${s.theirScore}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            if (s.isHost) {
-                FunkyButton("🔁  Play again (${s.size.label})", onPlayAgain, Modifier.fillMaxWidth(), listOf(Funk.Orange, Funk.Red))
-            } else {
-                Text("${s.theirName} can start a rematch…", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-            }
-            FunkyButton("🎮  Choose another game", onBackToGames, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Pink))
-            TextButton(onClick = onLeave) { Text("Leave") }
-        }
-    }
+    val result = if (s.myScore > s.theirScore) 1 else if (s.myScore < s.theirScore) 2 else 3
+    EndOverlay(
+        title = when (result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${s.theirName.uppercase()} WINS!"; else -> "🤝 IT'S A DRAW!" },
+        subtitle = "You ${s.myScore}  ·  ${s.theirName} ${s.theirScore}",
+        win = result == 1, isHost = s.isHost, theirName = s.theirName,
+        playAgainLabel = "Play again (${s.size.label})", colors = listOf(Funk.Orange, Funk.Red),
+        onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
+        how = if (result == 3) "The minefield was cleared and you finished level on points."
+        else "The minefield was cleared, and " + (if (result == 1) "you" else s.theirName) + " had the higher score, winning " +
+            WinStory.by(maxOf(s.myScore, s.theirScore), minOf(s.myScore, s.theirScore), "point") +
+            ". Tap 'See the board' to see the opened squares and the bombs.",
+    )
 }

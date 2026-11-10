@@ -139,6 +139,8 @@ fun QuickScreen(
             EndOverlay(
                 title = if (s.result == 1) "🏆 QUICKEST ON THE DRAW!" else "🏆 ${s.theirName.uppercase()} WINS!",
                 subtitle = "You ${s.myScore}  ·  ${s.theirName} ${s.theirScore}",
+                how = (if (s.result == 1) "You" else s.theirName) + " won the race to ${s.target} rounds, " +
+                    "${maxOf(s.myScore, s.theirScore)} to ${minOf(s.myScore, s.theirScore)}. Each round goes to the fastest tap on GO; tapping too early loses the round.",
                 win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Rematch", colors = listOf(Funk.Lime, Funk.Mint),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,

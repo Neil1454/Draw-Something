@@ -124,3 +124,39 @@ class SynthTest {
         assertTrue(Synth.render(Sound.EXPLODE).contentEquals(Synth.render(Sound.EXPLODE)))
     }
 }
+
+class WinStoryTest {
+    // a 7x6 board: cell = row * 7 + col, row 0 is the top
+    @Test fun describesAHorizontalLine() {
+        val line = listOf(5 * 7 + 2, 5 * 7 + 3, 5 * 7 + 4, 5 * 7 + 5) // bottom row, columns 3-6
+        assertEquals("Four in a row across row 1 from the bottom, columns 3 to 6", WinStory.dropLine(line, 7, 6))
+    }
+
+    @Test fun describesAVerticalLine() {
+        val line = listOf(2 * 7 + 4, 3 * 7 + 4, 4 * 7 + 4, 5 * 7 + 4)
+        assertEquals("Four in a row straight up column 5, from row 1 to row 4 (counting from the bottom)", WinStory.dropLine(line, 7, 6))
+    }
+
+    @Test fun describesBothDiagonals() {
+        val down = listOf(0 * 7 + 0, 1 * 7 + 1, 2 * 7 + 2, 3 * 7 + 3)
+        assertTrue(WinStory.dropLine(down, 7, 6).contains("sloping down to the right"))
+        val left = listOf(0 * 7 + 3, 1 * 7 + 2, 2 * 7 + 1, 3 * 7 + 0)
+        assertTrue(WinStory.dropLine(left, 7, 6).contains("sloping down to the left"))
+        assertTrue(WinStory.dropLine(left, 7, 6).startsWith("Four in a row diagonally"))
+    }
+
+    @Test fun fiveInARowAndJunkAreHandled() {
+        val five = (0..4).map { 3 * 9 + 2 + it }
+        assertTrue(WinStory.dropLine(five, 9, 7).startsWith("Five in a row across row 4"))
+        assertEquals("", WinStory.dropLine(emptyList(), 7, 6))
+        assertEquals("", WinStory.dropLine(listOf(1000, 2000), 7, 6))
+        assertEquals("", WinStory.dropLine(listOf(1, 2), 0, 0))
+    }
+
+    @Test fun marginsReadNaturally() {
+        assertEquals("by 12 points", WinStory.by(50, 38, "point"))
+        assertEquals("by 1 point", WinStory.by(7, 6, "point"))
+        assertEquals("You", WinStory.who(1, "Teri"))
+        assertEquals("Teri", WinStory.who(2, "Teri"))
+    }
+}

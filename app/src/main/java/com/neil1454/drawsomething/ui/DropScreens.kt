@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.WinStory
 import com.neil1454.drawsomething.core.Sound
 import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.Animatable
@@ -200,6 +201,10 @@ fun DropScreen(
             EndOverlay(
                 title = when (s.result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${s.theirName.uppercase()} WINS!"; else -> "🤝 DRAW!" },
                 subtitle = if (s.result == 3) "The board is full." else "Four in a line!",
+                how = if (s.result == 3) "The board filled up with no line, so it's a draw."
+                else WinStory.dropLine(s.line, s.w, s.h).let { where ->
+                    (if (s.result == 1) "Your line: " else "${s.theirName}'s line: ") + where + ". Tap 'See the board' to see it glowing."
+                },
                 win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Play again", colors = listOf(Funk.Red, Funk.Sun),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,

@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.WinStory
 import com.neil1454.drawsomething.core.Sound
 import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.animateFloatAsState
@@ -139,6 +140,9 @@ fun HiLoScreen(
             EndOverlay(
                 title = when (s.matchResult) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${s.theirName.uppercase()} WINS!"; else -> "🤝 IT'S A DRAW!" },
                 subtitle = "You ${s.myScore}  ·  ${s.theirName} ${s.theirScore}",
+                how = if (s.matchResult == 3) "After ${s.rowsEach} rows each, you finished level on ${s.myScore} points."
+                else "After ${s.rowsEach} rows each, " + (if (s.matchResult == 1) "you" else s.theirName) +
+                    " had the most points, winning " + WinStory.by(maxOf(s.myScore, s.theirScore), minOf(s.myScore, s.theirScore), "point") + ".",
                 win = s.matchResult == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Play again", colors = listOf(Color(0xFF0E8A56), Funk.Sun),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,

@@ -1,5 +1,8 @@
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.mutableStateOf
 import com.neil1454.drawsomething.core.Sound
 import com.neil1454.drawsomething.sound.Sfx
 import androidx.compose.animation.core.RepeatMode
@@ -88,7 +91,10 @@ fun TurnText(text: String, mine: Boolean, modifier: Modifier = Modifier) {
     )
 }
 
-/** Full-screen results card with confetti for a win. */
+/**
+ * Full-screen results card with confetti for a win. [how] explains how the game was won in plain words,
+ * and "See the board" tucks the card away so the finished board (winning line, final squares) can be looked at.
+ */
 @Composable
 fun EndOverlay(
     title: String,
@@ -101,18 +107,45 @@ fun EndOverlay(
     onPlayAgain: () -> Unit,
     onBackToGames: () -> Unit,
     onLeave: () -> Unit,
+    how: String = "",
 ) {
     var confetti by remember { mutableIntStateOf(0) }
+    var peek by remember { mutableStateOf(false) }
     LaunchedEffect(win) { if (win) confetti++ else Sfx.play(Sound.LOSE) }
+    if (peek) {
+        // Just a slim bar, so the board underneath is fully visible.
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            Row(
+                Modifier.fillMaxWidth().background(Color(0xE60B0624)).padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 1)
+                    if (how.isNotBlank()) Text(how, fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f), maxLines = 3)
+                }
+                FunkyButton("Results", { peek = false }, Modifier, listOf(Funk.Violet, Funk.Pink), fontSize = 14.sp)
+            }
+        }
+        return
+    }
     Box(Modifier.fillMaxSize().background(Color(0xD90B0624)), contentAlignment = Alignment.Center) {
         ConfettiBurst(confetti)
         Column(
-            Modifier.padding(24.dp),
+            Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             GradientText(title, fontSize = 36.sp, colors = if (win) listOf(Funk.Sun, Funk.Lime, Funk.Cyan) else listOf(Funk.Pink, Funk.Violet, Funk.Blue))
             Text(subtitle, fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            if (how.isNotBlank()) {
+                Text(
+                    how,
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0x33FFFFFF)).padding(12.dp),
+                    fontSize = 15.sp, color = Funk.Sun, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold,
+                )
+            }
+            FunkyButton("👀  See the board", { peek = true }, Modifier.fillMaxWidth(), listOf(Funk.Cyan, Funk.Blue))
             if (isHost) {
                 FunkyButton("🔁  $playAgainLabel", onPlayAgain, Modifier.fillMaxWidth(), colors)
             } else {

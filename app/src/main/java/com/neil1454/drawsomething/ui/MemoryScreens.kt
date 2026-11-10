@@ -133,6 +133,13 @@ fun MemoryScreen(
             EndOverlay(
                 title = when (s.result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${s.theirName.uppercase()} WINS!"; else -> "🤝 IT'S A DRAW!" },
                 subtitle = "You ${s.myScore}  ·  ${s.theirName} ${s.theirScore}",
+                how = run {
+                    val mine = s.owners.count { it == if (engine.isHost) '1' else '2' }
+                    val theirs = s.owners.count { it == if (engine.isHost) '2' else '1' }
+                    if (s.result == 3) "You each found $mine pairs, and scored the same."
+                    else "Pairs found: you $mine, ${s.theirName} $theirs. Streaks of matches earn bonus points, so the winner scored " +
+                        "${maxOf(s.myScore, s.theirScore)} to ${minOf(s.myScore, s.theirScore)}."
+                },
                 win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Play again", colors = listOf(Funk.Violet, Funk.Pink),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,

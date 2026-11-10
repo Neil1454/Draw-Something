@@ -2,6 +2,7 @@
 
 package com.neil1454.drawsomething.ui
 
+import com.neil1454.drawsomething.core.WinStory
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -681,6 +682,12 @@ private fun GameOverContent(g: GameState, onPlayAgain: () -> Unit, onBackToGames
         ) {
             Spacer(Modifier.height(16.dp))
             GradientText(title, fontSize = 38.sp)
+            Text(
+                if (g.myScore == g.theirScore) "You finished level after ${g.totalRounds} rounds."
+                else (if (g.myScore > g.theirScore) "You" else g.theirName) + " scored more over ${g.totalRounds} rounds, winning " +
+                    WinStory.by(maxOf(g.myScore, g.theirScore), minOf(g.myScore, g.theirScore), "point") + ". The rounds below show where the points came from.",
+                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, color = Funk.Sun,
+            )
             ScoreStrip(g)
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

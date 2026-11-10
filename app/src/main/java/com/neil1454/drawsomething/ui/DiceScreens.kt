@@ -148,6 +148,8 @@ fun DiceScreen(
             EndOverlay(
                 title = if (s.result == 1) "🏆 YOU WIN!" else "🏆 ${s.theirName.uppercase()} WINS!",
                 subtitle = "You ${s.myScore}  ·  ${s.theirName} ${s.theirScore}",
+                how = if (s.result == 1) "You were the first to bank ${s.target} points, finishing on ${s.myScore} to ${s.theirScore}."
+                else "${s.theirName} was the first to bank ${s.target} points, finishing on ${s.theirScore} to your ${s.myScore}.",
                 win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Play again", colors = listOf(Funk.Mint, Funk.Cyan),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
