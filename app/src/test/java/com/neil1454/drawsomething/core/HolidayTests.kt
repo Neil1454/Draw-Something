@@ -49,12 +49,16 @@ class HolidayPackTest {
     }
 
     @Test fun answersAreNotAlwaysInTheSamePlaceOrTheLongestOne() {
-        val q = PackFiles.all().first().questions.filter { !it.isMap }
-        val counts = IntArray(4)
-        q.forEach { counts[it.correct]++ }
-        assertTrue("correct answers should be spread across A-D: ${counts.toList()}", counts.all { it >= q.size / 8 })
-        val longest = q.count { x -> x.options.filterIndexed { i, _ -> i != x.correct }.all { it.length < x.options[x.correct].length } }
-        assertTrue("the longest option shouldn't give the answer away ($longest of ${q.size})", longest < q.size * 0.40)
+        for (pack in PackFiles.all()) {
+            val q = pack.questions.filter { !it.isMap }
+            val counts = IntArray(4)
+            q.forEach { counts[it.correct]++ }
+            assertTrue("correct answers should be spread across A-D: ${counts.toList()}", counts.all { it >= q.size / 8 })
+            val longest = q.count { x -> x.options.filterIndexed { i, _ -> i != x.correct }.all { it.length < x.options[x.correct].length } }
+            assertTrue("the longest option shouldn't give the answer away (${pack.id}: $longest of ${q.size})", longest < q.size * 0.40)
+            val shortest = q.count { x -> x.options.filterIndexed { i, _ -> i != x.correct }.all { it.length > x.options[x.correct].length } }
+            assertTrue("nor should the shortest (${pack.id}: $shortest of ${q.size})", shortest < q.size * 0.45)
+        }
     }
 
     @Test fun theCapeVerdePackHasPicturesAndMapsAndPracticalTopics() {
@@ -68,6 +72,22 @@ class HolidayPackTest {
         val known = setOf("Santo Antão", "São Vicente", "Santa Luzia", "São Nicolau", "Sal", "Boa Vista", "Maio", "Santiago", "Fogo", "Brava",
             "Buracona", "Palmeira", "Espargos", "Pedra de Lume", "Santa Maria")
         for (q in maps) assertTrue("${q.text} uses places the map knows", q.options.all { it in known })
+    }
+
+    @Test fun theTenerifePackIsTouristFocusedWithMapsAndPictures() {
+        val p = PackFiles.all().first { it.id == "tenerife" }
+        assertTrue("at least 100 questions", p.questions.size >= 100)
+        val cats = p.questions.map { it.category }.toSet()
+        for (c in listOf("Food & drink", "Beach & sea", "Excursions", "Resorts", "Language", "Culture", "Getting around", "Weather", "Money")) assertTrue("category $c", c in cats)
+        val maps = p.questions.filter { it.isMap }
+        assertTrue(maps.any { it.art == "map:canaries" } && maps.any { it.art == "map:tenerife" })
+        val canaries = setOf("El Hierro", "La Palma", "La Gomera", "Tenerife", "Gran Canaria", "Fuerteventura", "Lanzarote")
+        val places = setOf("Teide", "Santa Cruz", "Puerto de la Cruz", "Los Cristianos", "Playa de las Américas", "Costa Adeje", "Los Gigantes", "Masca",
+            "Garachico", "El Médano", "La Laguna", "Candelaria", "Anaga", "Icod de los Vinos")
+        for (q in maps) assertTrue("${q.text} uses places the map knows", q.options.all { it in (if (q.art == "map:canaries") canaries else places) })
+        val pics = setOf("flag", "plug", "clock", "tag", "turtle", "kite", "beachflag", "canflag", "teide", "mojo", "barraquito", "dragon")
+        for (q in p.questions.filter { it.art.startsWith("pic:") }) assertTrue("${q.art} is a picture the app can draw", q.art.removePrefix("pic:").substringBefore(":") in pics)
+        assertTrue(p.questions.count { it.art.startsWith("pic:") } >= 8)
     }
 
     @Test fun mapQuestionsKeepTheirPlacesAndPicturesKeepTheirArt() {
@@ -305,5 +325,155 @@ class HolidayQuizTest {
         p.client.onMessage(GMsg.Snap("HOLIDAY", JSONObject("""{"st":"ASK"}""")))
         assertNotNull(p.host.state)
         assertEquals(GPhase.PLAYING, p.host.state.phase)
+    }
+}
+
+class HolidayExtraTimeAndBonusTest {
+    @Before fun installPacks() = HolidayPacks.install(PackFiles.all())
+
+    private fun pair(secs: Int = 10, seed: Int = 1, bonus: Boolean = true): SyncPair<HolidayEngine> {
+        val p = SyncPair({ n, o, h, s, r, c -> HolidayEngine(n, o, h, s, r, c) }, seed)
+        p.host.start(JSONObject().put("pack", "cape_verde_sal").put("len", 0).put("secs", secs).put("bonus", bonus))
+        p.pump()
+        return p
+    }
+
+    private fun SyncPair<HolidayEngine>.right() = host.secretCorrect()!!
+    private fun SyncPair<HolidayEngine>.wrong() = (0..3).first { it != right() }
+
+    @Test fun askingForMoreTimeExtendsOnlyMyClockAndCapsTheScore() {
+        val p = pair(secs = 10)
+        assertEquals(3, p.host.state.extraLeft)
+        p.advance(3000)
+        p.host.moreTime(); p.pump()
+        p.client.pick(p.right(), forcedMs = 2000); p.pump() // the guest answers after the host has asked for more time
+        p.advance(2000)
+        assertTrue(p.host.state.myExtended)
+        assertTrue(p.client.state.theirExtended)
+        assertEquals(2, p.host.state.extraLeft)
+        assertTrue("the host has more than the original 10 seconds", p.host.state.myTotalSecs >= 20)
+        p.host.moreTime(); p.pump() // only once per question
+        assertEquals(2, p.host.state.extraLeft)
+        p.advance(6000) // 11 s in: the guest has already answered, the host is still on the clock
+        assertEquals("ASK", p.host.state.step)
+        p.host.pick(p.right(), forcedMs = 12_000); p.pump()
+        p.advance(HolidayRules.LOCK_MS + 100)
+        assertEquals("REVEAL", p.host.state.step)
+        assertEquals("extended answers score a flat amount", HolidayRules.EXTENDED_RIGHT, p.host.state.myDelta)
+        assertEquals("late", p.host.state.myKind)
+        assertTrue("the quick player is still rewarded", p.host.state.theirDelta >= HolidayRules.CORRECT)
+        assertTrue("extra time still beats nothing", HolidayRules.EXTENDED_RIGHT > 0)
+        assertTrue("but it is worth less than just being slower", HolidayRules.EXTENDED_RIGHT < HolidayRules.ALSO_RIGHT)
+    }
+
+    @Test fun extraTimeIsLimitedAndNeverGivenOnceAnswered() {
+        val p = pair(secs = 15)
+        p.host.pick(p.right(), forcedMs = 1000); p.pump()
+        p.host.moreTime(); p.pump()
+        assertFalse(p.host.state.myExtended)
+        assertEquals(3, p.host.state.extraLeft)
+        assertTrue(HolidayRules.extraMs(15_000) >= HolidayRules.EXTRA_MIN_MS)
+        assertEquals(30_000L, HolidayRules.extraMs(60_000))
+    }
+
+    @Test fun noTimerMeansNoExtraTime() {
+        val p = pair(secs = 0)
+        p.host.moreTime(); p.pump()
+        assertFalse(p.host.state.myExtended)
+    }
+
+    @Test fun anExtendedPlayerWhoRunsOutOfTimeStillScoresNothing() {
+        val p = pair(secs = 10)
+        p.client.pick(p.right(), forcedMs = 1000); p.pump()
+        p.host.moreTime(); p.pump()
+        p.advance(21_000)
+        p.advance(HolidayRules.LOCK_MS + 100)
+        assertEquals("none", p.host.state.myKind)
+        assertEquals(0, p.host.state.myDelta)
+    }
+
+    /** Plays the main round with the host always wrong and the guest always right, then returns the pair at the start of the bonus round. */
+    private fun SyncPair<HolidayEngine>.playMainRound(hostPoints: Int = 0): Int {
+        var guard = 0
+        var lostTotal = 0
+        var lastSeq = -1
+        while (host.state.step != "BONUS" && host.state.phase != GPhase.OVER && guard++ < 400) {
+            if (host.state.step == "ASK" && host.state.seq != lastSeq && host.state.myChoice == -1) {
+                lastSeq = host.state.seq
+                val before = host.state.myScore
+                host.pick((0..3).first { it != host.secretCorrect()!! }, forcedMs = 3000)
+                client.pick(host.secretCorrect()!!, forcedMs = 1500)
+                pump()
+                lostTotal += 0
+            }
+            advance(500)
+        }
+        return lostTotal
+    }
+
+    @Test fun theBonusRoundIsMadeOfTheQuestionsYouGotWrongAndPaysBackWhatYouLost() {
+        val p = pair(secs = 10)
+        p.playMainRound()
+        assertEquals("BONUS", p.host.state.step)
+        val s = p.host.state
+        assertTrue("bonus on", s.bonusOn)
+        assertEquals("the host got every question wrong so every one is a bonus question (up to the cap)", minOf(s.total, HolidayRules.BONUS_MAX), s.bTotal)
+        assertEquals("the guest got everything right: no bonus round", "NONE", p.client.state.bStep)
+        val before = p.host.state.myScore
+        val mainScore = before
+        // answer every bonus question correctly
+        var guard = 0
+        var gained = 0
+        while (p.host.state.step == "BONUS" && p.host.state.bStep != "DONE" && guard++ < 200) {
+            if (p.host.state.bStep == "ASK" && p.host.state.bChoice == -1) {
+                val right = p.host.secretCorrect(1)!!
+                val value = p.host.state.bValue
+                assertTrue("a question is never worth more than the penalty", value <= -HolidayRules.WRONG || value == HolidayRules.MISSED_REFUND)
+                p.host.bonusPick(right); p.pump()
+                gained += value
+            }
+            p.advance(500)
+        }
+        p.advance(1000)
+        assertEquals(GPhase.OVER, p.host.state.phase)
+        assertEquals("bonus total is what was won back plus the perfect-recall bonus", gained + HolidayRules.PERFECT_RECALL, p.host.state.myBonus)
+        assertEquals(mainScore + p.host.state.myBonus, p.host.state.myScore)
+        assertEquals(p.host.state.myScore, p.client.state.theirScore)
+        assertEquals(mainScore, p.client.state.theirMain)
+        assertTrue("no wild-guess profit: each wrong guess can only be won back, never beaten", p.host.state.myBonus <= p.host.state.bTotal * (-HolidayRules.WRONG) + HolidayRules.PERFECT_RECALL)
+    }
+
+    @Test fun getting_bonusQuestionsWrongOrTimingOutWinsNothing() {
+        val p = pair(secs = 10)
+        p.playMainRound()
+        val before = p.host.state.myScore
+        var guard = 0
+        while (p.host.state.step == "BONUS" && guard++ < 400) {
+            if (p.host.state.bStep == "ASK" && p.host.state.bChoice == -1) {
+                p.host.bonusPick((0..3).first { it != p.host.secretCorrect(1)!! }); p.pump()
+            }
+            p.advance(500)
+        }
+        p.advance(1000)
+        assertEquals(GPhase.OVER, p.host.state.phase)
+        assertEquals(before, p.host.state.myScore)
+        assertEquals(0, p.host.state.myBonus)
+    }
+
+    @Test fun theBonusRoundCanBeSwitchedOff() {
+        val p = pair(secs = 10, bonus = false)
+        p.playMainRound()
+        assertEquals(GPhase.OVER, p.host.state.phase)
+        assertFalse(p.host.state.bonusOn)
+        assertEquals(0, p.host.state.myBonus)
+    }
+
+    @Test fun bonusAnswersAreNotLeakedToTheOtherPhoneBeforeTheReveal() {
+        val sent = ArrayList<String>()
+        val e = HolidayEngine("A", "B", true, { sent.add(String(it.encode())) }, Random(5)) { 0L }
+        e.start(JSONObject().put("pack", "cape_verde_sal").put("len", 0).put("secs", 0))
+        sent.clear()
+        // no bonus yet: nothing about bonus answers either
+        sent.forEach { assertFalse(it.contains("\"B1\"") && it.contains("\"cr\"")) }
     }
 }

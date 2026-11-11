@@ -79,9 +79,52 @@ private val salPlaces = mapOf(
     "Santa Maria" to Offset(0.50f, 0.93f),
 )
 
+/** The Canary Islands, roughly to scale in position (x: west to east, y: north to south), with sizes exaggerated a little. */
+private val canaryIslands = listOf(
+    Island("El Hierro", 0.119f, 0.795f, 0.03f, 0.09f, 0f),
+    Island("La Palma", 0.142f, 0.403f, 0.03f, 0.14f, 10f),
+    Island("La Gomera", 0.272f, 0.647f, 0.035f, 0.11f, 0f),
+    Island("Tenerife", 0.362f, 0.563f, 0.06f, 0.15f, 40f),
+    Island("Gran Canaria", 0.535f, 0.689f, 0.045f, 0.12f, 0f),
+    Island("Fuerteventura", 0.812f, 0.521f, 0.085f, 0.07f, -55f),
+    Island("Lanzarote", 0.881f, 0.268f, 0.06f, 0.1f, -50f),
+)
+
+/** A stylised Tenerife (not to scale), clockwise from the north-east tip. Already in map coordinates. */
+private val tenerifeOutline = listOf(
+    0.833f to 0.14f, 0.779f to 0.191f, 0.725f to 0.281f, 0.653f to 0.371f, 0.599f to 0.461f, 0.572f to 0.564f, 0.545f to 0.68f,
+    0.5f to 0.783f, 0.446f to 0.847f, 0.374f to 0.899f, 0.32f to 0.886f, 0.284f to 0.847f, 0.248f to 0.77f, 0.194f to 0.68f,
+    0.158f to 0.59f, 0.122f to 0.513f, 0.113f to 0.436f, 0.194f to 0.397f, 0.284f to 0.371f, 0.392f to 0.346f, 0.482f to 0.333f,
+    0.59f to 0.294f, 0.698f to 0.217f, 0.797f to 0.153f,
+)
+private val tenerifePlaces = mapOf(
+    "Teide" to Offset(0.374f, 0.539f),
+    "Santa Cruz" to Offset(0.725f, 0.307f),
+    "Puerto de la Cruz" to Offset(0.455f, 0.359f),
+    "Los Cristianos" to Offset(0.338f, 0.847f),
+    "Playa de las Américas" to Offset(0.279f, 0.789f),
+    "Costa Adeje" to Offset(0.239f, 0.725f),
+    "Los Gigantes" to Offset(0.185f, 0.603f),
+    "Masca" to Offset(0.167f, 0.474f),
+    "Garachico" to Offset(0.266f, 0.404f),
+    "El Médano" to Offset(0.455f, 0.834f),
+    "La Laguna" to Offset(0.662f, 0.256f),
+    "Candelaria" to Offset(0.617f, 0.423f),
+    "Anaga" to Offset(0.77f, 0.179f),
+    "Icod de los Vinos" to Offset(0.36f, 0.44f),
+)
+
+/** The islands of a map as drawn: positions and sizes already in canvas fractions. */
+private fun islandLayout(kind: String): List<Island>? = when (kind) {
+    "islands" -> islands.map { Island(it.name, 0.06f + 0.88f * it.x, 0.05f + 0.9f * it.y, it.rx * 0.88f, it.ry * 0.9f, it.rot) }
+    "canaries" -> canaryIslands
+    else -> null
+}
+
 private fun mapPoints(kind: String): Map<String, Offset> = when (kind) {
-    "islands" -> islands.associate { it.name to Offset(0.06f + 0.88f * it.x, 0.05f + 0.9f * it.y) }
+    "islands", "canaries" -> islandLayout(kind)!!.associate { it.name to Offset(it.x, it.y) }
     "sal" -> salPlaces.mapValues { (_, v) -> Offset(0.06f + 0.88f * v.x, 0.04f + 0.92f * v.y) }
+    "tenerife" -> tenerifePlaces
     else -> emptyMap()
 }
 
@@ -112,7 +155,7 @@ fun HolidayMap(
     val points = remember(kind) { mapPoints(kind) }
     var sel by remember(questionKey) { mutableIntStateOf(-1) }
     val measurer = rememberTextMeasurer()
-    val ratio = if (kind == "sal") 0.85f else 1.08f
+    val ratio = when (kind) { "sal" -> 0.85f; "canaries" -> 2.0f; "tenerife" -> 1.25f; else -> 1.08f }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(
             Modifier.fillMaxWidth().aspectRatio(ratio).clip(RoundedCornerShape(20.dp)).border(2.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
@@ -138,17 +181,39 @@ fun HolidayMap(
                 val yy = size.height * (0.12f + 0.16f * k)
                 drawLine(Color.White.copy(alpha = 0.06f), Offset(0f, yy), Offset(size.width, yy + 14f), strokeWidth = 3f)
             }
-            if (kind == "islands") {
-                islands.forEach { isl ->
-                    val c = Offset((0.06f + 0.88f * isl.x) * size.width, (0.05f + 0.9f * isl.y) * size.height)
-                    val w = isl.rx * 0.88f * size.width * 2
-                    val h = isl.ry * 0.9f * size.height * 2
+            val layout = islandLayout(kind)
+            if (layout != null) {
+                layout.forEach { isl ->
+                    val c = Offset(isl.x * size.width, isl.y * size.height)
+                    val w = isl.rx * size.width * 2
+                    val h = isl.ry * size.height * 2
                     rotate(isl.rot, c) {
                         drawOval(SandEdge, Offset(c.x - w / 2 - 3f, c.y - h / 2 - 3f), Size(w + 6f, h + 6f))
                         drawOval(Sand, Offset(c.x - w / 2, c.y - h / 2), Size(w, h))
                         drawOval(Color(0xFF9BBE6A).copy(alpha = 0.65f), Offset(c.x - w * 0.3f, c.y - h * 0.3f), Size(w * 0.6f, h * 0.6f))
                     }
                 }
+                drawNorth()
+            } else if (kind == "tenerife") {
+                val path = Path()
+                tenerifeOutline.forEachIndexed { i, (x, y) ->
+                    val px = x * size.width
+                    val py = y * size.height
+                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                }
+                path.close()
+                drawPath(path, SandEdge, style = Stroke(width = 14f))
+                drawPath(path, Color(0xFFB9B27A))
+                drawPath(path, Color(0xFF8FB36B).copy(alpha = 0.45f), style = Stroke(width = 60f))
+                // the Teide cone
+                val t = tenerifePlaces.getValue("Teide")
+                val tp = Path().apply {
+                    moveTo((t.x - 0.07f) * size.width, (t.y + 0.05f) * size.height)
+                    lineTo(t.x * size.width, (t.y - 0.08f) * size.height)
+                    lineTo((t.x + 0.07f) * size.width, (t.y + 0.05f) * size.height)
+                    close()
+                }
+                drawPath(tp, Color(0xFF7A5230).copy(alpha = 0.55f))
                 drawNorth()
             } else if (kind == "sal") {
                 val path = Path()
@@ -232,6 +297,11 @@ fun HolidayPicture(art: String, modifier: Modifier = Modifier) {
         Canvas(Modifier.fillMaxWidth().height(150.dp)) {
             when (name) {
                 "flag" -> drawFlag()
+                "canflag" -> drawCanFlag()
+                "teide" -> drawTeide()
+                "mojo" -> drawMojo()
+                "barraquito" -> drawBarraquito()
+                "dragon" -> drawDragon()
                 "plug" -> drawPlug()
                 "clock" -> drawClock(extra, measurer)
                 "tag" -> drawTag(extra.replace('_', ' '), measurer)
@@ -406,4 +476,101 @@ private fun DrawScope.drawBeachFlag(colour: String) {
         val yy = size.height * (0.52f + 0.05f * k)
         drawLine(Color.White.copy(alpha = 0.7f), Offset(size.width * (0.62f + 0.04f * k), yy), Offset(size.width * (0.84f + 0.03f * k), yy), strokeWidth = 4f)
     }
+}
+
+
+private fun DrawScope.drawCanFlag() {
+    drawRect(Brush.verticalGradient(listOf(Color(0xFF14456E), Color(0xFF0B2A47))))
+    val fw = minOf(size.width * 0.78f, size.height * 1.7f)
+    val fh = fw * 0.62f
+    val left = (size.width - fw) / 2
+    val top = (size.height - fh) / 2
+    val third = fw / 3f
+    drawRect(Color.White, Offset(left, top), Size(third, fh))
+    drawRect(Color(0xFF0033A0), Offset(left + third, top), Size(third, fh))
+    drawRect(Color(0xFFFFD100), Offset(left + 2 * third, top), Size(third, fh))
+    drawRect(Color.White.copy(alpha = 0.5f), Offset(left, top), Size(fw, fh), style = Stroke(2f))
+}
+
+private fun DrawScope.drawTeide() {
+    drawRect(Brush.verticalGradient(listOf(Color(0xFF3E8FD8), Color(0xFF9AD0F5), Color(0xFFF1F6FB))))
+    drawCircle(Color(0xFFFFF3B0), size.height * 0.1f, Offset(size.width * 0.82f, size.height * 0.2f))
+    val base = size.height * 0.78f
+    val peak = Offset(size.width * 0.42f, size.height * 0.1f)
+    val p = Path().apply {
+        moveTo(-10f, base); lineTo(size.width * 0.18f, size.height * 0.5f); lineTo(size.width * 0.3f, size.height * 0.42f)
+        lineTo(peak.x, peak.y); lineTo(size.width * 0.54f, size.height * 0.42f); lineTo(size.width * 0.7f, size.height * 0.52f)
+        lineTo(size.width + 10f, base); close()
+    }
+    drawPath(p, Color(0xFF8A5A33))
+    val cap = Path().apply {
+        moveTo(peak.x, peak.y); lineTo(size.width * 0.37f, size.height * 0.26f); lineTo(size.width * 0.42f, size.height * 0.23f)
+        lineTo(size.width * 0.47f, size.height * 0.27f); close()
+    }
+    drawPath(cap, Color.White.copy(alpha = 0.9f))
+    // the sea of clouds
+    for (k in 0 until 6) {
+        val cx = size.width * (0.08f + 0.17f * k)
+        drawOval(Color.White.copy(alpha = 0.95f), Offset(cx - 60f, base - 20f + (k % 2) * 12f), Size(150f, 46f))
+    }
+    drawRect(Color.White.copy(alpha = 0.95f), Offset(0f, base + 10f), Size(size.width, size.height - base))
+}
+
+private fun DrawScope.drawMojo() {
+    drawRect(Brush.verticalGradient(listOf(Color(0xFFE9D9B5), Color(0xFFCDB68A))))
+    val c = Offset(size.width * 0.34f, size.height * 0.5f)
+    val r = size.height * 0.36f
+    drawCircle(Color(0xFFF7F3EA), r, c)
+    drawCircle(Color(0xFFB9AE95), r, c, style = Stroke(3f))
+    val spots = listOf(-0.35f to -0.15f, 0.1f to -0.3f, 0.3f to 0.05f, -0.1f to 0.2f, -0.4f to 0.25f, 0.2f to 0.35f, 0f to -0.05f)
+    for ((dx, dy) in spots) {
+        val pc = Offset(c.x + dx * r, c.y + dy * r)
+        drawOval(Color(0xFFD9B766), Offset(pc.x - r * 0.22f, pc.y - r * 0.16f), Size(r * 0.44f, r * 0.32f))
+        drawOval(Color(0xFFB8924A), Offset(pc.x - r * 0.22f, pc.y - r * 0.16f), Size(r * 0.44f, r * 0.32f), style = Stroke(2f))
+        for (k in 0 until 4) drawCircle(Color.White.copy(alpha = 0.9f), 2.5f, Offset(pc.x - r * 0.12f + k * r * 0.08f, pc.y - r * 0.02f + (k % 2) * r * 0.06f))
+    }
+    val red = Offset(size.width * 0.72f, size.height * 0.3f)
+    val green = Offset(size.width * 0.72f, size.height * 0.7f)
+    for ((o, col) in listOf(red to Color(0xFFC62828), green to Color(0xFF3F8F3A))) {
+        drawCircle(Color(0xFFF7F3EA), size.height * 0.2f, o)
+        drawCircle(col, size.height * 0.15f, o)
+        drawCircle(Color.Black.copy(alpha = 0.18f), size.height * 0.15f, o, style = Stroke(2f))
+    }
+}
+
+private fun DrawScope.drawBarraquito() {
+    drawRect(Brush.verticalGradient(listOf(Color(0xFF2F2218), Color(0xFF1A120B))))
+    val w = size.height * 0.5f
+    val left = size.width / 2 - w / 2
+    val top = size.height * 0.1f
+    val h = size.height * 0.8f
+    val layers = listOf(Color(0xFFF1E3C4) to 0.2f, Color(0xFFB9732F) to 0.12f, Color(0xFF3B1F10) to 0.28f, Color(0xFFF8F1E4) to 0.24f)
+    var y = top + h
+    for ((col, f) in layers) {
+        val lh = h * f
+        y -= lh
+        drawRect(col, Offset(left, y), Size(w, lh))
+    }
+    // cinnamon on top
+    for (k in 0 until 12) drawCircle(Color(0xFF8A4B1D), 2.6f, Offset(left + w * (0.15f + 0.07f * k), top + h * 0.1f + (k % 3) * 3f))
+    drawRect(Color.White.copy(alpha = 0.7f), Offset(left, top), Size(w, h), style = Stroke(4f))
+    drawRect(Color.White.copy(alpha = 0.25f), Offset(left + w * 0.1f, top + 6f), Size(w * 0.08f, h - 12f))
+    drawRoundRect(Color.White.copy(alpha = 0.8f), Offset(left - 6f, top + h), Size(w + 12f, 8f), CornerRadius(4f))
+}
+
+private fun DrawScope.drawDragon() {
+    drawRect(Brush.verticalGradient(listOf(Color(0xFF6EC6F5), Color(0xFFBFE8FA), Color(0xFFB7C98A))))
+    val cx = size.width / 2
+    val ground = size.height * 0.92f
+    val trunk = Path().apply {
+        moveTo(cx - 30f, ground); lineTo(cx - 20f, size.height * 0.45f); lineTo(cx - 8f, size.height * 0.42f)
+        lineTo(cx + 8f, size.height * 0.42f); lineTo(cx + 20f, size.height * 0.45f); lineTo(cx + 30f, ground); close()
+    }
+    drawPath(trunk, Color(0xFF8E7A5E))
+    for (k in -3..3) {
+        val bx = cx + k * 30f
+        drawLine(Color(0xFF7A6850), Offset(cx + k * 6f, size.height * 0.44f), Offset(bx, size.height * 0.28f), strokeWidth = 8f)
+        drawOval(Color(0xFF3F8F3A), Offset(bx - 38f, size.height * 0.14f + (if (k % 2 == 0) 0f else 10f)), Size(76f, 36f))
+    }
+    drawRect(Color(0xFF7BAA5A), Offset(0f, ground), Size(size.width, size.height - ground))
 }

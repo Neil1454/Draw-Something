@@ -60,20 +60,26 @@ fun HolidayHelp() {
         Text("• The FIRST correct answer wins ${HolidayRules.CORRECT} points, plus up to ${HolidayRules.SPEED_BONUS} more for being quick.")
         Text("• If you're also right but slower, you still get ${HolidayRules.ALSO_RIGHT}.")
         Text("• A wrong answer costs ${-HolidayRules.WRONG} points, so think before you tap!")
+        Text("• Need longer? Press \"Give me more time\" (up to ${HolidayRules.EXTRA_PER_QUIZ} times in a quiz). You get extra seconds, but a right answer is then worth a flat ${HolidayRules.EXTENDED_RIGHT} points with no speed bonus. That's still better than running out of time!")
         Text("• After each question you'll see the right answer and a 'did you know' fact.")
+        Text("• 🔁 BONUS ROUND: when the questions are over, each of you gets your OWN round made from the questions you got wrong or missed. Get one right to win back the points you lost on it (never more, so wild guessing doesn't pay), or ${HolidayRules.MISSED_REFUND} for one you didn't answer. Get every one right for a +${HolidayRules.PERFECT_RECALL} perfect-recall bonus. The host can switch it off.")
         Text("• The host picks the holiday and how many questions. More holidays can be added to the app.")
     }
 }
 
 @Composable
 fun HolidayScreen(
-    s: HolidayState,
+    raw: HolidayState,
     engine: HolidayEngine,
     onPlayAgain: () -> Unit,
     onBackToGames: () -> Unit,
     onLeave: () -> Unit,
 ) {
-    val over = s.phase == GPhase.OVER
+    val over = raw.phase == GPhase.OVER
+    val bonus = raw.step == "BONUS" && !over
+    val s = if (bonus) raw.bonusView() else raw
+    val bonusWaiting = bonus && (raw.bStep == "DONE" || raw.bStep == "NONE")
+    val pickAnswer: (Int) -> Unit = { i -> if (bonus) engine.bonusPick(i) else engine.pick(i) }
     val revealed = s.step == "REVEAL"
     val locked = s.step == "LOCK"
     val myCol = if (engine.isHost) HostBlue else GuestOrange
@@ -92,12 +98,16 @@ fun HolidayScreen(
             when {
                 s.myDelta > 0 -> {
                     party++; Sfx.play(Sound.CHIME)
-                    bannerText = if (s.theirDelta > 0) "🎉 BOTH RIGHT!" else "🎉 CORRECT!  +${s.myDelta}"
+                    bannerText = if (bonus) "🔁 WON BACK  +${s.myDelta}" else if (s.theirDelta > 0) "🎉 BOTH RIGHT!" else "🎉 CORRECT!  +${s.myDelta}"
                     bannerColour = Color(0xFF4ADE80); bannerKey++
                 }
                 s.myDelta < 0 -> {
                     bad++; Sfx.play(Sound.BUZZ)
                     bannerText = "❌ NOT QUITE"; bannerColour = Color(0xFFF87171); bannerKey++
+                }
+                bonus -> {
+                    bad++; Sfx.play(Sound.BUZZ)
+                    bannerText = "❌ NOT THIS TIME"; bannerColour = Color(0xFFF87171); bannerKey++
                 }
                 s.theirDelta > 0 -> {
                     Sfx.play(Sound.POP)
@@ -126,24 +136,50 @@ fun HolidayScreen(
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PlayerPill(
-                    "You", s.myScore, myCol, s.myChoice != -1 && !revealed, Modifier.weight(1f),
+                    "You", raw.myScore, myCol, s.myChoice != -1 && !revealed, Modifier.weight(1f),
                     extra = if (revealed && s.myDelta != 0) signed(s.myDelta) else if (s.myChoice != -1) "🔒" else "",
                 )
                 PlayerPill(
-                    s.theirName, s.theirScore, theirCol, (s.theyAnswered || locked) && !revealed, Modifier.weight(1f),
+                    s.theirName, raw.theirScore, theirCol, (s.theyAnswered || locked) && !revealed, Modifier.weight(1f),
                     extra = if (revealed && s.theirDelta != 0) signed(s.theirDelta) else if (s.theyAnswered || (locked && s.theirChoice != -1)) "🔒" else "",
                 )
             }
-            Text(
-                "${s.packEmoji} ${s.packTitle} · Question ${s.index} of ${s.total}" + if (s.category.isNotBlank()) " · ${s.category}" else "",
-                fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
-            )
-            TimerBar(s, revealed || locked)
+            if (bonus) {
+                Text(
+                    "🔁 BONUS ROUND" + if (!bonusWaiting) " · your question ${raw.bIndex} of ${raw.bTotal} · win back +${raw.bValue}" else "",
+                    fontSize = 14.sp, fontWeight = FontWeight.Black, color = Funk.Sun, textAlign = TextAlign.Center,
+                )
+                if (!bonusWaiting && raw.bCategory.isNotBlank()) Text(raw.bCategory, fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f))
+            } else {
+                Text(
+                    "${s.packEmoji} ${s.packTitle} · Question ${s.index} of ${s.total}" + if (s.category.isNotBlank()) " · ${s.category}" else "",
+                    fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
+                )
+            }
+            if (!bonusWaiting) TimerBar(s, revealed || locked)
+            if (bonusWaiting) {
+                Column(
+                    Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(22.dp)).background(Color(0x88000000)).padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (raw.bStep == "NONE") {
+                        Text("🎯 NO BONUS ROUND FOR YOU", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Funk.Lime, textAlign = TextAlign.Center)
+                        Text("You didn't get a single question wrong or miss one. Brilliant!", color = Color.White, textAlign = TextAlign.Center)
+                    } else {
+                        Text("🔁 BONUS ROUND DONE", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Funk.Lime, textAlign = TextAlign.Center)
+                        Text("You got ${raw.bRight} of ${raw.bTotal} right and won back ${raw.myBonus} points.", color = Color.White, textAlign = TextAlign.Center)
+                    }
+                    Text(
+                        if (raw.theirBDone) "Totting up the scores…" else "Waiting for ${raw.theirName} to finish their bonus round (question ${raw.theirBIndex} of ${raw.theirBTotal})…",
+                        color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center, fontSize = 14.sp,
+                    )
+                }
+            }
 
             val isMap = s.art.startsWith("map:")
-            if (s.art.startsWith("pic:")) HolidayPicture(s.art)
+            if (!bonusWaiting && s.art.startsWith("pic:")) HolidayPicture(s.art)
             // the question
-            Box(
+            if (!bonusWaiting) Box(
                 Modifier.fillMaxWidth()
                     .clip(RoundedCornerShape(22.dp))
                     .background(Brush.horizontalGradient(listOf(Teal.copy(alpha = 0.85f), Color(0xFF0E5C73))))
@@ -155,7 +191,7 @@ fun HolidayScreen(
             }
 
             // the answers
-            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!bonusWaiting) Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isMap) {
                     HolidayMap(
                         kind = s.art.removePrefix("map:"), options = s.options, questionKey = s.seq, revealed = revealed, correct = s.correct,
@@ -164,12 +200,12 @@ fun HolidayScreen(
                         locked = locked, myCol = myCol, theirCol = theirCol,
                     ) { i ->
                         Sfx.play(Sound.TAP)
-                        engine.pick(i)
+                        pickAnswer(i)
                     }
                 } else s.options.forEachIndexed { i, text ->
                     AnswerButton(i, text, s, revealed, locked, myCol, theirCol) {
                         Sfx.play(Sound.TAP)
-                        engine.pick(i)
+                        pickAnswer(i)
                     }
                 }
                 if (locked) {
@@ -193,6 +229,26 @@ fun HolidayScreen(
                         else -> if (s.limitSecs == 0) "Tap your answer. The quickest right answer still scores most." else "Tap your answer. The quickest right answer scores most."
                     }
                     val urgent = hurry || (s.theyAnswered && s.myChoice == -1)
+                    if (!bonus && s.step == "ASK" && s.limitSecs > 0 && s.myChoice == -1) {
+                        if (!s.myExtended && s.extraLeft > 0) {
+                            Box(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.16f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                                    .clickable { Sfx.play(Sound.TAP); engine.moreTime() }.padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "⏱ Give me more time (+${HolidayRules.extraMs(s.limitSecs * 1000L) / 1000}s)  ·  a right answer is then worth ${HolidayRules.EXTENDED_RIGHT}  ·  ${s.extraLeft} left",
+                                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 10.dp),
+                                )
+                            }
+                        } else if (s.myExtended) {
+                            Text("⏱ Extra time in use: a right answer is worth ${HolidayRules.EXTENDED_RIGHT} points.", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Funk.Sun, textAlign = TextAlign.Center)
+                        }
+                    }
+                    if (!bonus && s.theirExtended && !s.theyAnswered && s.step == "ASK") {
+                        Text("⌛ ${s.theirName} asked for more time", fontSize = 13.sp, color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center)
+                    }
                     val beat = bobbing(amount = 1f, millis = 260)
                     val pulse = if (urgent) 1f + 0.05f * beat else 1f
                     Text(
@@ -223,12 +279,13 @@ fun HolidayScreen(
         }
         if (over) {
             EndOverlay(
-                title = when (s.result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${s.theirName.uppercase()} WINS!"; else -> "🤝 IT'S A DRAW!" },
-                subtitle = "You ${s.myScore} (${s.myRight} right)  ·  ${s.theirName} ${s.theirScore} (${s.theirRight} right)",
-                how = if (s.result == 3) "After ${s.total} questions you were level on points."
-                else "Over ${s.total} questions, " + (if (s.result == 1) "you" else s.theirName) + " scored more by answering quicker and more accurately, winning " +
-                    WinStory.by(maxOf(s.myScore, s.theirScore), minOf(s.myScore, s.theirScore), "point") + ".",
-                win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
+                title = when (raw.result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${raw.theirName.uppercase()} WINS!"; else -> "🤝 IT'S A DRAW!" },
+                subtitle = "You ${raw.myScore}  ·  ${raw.theirName} ${raw.theirScore}",
+                how = (if (raw.bonusOn) "Main round: you ${raw.myMain}, ${raw.theirName} ${raw.theirMain}.  Bonus round: you won back ${raw.myBonus}, ${raw.theirName} won back ${raw.theirBonus}.  " else "") +
+                    (if (raw.result == 3) "After ${raw.total} questions you finished level on points."
+                    else "Over ${raw.total} questions, " + (if (raw.result == 1) "you" else raw.theirName) + " scored more, winning " +
+                        WinStory.by(maxOf(raw.myScore, raw.theirScore), minOf(raw.myScore, raw.theirScore), "point") + "."),
+                win = raw.result == 1, isHost = engine.isHost, theirName = raw.theirName,
                 playAgainLabel = "Another quiz", colors = listOf(Teal, Coral),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
             )
@@ -245,7 +302,7 @@ private fun TimerBar(s: HolidayState, revealed: Boolean) {
         return
     }
     val frac by animateFloatAsState(
-        if (revealed) 0f else (s.secsLeft.toFloat() / s.limitSecs.coerceAtLeast(1)).coerceIn(0f, 1f),
+        if (revealed) 0f else (s.secsLeft.toFloat() / maxOf(s.myTotalSecs, s.limitSecs).coerceAtLeast(1)).coerceIn(0f, 1f),
         label = "timer",
     )
     val colour = when {
@@ -316,13 +373,19 @@ private fun RevealPanel(s: HolidayState) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0x66000000)).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        fun line(name: String, choice: Int, delta: Int, ms: Int): String = when {
+        fun line(name: String, choice: Int, delta: Int, ms: Int, kind: String): String = when {
             choice == -1 -> "$name: no answer"
-            choice == s.correct -> "$name: ✅ right in ${"%.1f".format(ms / 1000f)}s  (${signed(delta)})"
+            choice == s.correct && kind == "late" -> "$name: ✅ right with extra time  (${signed(delta)}, flat score)"
+            choice == s.correct -> "$name: ✅ right in ${"%.1f".format(ms / 1000f)}s  (${signed(delta)}${if (kind == "also") ", slower" else ""})"
             else -> "$name: ❌ wrong  (${signed(delta)})"
         }
-        Text(line("You", s.myChoice, s.myDelta, s.myMs), fontWeight = FontWeight.Bold, color = Color.White)
-        Text(line(s.theirName, s.theirChoice, s.theirDelta, s.theirMs), fontWeight = FontWeight.Bold, color = Color.White)
+        if (s.step == "REVEAL" && s.myKind.isEmpty() && s.theirKind.isEmpty() && s.seq >= 1_000_000) {
+            // a bonus question: just the result
+            Text(if (s.myChoice == s.correct) "✅ You remembered it! +${s.myDelta} won back" else "❌ Not this time. No points back for this one.", fontWeight = FontWeight.Bold, color = Color.White)
+        } else {
+            Text(line("You", s.myChoice, s.myDelta, s.myMs, s.myKind), fontWeight = FontWeight.Bold, color = Color.White)
+            Text(line(s.theirName, s.theirChoice, s.theirDelta, s.theirMs, s.theirKind), fontWeight = FontWeight.Bold, color = Color.White)
+        }
         if (s.fact.isNotBlank()) Text("💡 ${s.fact}", fontSize = 15.sp, color = Funk.Sun)
     }
 }

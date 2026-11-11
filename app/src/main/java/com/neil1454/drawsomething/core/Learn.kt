@@ -28,6 +28,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
     private var lastSeq = -1
     private var lastGift = 0
     private var finishedAt = 0L
+    private var bonusSaid = false
 
     /** Move the demo forward by [ms] (virtual milliseconds). */
     fun advance(ms: Long) {
@@ -275,6 +276,9 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                 val s = duel.host.holiday.state
                 if (s.phase == GPhase.OVER) {
                     finish(outro(kind))
+                } else if (s.step == "BONUS" && !bonusSaid) {
+                    bonusSaid = true
+                    say("🔁 BONUS ROUND! Each player now gets their own questions, made from the ones they got wrong or missed. A right answer wins back the points you lost on it (never more), so it pays to remember the answers.")
                 } else if (s.step == "ASK" && s.seq != lastSeq) {
                     lastSeq = s.seq
                     say("Question ${s.index} of ${s.total} · ${s.category.ifEmpty { "Holiday" }}\n${s.question}\nPick the right answer before time runs out. Quickest correct answer scores the most." + tip(HOLIDAY_TIPS, s.index))

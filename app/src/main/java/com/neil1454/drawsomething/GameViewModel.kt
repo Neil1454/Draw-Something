@@ -105,6 +105,7 @@ data class LobbySettings(
     val holidayLen: Int = 1,
     val holidaySecs: Int = 1,
     val monopolyLen: Int = 0,
+    val holidayBonus: Boolean = true,
     val tetrisMode: Int = 0,
     val tetrisLevel: Int = 0,
     val tetrisGifts: Boolean = true,
@@ -343,7 +344,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             sendBytes = { bytes -> onTransportEvent(TransportEvent.Received(bytes)) },
             secretWord = { engine?.state?.word?.text },
             clock = { SystemClock.elapsedRealtime() },
-            holidayKey = { (syncEngines[GameKind.HOLIDAY] as? HolidayEngine)?.secretCorrect() },
+            holidayKey = { (syncEngines[GameKind.HOLIDAY] as? HolidayEngine)?.secretCorrect(2) },
         )
         startSession(COMPUTER_NAME)
         computer?.start()

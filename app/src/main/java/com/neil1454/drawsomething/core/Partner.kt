@@ -129,7 +129,7 @@ class Duel(seed: Int, hostSkill: Skill = Skill.NORMAL, guestSkill: Skill = Skill
 
     init {
         host = PlayerSide(true, "Player 1", "Player 2", hostSkill, { guest.receive(it) }, { guest.draw.board.strokes.size.let { null } }, { now }, Random(seed), holidayKey = { null })
-        guest = PlayerSide(false, "Player 2", "Player 1", guestSkill, { host.receive(it) }, { host.draw.state.word?.text }, { now }, Random(seed + 1), holidayKey = { host.holiday.secretCorrect() })
+        guest = PlayerSide(false, "Player 2", "Player 1", guestSkill, { host.receive(it) }, { host.draw.state.word?.text }, { now }, Random(seed + 1), holidayKey = { host.holiday.secretCorrect(2) })
         guest.start()
         host.start()
         advance(0)

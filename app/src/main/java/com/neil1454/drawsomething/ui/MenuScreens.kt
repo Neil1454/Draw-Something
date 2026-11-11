@@ -925,11 +925,12 @@ private fun HolidayLobby(ui: UiState, connected: Boolean, onSettings: (LobbySett
             }
             ChipRow("Questions", HolidayLength.values().map { it.label }, set.holidayLen) { onSettings(set.copy(holidayLen = it)) }
             ChipRow("Time per question", HolidayRules.SECONDS.map { if (it == 0) "No timer" else "${it}s" }, secsIdx) { onSettings(set.copy(holidaySecs = it)) }
+            ToggleChip("🔁 Bonus round: win back points on the questions you missed", set.holidayBonus) { onSettings(set.copy(holidayBonus = it)) }
         }
     }) {
         onStart(
             GameKind.HOLIDAY,
-            JSONObject().put("pack", packs.getOrNull(packIdx)?.id ?: "").put("len", set.holidayLen).put("secs", HolidayRules.SECONDS[secsIdx]),
+            JSONObject().put("pack", packs.getOrNull(packIdx)?.id ?: "").put("len", set.holidayLen).put("secs", HolidayRules.SECONDS[secsIdx]).put("bonus", set.holidayBonus),
         )
     }
 }

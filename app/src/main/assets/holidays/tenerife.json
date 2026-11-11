@@ -1,0 +1,1627 @@
+{
+ "id": "tenerife",
+ "title": "Tenerife",
+ "emoji": "🌋",
+ "blurb": "Practical things to know before (and while) you visit Tenerife: places, food, beaches, trips, the language and island life.",
+ "questions": [
+  {
+   "q": "Which of these is NOT one of the Canary Islands?",
+   "a": [
+    "La Gomera",
+    "La Palma",
+    "Menorca",
+    "El Hierro"
+   ],
+   "c": 2,
+   "fact": "Menorca is in the Balearic Islands. The Canaries lie in the Atlantic, off the coast of north-west Africa.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What is the biggest of the Canary Islands?",
+   "a": [
+    "Tenerife",
+    "Lanzarote",
+    "Gran Canaria",
+    "Fuerteventura"
+   ],
+   "c": 0,
+   "fact": "Tenerife covers roughly 2,000 square kilometres and is the most visited of the islands.",
+   "cat": "Basics"
+  },
+  {
+   "q": "Roughly how far is Tenerife from the African coast?",
+   "a": [
+    "About 100 km",
+    "About 2,000 km",
+    "About 300 km",
+    "About 1,100 km"
+   ],
+   "c": 2,
+   "fact": "That is close enough for the Saharan dust wind, the 'calima', to reach it now and then.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What is the capital of Tenerife?",
+   "a": [
+    "Playa de las Américas",
+    "Santa Cruz de Tenerife",
+    "San Cristóbal de La Laguna",
+    "Puerto de la Cruz"
+   ],
+   "c": 1,
+   "fact": "It is a port city on the north-east coast and shares the title of Canary Islands capital with Las Palmas on Gran Canaria.",
+   "cat": "Basics"
+  },
+  {
+   "q": "About how high is Mount Teide, the highest peak in Spain?",
+   "a": [
+    "About 3,700 m",
+    "About 4,500 m",
+    "About 2,600 m",
+    "About 1,800 m"
+   ],
+   "c": 0,
+   "fact": "It is the third-tallest volcano in the world measured from the sea floor.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What sort of mountain is Teide?",
+   "a": [
+    "A limestone peak",
+    "A glacier-carved ridge",
+    "A raised coral reef",
+    "A volcano"
+   ],
+   "c": 3,
+   "fact": "Teide is still classed as active, though it has been quiet for a long time.",
+   "cat": "Basics"
+  },
+  {
+   "q": "When did Tenerife last have a volcanic eruption?",
+   "a": [
+    "1971",
+    "1909",
+    "1798",
+    "2021"
+   ],
+   "c": 1,
+   "fact": "The Chinyero eruption was in 1909. The 2021 eruption was on La Palma, another Canary island.",
+   "cat": "Basics"
+  },
+  {
+   "q": "What is the airport code of Tenerife South (Reina Sofía), where most holidaymakers land?",
+   "a": [
+    "TEN",
+    "TFS",
+    "TFN",
+    "SCT"
+   ],
+   "c": 1,
+   "fact": "TFN is Tenerife North (Los Rodeos), mostly used for inter-island flights.",
+   "cat": "Getting there"
+  },
+  {
+   "q": "How long does a transfer from Tenerife South airport to Playa de las Américas usually take?",
+   "a": [
+    "About two and a half hours",
+    "About 5 minutes",
+    "About 20 minutes",
+    "About an hour"
+   ],
+   "c": 2,
+   "fact": "Resorts in the south are close to the airport. Getting to the north takes longer.",
+   "cat": "Getting there"
+  },
+  {
+   "q": "Ferries to La Gomera leave from which port?",
+   "a": [
+    "El Médano",
+    "Los Cristianos",
+    "Puerto de la Cruz",
+    "Santa Cruz"
+   ],
+   "c": 1,
+   "fact": "The crossing takes about 50 minutes to an hour, and you can often spot dolphins and whales.",
+   "cat": "Getting there"
+  },
+  {
+   "q": "What is the island's public bus company called?",
+   "a": [
+    "TITSA",
+    "TENBUS",
+    "TRANSA",
+    "ISLABUS"
+   ],
+   "c": 0,
+   "fact": "Its green buses are called 'guaguas'. A tram also runs between Santa Cruz and La Laguna.",
+   "cat": "Getting around"
+  },
+  {
+   "q": "Which two places does Tenerife's tram connect?",
+   "a": [
+    "Santa Cruz and La Laguna",
+    "Los Cristianos and Adeje",
+    "Garachico and Icod",
+    "Puerto de la Cruz and La Orotava"
+   ],
+   "c": 0,
+   "fact": "It is the only tram line on the island and is handy if you stay in the capital area.",
+   "cat": "Getting around"
+  },
+  {
+   "q": "Which way do you go round a roundabout in Tenerife?",
+   "a": [
+    "Whichever direction is quickest for you",
+    "Straight across the middle if it's empty",
+    "Clockwise, just like roundabouts in the UK",
+    "Anticlockwise, keeping to the right"
+   ],
+   "c": 3,
+   "fact": "Drive on the right and give way to traffic already on the roundabout.",
+   "cat": "Getting around"
+  },
+  {
+   "q": "What is the legal drink-drive limit for most drivers in Spain?",
+   "a": [
+    "0.5 g/l of blood",
+    "0.8 g/l of blood",
+    "1.0 g/l of blood",
+    "There is no limit"
+   ],
+   "c": 0,
+   "fact": "That is lower than the limit in England, so the safe choice is not to drink if you are driving.",
+   "cat": "Getting around"
+  },
+  {
+   "q": "UK visitors: what do you need for the sockets in Tenerife (pictured)?",
+   "a": [
+    "A transformer to step the power up a lot",
+    "Nothing at all, UK plugs fit directly",
+    "A plug adaptor; the voltage is the same",
+    "A voltage converter for 110 volt devices"
+   ],
+   "c": 2,
+   "fact": "Spain uses two round pins (types C and F) at 230 V.",
+   "cat": "Practical",
+   "art": "pic:plug"
+  },
+  {
+   "q": "This clock shows 3pm in London on a summer day. What time is it in Tenerife?",
+   "a": [
+    "2pm, one hour behind the UK",
+    "3pm, the same",
+    "5pm, two hours ahead of the UK",
+    "4pm, one hour ahead of the UK"
+   ],
+   "c": 1,
+   "fact": "The Canaries use Western European Time, the same clock as the UK all year, and they change the clocks on the same dates.",
+   "cat": "Practical",
+   "art": "pic:clock:15:00"
+  },
+  {
+   "q": "The Canary Islands charge which sales tax instead of Spain's mainland VAT?",
+   "a": [
+    "IVA",
+    "IRPF",
+    "IBI",
+    "IGIC"
+   ],
+   "c": 3,
+   "fact": "The general rate is only 7%, which is why perfume, electronics and some other goods can be cheaper than at home.",
+   "cat": "Money"
+  },
+  {
+   "q": "What is the usual tip in a restaurant in Tenerife?",
+   "a": [
+    "A fixed €10 per table, whatever you eat",
+    "At least 20% of the total bill",
+    "Not required; round up or leave 5 to 10%",
+    "Tipping is considered rude on the islands"
+   ],
+   "c": 2,
+   "fact": "Service is rarely added to the bill, so a few euros for good service is appreciated.",
+   "cat": "Money"
+  },
+  {
+   "q": "Which number do you call in an emergency in Tenerife?",
+   "a": [
+    "112",
+    "999",
+    "101",
+    "911"
+   ],
+   "c": 0,
+   "fact": "112 works anywhere in the EU, and operators usually speak English.",
+   "cat": "Practical"
+  },
+  {
+   "q": "UK visitors: which card can give access to Spanish state healthcare, alongside travel insurance?",
+   "a": [
+    "A tourist health card",
+    "A Schengen health pass",
+    "An NHS number letter",
+    "A GHIC card"
+   ],
+   "c": 3,
+   "fact": "A GHIC doesn't replace travel insurance. Check the rules before you travel.",
+   "cat": "Health"
+  },
+  {
+   "q": "Why might small shops be shut in the afternoon?",
+   "a": [
+    "They only open when a cruise ship is in port",
+    "They close for a mid-afternoon break (siesta)",
+    "They shut whenever the sun gets too hot",
+    "It is a public holiday every afternoon"
+   ],
+   "c": 1,
+   "fact": "Resort shops stay open, but in smaller towns hours can be split.",
+   "cat": "Practical"
+  },
+  {
+   "q": "When do local families usually eat dinner?",
+   "a": [
+    "Around 5pm, soon after work",
+    "Around 4pm, straight after lunch",
+    "Around 9pm or later",
+    "Around 6pm, just like the UK"
+   ],
+   "c": 2,
+   "fact": "Restaurants in tourist areas open earlier, but you'll find the locals arrive later.",
+   "cat": "Practical"
+  },
+  {
+   "q": "How much colder than the coast can it be at the top of Mount Teide?",
+   "a": [
+    "About 2°C colder, hardly noticeable",
+    "About 40°C colder than the coast",
+    "About the same as at the coast",
+    "Often 15°C or more colder"
+   ],
+   "c": 3,
+   "fact": "Take a jacket, sunglasses and water, and expect the air to be thin.",
+   "cat": "Practical"
+  },
+  {
+   "q": "What is the 'calima'?",
+   "a": [
+    "A tide that comes in very fast",
+    "A hot, dusty wind from the Sahara",
+    "A sudden evening thunderstorm in summer",
+    "A winter mist that rolls onto the coast"
+   ],
+   "c": 1,
+   "fact": "It brings haze and higher temperatures for a few days, and can be hard on people with breathing problems.",
+   "cat": "Weather"
+  },
+  {
+   "q": "What is the 'mar de nubes' (sea of clouds)?",
+   "a": [
+    "A sandstorm that blows across the sea from Africa",
+    "A giant wave that floods the southern beaches",
+    "A thick fog that covers the whole island day and night",
+    "A cloud layer below Teide while the summit is sunny"
+   ],
+   "c": 3,
+   "fact": "Climb above the clouds and the sky can be bright blue.",
+   "cat": "Weather",
+   "art": "pic:teide"
+  },
+  {
+   "q": "Which side of Tenerife is usually sunnier and drier?",
+   "a": [
+    "The north",
+    "The west coast only",
+    "The south",
+    "The middle of the island"
+   ],
+   "c": 2,
+   "fact": "The south sits in the rain shadow of the mountains, which is why most resorts are there.",
+   "cat": "Weather"
+  },
+  {
+   "q": "Why is the north of Tenerife so much greener?",
+   "a": [
+    "It receives all of the island's volcanic soil",
+    "Trade winds drop their rain on the northern slopes",
+    "The ocean is much warmer on that side",
+    "Farmers there water it from the island's only big river"
+   ],
+   "c": 1,
+   "fact": "Look out for laurel forests and banana plantations in the north.",
+   "cat": "Weather"
+  },
+  {
+   "q": "About how warm is the sea around Tenerife in January?",
+   "a": [
+    "About 28°C",
+    "About 25°C",
+    "About 19°C",
+    "About 12°C"
+   ],
+   "c": 2,
+   "fact": "It is refreshing rather than warm. The sea reaches 22 to 23°C in late summer.",
+   "cat": "Weather"
+  },
+  {
+   "q": "Which months are usually the hottest in Tenerife?",
+   "a": [
+    "October and November",
+    "July to September",
+    "March and April",
+    "December to February"
+   ],
+   "c": 1,
+   "fact": "Even then, the coastal temperatures are usually 26 to 30°C, not extreme.",
+   "cat": "Weather"
+  },
+  {
+   "q": "What does 'La cuenta, por favor' ask for?",
+   "a": [
+    "The menu",
+    "The bill",
+    "A table by the window",
+    "A glass of water"
+   ],
+   "c": 1,
+   "fact": "A very useful phrase at the end of a meal.",
+   "cat": "Language"
+  },
+  {
+   "q": "What does 'cerrado' on a shop door mean?",
+   "a": [
+    "Pull",
+    "Open",
+    "Closed",
+    "Cash only"
+   ],
+   "c": 2,
+   "fact": "'Abierto' means open.",
+   "cat": "Language"
+  },
+  {
+   "q": "What does 'tirar' on a door mean?",
+   "a": [
+    "Push",
+    "Exit",
+    "Pull",
+    "Ring the bell"
+   ],
+   "c": 2,
+   "fact": "'Empujar' means push.",
+   "cat": "Language"
+  },
+  {
+   "q": "What do you get if you ask for 'una caña' in a bar?",
+   "a": [
+    "A fishing rod for the harbour",
+    "A sugar-cane juice drink",
+    "A black coffee with a little sugar",
+    "A small glass of draught beer"
+   ],
+   "c": 3,
+   "fact": "'Una caña' is the standard way to order a small beer in Spain.",
+   "cat": "Language"
+  },
+  {
+   "q": "What is a 'tinto de verano'?",
+   "a": [
+    "Red wine with fizzy lemonade, served cold",
+    "A fruit punch served in a big jug",
+    "A heavy red wine from the volcanic vineyards of Tenerife",
+    "A rum cocktail with fruit and mint"
+   ],
+   "c": 0,
+   "fact": "Its name means 'red wine of summer'.",
+   "cat": "Language"
+  },
+  {
+   "q": "What does 'agua sin gas' mean?",
+   "a": [
+    "Cold water",
+    "Tap water",
+    "Still water",
+    "Sparkling water"
+   ],
+   "c": 2,
+   "fact": "'Con gas' is sparkling.",
+   "cat": "Language"
+  },
+  {
+   "q": "What does 'peligro' on a sign mean?",
+   "a": [
+    "Exit",
+    "Danger",
+    "Slow",
+    "Parking"
+   ],
+   "c": 1,
+   "fact": "You might see it by cliffs, on rough paths and near the sea.",
+   "cat": "Language"
+  },
+  {
+   "q": "What does 'prohibido el paso' mean?",
+   "a": [
+    "Pedestrians only",
+    "One-way street",
+    "No entry",
+    "Free entry"
+   ],
+   "c": 2,
+   "fact": "'Prohibido' means forbidden.",
+   "cat": "Language"
+  },
+  {
+   "q": "What does '¿Habla inglés?' mean?",
+   "a": [
+    "Can I have the bill, please?",
+    "Where is the nearest beach?",
+    "Do you speak English?",
+    "How much does this cost?"
+   ],
+   "c": 2,
+   "fact": "Most people in resorts will say yes, and appreciate you trying a little Spanish.",
+   "cat": "Language"
+  },
+  {
+   "q": "When someone says 'gracias', what do you reply with 'de nada'?",
+   "a": [
+    "You're welcome",
+    "No thanks, I'm full",
+    "See you later, goodbye",
+    "Not today, thank you"
+   ],
+   "c": 0,
+   "fact": "A friendly reply to 'thank you'.",
+   "cat": "Language"
+  },
+  {
+   "q": "What do you do when you say '¡Salud!'?",
+   "a": [
+    "Say cheers when raising a glass",
+    "Say sorry for bumping into someone",
+    "Greet someone first thing in the morning",
+    "Ask the waiter for the bill"
+   ],
+   "c": 0,
+   "fact": "It literally means 'health'.",
+   "cat": "Language"
+  },
+  {
+   "q": "What do Canarians call a bus?",
+   "a": [
+    "A camión",
+    "A coche",
+    "A furgón",
+    "A guagua"
+   ],
+   "c": 3,
+   "fact": "A Canarian word. On mainland Spain it is an 'autobús'.",
+   "cat": "Language"
+  },
+  {
+   "q": "In the Canaries, what are 'papas'?",
+   "a": [
+    "Potatoes",
+    "Peppers",
+    "Parcels",
+    "Pastries"
+   ],
+   "c": 0,
+   "fact": "On mainland Spain they say 'patatas'.",
+   "cat": "Language"
+  },
+  {
+   "q": "What does 'un café cortado' get you?",
+   "a": [
+    "A decaffeinated coffee with cream",
+    "Strong coffee with a splash of milk",
+    "An iced coffee with ice cream on top",
+    "A coffee with a shot of liqueur"
+   ],
+   "c": 1,
+   "fact": "'Cortado' means 'cut' with milk.",
+   "cat": "Language"
+  },
+  {
+   "q": "What are papas arrugadas?",
+   "a": [
+    "Crispy fried chips with paprika and salt",
+    "Thin potato crisps sold in packets in every bar and kiosk",
+    "Small potatoes boiled in salty water until wrinkled",
+    "Mashed potato topped with grated cheese"
+   ],
+   "c": 2,
+   "fact": "They are eaten skin and all, usually with mojo sauce.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "The red and green sauces served with papas arrugadas are called what?",
+   "a": [
+    "Mojo",
+    "Aioli",
+    "Chimichurri",
+    "Salsa brava"
+   ],
+   "c": 0,
+   "fact": "Red mojo (rojo) is spicy and made with paprika. Green mojo (verde) is made with coriander or parsley.",
+   "cat": "Food & drink",
+   "art": "pic:mojo"
+  },
+  {
+   "q": "What is gofio?",
+   "a": [
+    "A soft goat's cheese that is made on the island",
+    "A hearty fish stew with potatoes",
+    "Toasted cereal flour, a traditional staple",
+    "A sweet banana liqueur from the north"
+   ],
+   "c": 2,
+   "fact": "Canarians have been eating it since before the Spanish arrived.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is 'queso asado'?",
+   "a": [
+    "A thick cheese soup served in a bowl",
+    "Grilled cheese, often served with mojo",
+    "A sweet cheese dessert with honey on top",
+    "Cheese wrapped in bacon and deep-fried"
+   ],
+   "c": 1,
+   "fact": "Goat's cheese is typical. It's a good vegetarian starter.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is 'conejo en salmorejo'?",
+   "a": [
+    "Rabbit in a garlicky, spiced marinade",
+    "Chicken in an almond cream sauce",
+    "Fish in a spicy tomato and pepper broth",
+    "Pork with pineapple and a rum sauce"
+   ],
+   "c": 0,
+   "fact": "A classic Canarian dish, often served with papas arrugadas.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is 'ropa vieja' in the Canaries?",
+   "a": [
+    "A stew of chickpeas, meat and vegetables",
+    "A second-hand clothes market in Santa Cruz",
+    "A sweet dessert made with banana and rum",
+    "A cold potato salad with tuna and egg"
+   ],
+   "c": 0,
+   "fact": "The name means 'old clothes'.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Which fish is a Canarian favourite, usually grilled whole?",
+   "a": [
+    "Trout from the island's mountain streams",
+    "Cod, brought in from Newfoundland",
+    "Salmon, brought in from Norway",
+    "Vieja (parrotfish)"
+   ],
+   "c": 3,
+   "fact": "Ask for the 'pescado del día' (fish of the day).",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Which Tenerife drink is this layered coffee?",
+   "a": [
+    "A cortado",
+    "An espresso con hielo",
+    "A bombón",
+    "A barraquito"
+   ],
+   "c": 3,
+   "fact": "It has condensed milk, liqueur, coffee, milk and a dusting of cinnamon.",
+   "cat": "Food & drink",
+   "art": "pic:barraquito"
+  },
+  {
+   "q": "What is 'leche y leche'?",
+   "a": [
+    "Two glasses of cold milk side by side",
+    "Coffee with condensed milk and milk",
+    "A tall glass of milk with a banana",
+    "Tea with milk and a spoon of honey"
+   ],
+   "c": 1,
+   "fact": "A sweet coffee that is typical of the Canary Islands.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is 'ron miel'?",
+   "a": [
+    "Honey rum",
+    "Coffee rum",
+    "Spiced rum from Cuba",
+    "Banana liqueur"
+   ],
+   "c": 0,
+   "fact": "A sweet local spirit often served as a digestif.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "On which island is Dorada beer brewed?",
+   "a": [
+    "La Palma",
+    "Gran Canaria",
+    "Tenerife",
+    "Lanzarote"
+   ],
+   "c": 2,
+   "fact": "Tropical is Gran Canaria's beer.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Canarian bananas are known for being...?",
+   "a": [
+    "Seedless and sour like a lemon",
+    "Smaller and sweeter than most",
+    "Larger and greener than imported ones",
+    "Always red when ripe"
+   ],
+   "c": 1,
+   "fact": "Look for the label 'plátano de Canarias'.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is a 'guachinche'?",
+   "a": [
+    "A small mountain refuge where walkers can sleep and eat",
+    "A small family-run place with home-made wine and food",
+    "A traditional craft market in the north",
+    "A small fishing boat used in the harbours"
+   ],
+   "c": 1,
+   "fact": "Most are in the north. They are cheap, and some open only for a few months.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is a 'menú del día'?",
+   "a": [
+    "A day trip by coach to Teide",
+    "A daily bus pass for tourists",
+    "A fixed-price lunch menu",
+    "The weather forecast for the day"
+   ],
+   "c": 2,
+   "fact": "Often two or three courses with a drink, and good value.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is 'bienmesabe'?",
+   "a": [
+    "A fish soup with saffron",
+    "A spicy red sauce for fish",
+    "A sweet almond dessert",
+    "A banana liqueur from La Palma"
+   ],
+   "c": 2,
+   "fact": "The name means 'tastes good to me'.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Which is one of Tenerife's official wine regions?",
+   "a": [
+    "Tacoronte-Acentejo",
+    "Rioja, in northern Spain",
+    "Ribera del Duero in Castilla",
+    "Jerez, in Andalucía"
+   ],
+   "c": 0,
+   "fact": "Tenerife has several designated wine regions, and grapes grow on volcanic soil.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is a 'ración' on a menu?",
+   "a": [
+    "A larger plate to share",
+    "A dessert that comes with coffee",
+    "A small free snack with a drink",
+    "A set meal for one person"
+   ],
+   "c": 0,
+   "fact": "A tapa is smaller. Raciones are good for the whole table.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "What is 'sancocho canario'?",
+   "a": [
+    "A sweet cake made with gofio and honey",
+    "Salted fish stew with potatoes and mojo",
+    "A sweet banana pie with cream on top",
+    "A cold tomato and onion salad with olives and tuna"
+   ],
+   "c": 1,
+   "fact": "Traditionally made with salted fish.",
+   "cat": "Food & drink"
+  },
+  {
+   "q": "Why is the sand golden at Playa de las Teresitas near Santa Cruz?",
+   "a": [
+    "It is crushed seashells from the coast",
+    "It is volcanic ash ground very fine",
+    "It was shipped in from the Sahara",
+    "It was dredged up from the sea bed"
+   ],
+   "c": 2,
+   "fact": "Most natural beaches in Tenerife have dark volcanic sand.",
+   "cat": "Beach & sea"
+  },
+  {
+   "q": "A red flag is flying at a Tenerife beach. What does it mean?",
+   "a": [
+    "Dangerous conditions: stay out of the water",
+    "Lifeguards are on duty and you can swim anywhere freely",
+    "It is a dog-friendly beach today",
+    "Water sports only, no swimming"
+   ],
+   "c": 0,
+   "fact": "Atlantic currents and waves can be strong. Flags are there for a reason.",
+   "cat": "Beach & sea",
+   "art": "pic:beachflag:red"
+  },
+  {
+   "q": "A yellow flag is flying at the beach. What does it usually mean?",
+   "a": [
+    "The beach is closed because of sharks",
+    "Take extra care, conditions are moderate",
+    "Sharks have been seen close to the shore today",
+    "Sunbeds are free for everyone today"
+   ],
+   "c": 1,
+   "fact": "Green means safe and red means danger.",
+   "cat": "Beach & sea",
+   "art": "pic:beachflag:yellow"
+  },
+  {
+   "q": "Which animals live all year in the channel between Tenerife and La Gomera?",
+   "a": [
+    "Blue whales feeding in deep water",
+    "Humpback whales that migrate south",
+    "Short-finned pilot whales",
+    "Orcas that follow the fishing boats"
+   ],
+   "c": 2,
+   "fact": "Boat trips from the south coast often see them, as well as bottlenose dolphins.",
+   "cat": "Beach & sea"
+  },
+  {
+   "q": "Who designed the sea-water swimming complex Lago Martiánez in Puerto de la Cruz?",
+   "a": [
+    "César Manrique",
+    "Pablo Picasso",
+    "Santiago Calatrava",
+    "Antoni Gaudí"
+   ],
+   "c": 0,
+   "fact": "He was a Lanzarote artist who shaped much of the Canary Islands' look.",
+   "cat": "Beach & sea"
+  },
+  {
+   "q": "Which bay near Costa Adeje is known for turtles?",
+   "a": [
+    "Playa de las Vistas",
+    "Playa de las Teresitas",
+    "Playa del Duque",
+    "El Puertito"
+   ],
+   "c": 3,
+   "fact": "Please don't touch or chase the turtles.",
+   "cat": "Beach & sea"
+  },
+  {
+   "q": "If you get caught in a strong current when swimming, what is the best advice?",
+   "a": [
+    "Swim straight back against the current as fast as you can",
+    "Dive underwater and hold on tight",
+    "Stay still and shout for help",
+    "Swim parallel to the shore, then back in"
+   ],
+   "c": 3,
+   "fact": "Raise an arm and signal for help if you're tired.",
+   "cat": "Beach & sea"
+  },
+  {
+   "q": "Which south-coast resort is famous for its nightlife and the 'Veronicas' strip?",
+   "a": [
+    "Los Gigantes, below the big cliffs",
+    "Garachico, a quiet northern town",
+    "Puerto de la Cruz in the north",
+    "Playa de las Américas"
+   ],
+   "c": 3,
+   "fact": "It's busy until the early hours. For something calmer, try Costa Adeje or Los Cristianos.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "Which southern resort is a working fishing port and ferry harbour, popular with families?",
+   "a": [
+    "Los Gigantes",
+    "Playa de las Américas",
+    "El Médano",
+    "Los Cristianos"
+   ],
+   "c": 3,
+   "fact": "It has a sheltered beach and boat trips.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "Which resort area is known as the more upmarket part of the south-west coast?",
+   "a": [
+    "Puerto de la Cruz",
+    "Candelaria",
+    "Los Cristianos",
+    "Costa Adeje"
+   ],
+   "c": 3,
+   "fact": "Playa del Duque is its smart beach.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "Which north-coast resort has a botanical garden founded in the 1700s?",
+   "a": [
+    "El Médano, in the south east",
+    "Costa Adeje, in the south west",
+    "Puerto de la Cruz",
+    "Los Gigantes, below the cliffs"
+   ],
+   "c": 2,
+   "fact": "It is one of Tenerife's oldest tourist towns, and quite different from the southern resorts.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "Which resort sits beneath huge sea cliffs on the west coast?",
+   "a": [
+    "Los Cristianos",
+    "Los Gigantes",
+    "El Médano",
+    "Candelaria"
+   ],
+   "c": 1,
+   "fact": "The cliffs rise hundreds of metres from the sea. Boat trips go beneath them.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "On a booking, what does 'media pensión' mean?",
+   "a": [
+    "Half board: breakfast and one other meal",
+    "A half-price room for each night",
+    "A room that has been booked for only half the night",
+    "A free half-day tour for guests"
+   ],
+   "c": 0,
+   "fact": "'Pensión completa' is full board and 'todo incluido' is all inclusive.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "On a booking, what does 'vista al mar' mean?",
+   "a": [
+    "Garden view",
+    "Sea view",
+    "Pool view",
+    "Mountain view"
+   ],
+   "c": 1,
+   "fact": "'Vista a la piscina' means pool view.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "What does a hotel's 'animación' team organise?",
+   "a": [
+    "Pest control around the pool",
+    "Check-in queues and keys",
+    "Activities and entertainment",
+    "Room cleaning and laundry"
+   ],
+   "c": 2,
+   "fact": "Think games, quizzes, shows and kids' clubs.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "Which season is peak time for UK visitors to Tenerife?",
+   "a": [
+    "Autumn only",
+    "Late spring",
+    "Winter",
+    "Early summer"
+   ],
+   "c": 2,
+   "fact": "Winter is when the north of Europe wants sun. Tenerife's temperatures stay mild all year.",
+   "cat": "Resorts"
+  },
+  {
+   "q": "About how high does the Teide cable car take you?",
+   "a": [
+    "About 3,550 m",
+    "About 3,950 m",
+    "About 1,800 m",
+    "About 2,400 m"
+   ],
+   "c": 0,
+   "fact": "The top station is a short walk from the peak.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "To walk the last part to Teide's summit, what do you need?",
+   "a": [
+    "A free permit, booked online in advance",
+    "A mountain guide from the park office",
+    "Nothing at all, just a good pair of boots",
+    "Oxygen tanks hired at the cable car"
+   ],
+   "c": 0,
+   "fact": "The permit limits numbers. Check the National Park website.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "Teide National Park is what?",
+   "a": [
+    "A private nature reserve owned by a family",
+    "A closed military zone",
+    "A ski resort with lifts",
+    "A UNESCO World Heritage Site"
+   ],
+   "c": 3,
+   "fact": "It is among the most visited national parks in Europe.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "Which rock near Teide's parador appeared on the old 1,000-peseta banknote?",
+   "a": [
+    "Roque Nublo",
+    "Roque de Gando",
+    "Roque Cinchado",
+    "Roque Bentayga"
+   ],
+   "c": 2,
+   "fact": "Roque Nublo is on Gran Canaria.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "What makes the sky above Teide so special?",
+   "a": [
+    "It is always covered by thick cloud",
+    "The sun never sets there in summer",
+    "Very clear, dark air and an international observatory",
+    "It has glowing aurora lights on most clear winter nights"
+   ],
+   "c": 2,
+   "fact": "Guided stargazing tours are popular.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "What is Masca?",
+   "a": [
+    "A busy ferry port for La Gomera",
+    "A volcano crater near the summit",
+    "A tiny mountain village above a famous ravine",
+    "A famous black sand beach on the south east coast"
+   ],
+   "c": 2,
+   "fact": "Hiking the ravine to the sea normally needs a booked permit. Check the current rules.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "'Loro' in Loro Parque means what?",
+   "a": [
+    "Lion cub",
+    "Parrot",
+    "Grey wolf",
+    "Orca whale"
+   ],
+   "c": 1,
+   "fact": "The park started as a parrot sanctuary in Puerto de la Cruz.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "Siam Park near Costa Adeje is themed on which country?",
+   "a": [
+    "Thailand",
+    "Indonesia",
+    "Singapore",
+    "Vietnam"
+   ],
+   "c": 0,
+   "fact": "It's one of the world's best-known water parks.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "Which Tenerife city is a UNESCO World Heritage Site?",
+   "a": [
+    "La Laguna",
+    "Puerto de la Cruz",
+    "Los Cristianos",
+    "Santa Cruz"
+   ],
+   "c": 0,
+   "fact": "San Cristóbal de La Laguna is an old university town with colonial streets.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "What is the Drago Milenario at Icod de los Vinos?",
+   "a": [
+    "A giant dragon statue in the square",
+    "A huge dragon tree",
+    "A volcanic cave under the town",
+    "A stone pyramid on the hill"
+   ],
+   "c": 1,
+   "fact": "It is said to be centuries old. Its resin turns blood-red.",
+   "cat": "Excursions",
+   "art": "pic:dragon"
+  },
+  {
+   "q": "Which explorer helped make the Güímar pyramids famous?",
+   "a": [
+    "Thor Heyerdahl",
+    "Jacques Cousteau",
+    "Christopher Columbus",
+    "Ernest Shackleton"
+   ],
+   "c": 0,
+   "fact": "He believed ancient sailors crossed the Atlantic.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "What is the Cueva del Viento?",
+   "a": [
+    "A wind farm on the ridge",
+    "A sea cave that you can reach by boat from the harbour",
+    "A bat sanctuary in the north",
+    "One of the world's longest lava tubes"
+   ],
+   "c": 3,
+   "fact": "Guided tours only. Book ahead.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "What is special about the Anaga mountains?",
+   "a": [
+    "A ski slope that opens each winter",
+    "Ancient laurel forest and a Biosphere Reserve",
+    "A military base on the summit",
+    "A huge crater lake that you can swim in all year"
+   ],
+   "c": 1,
+   "fact": "Good hiking, and often misty and green.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "Which island can you see from the south coast, reached by ferry from Los Cristianos?",
+   "a": [
+    "Gran Canaria",
+    "Fuerteventura",
+    "La Gomera",
+    "La Palma"
+   ],
+   "c": 2,
+   "fact": "It's known for its whistled language, Silbo Gomero.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "Which Tenerife town lost its harbour in a 1706 eruption and now has lava rock pools?",
+   "a": [
+    "El Médano",
+    "Garachico",
+    "Candelaria",
+    "Los Gigantes"
+   ],
+   "c": 1,
+   "fact": "The El Caletón pools are a favourite place to swim.",
+   "cat": "Excursions"
+  },
+  {
+   "q": "The Santa Cruz carnival is often called the second biggest in the world after...?",
+   "a": [
+    "Venice, in Italy",
+    "Notting Hill, in London",
+    "New Orleans, in Louisiana",
+    "Rio de Janeiro"
+   ],
+   "c": 3,
+   "fact": "It's held in February or March, with costumes, parades and street parties.",
+   "cat": "Culture"
+  },
+  {
+   "q": "What is the 'lucha canaria'?",
+   "a": [
+    "A slow-cooked meat stew",
+    "A traditional bullfighting festival",
+    "A traditional form of wrestling",
+    "A folk dance with castanets"
+   ],
+   "c": 2,
+   "fact": "It's one of the oldest sports of the islands.",
+   "cat": "Culture"
+  },
+  {
+   "q": "What is a timple?",
+   "a": [
+    "A type of accordion used in folk music",
+    "A large drum that is carried through the streets",
+    "A small guitar-like instrument of the Canaries",
+    "A flute made of volcanic stone"
+   ],
+   "c": 2,
+   "fact": "It has five strings and is used in folk music.",
+   "cat": "Culture"
+  },
+  {
+   "q": "When is the Canary Islands Day (Día de Canarias)?",
+   "a": [
+    "25 July",
+    "1 January",
+    "12 October",
+    "30 May"
+   ],
+   "c": 3,
+   "fact": "The island holds fiestas, folk music and traditional dress.",
+   "cat": "Culture"
+  },
+  {
+   "q": "Who designed the Auditorio de Tenerife in Santa Cruz?",
+   "a": [
+    "Antoni Gaudí, the Catalan architect",
+    "Norman Foster, the British architect",
+    "Santiago Calatrava",
+    "César Manrique, the Lanzarote artist"
+   ],
+   "c": 2,
+   "fact": "The white building with a huge wing-like roof is a city landmark.",
+   "cat": "Culture"
+  },
+  {
+   "q": "What are 'romerías'?",
+   "a": [
+    "Village pilgrimages with decorated carts and costume",
+    "Rowing races between fishing villages",
+    "Annual festivals when the fishermen bless their boats at sea",
+    "Auctions of the new season's wine"
+   ],
+   "c": 0,
+   "fact": "Fun to watch if you're visiting at the right time.",
+   "cat": "Culture"
+  },
+  {
+   "q": "What is the Silbo Gomero?",
+   "a": [
+    "A type of goat's cheese from the island",
+    "A traditional dance with drums",
+    "A technique for fishing at night",
+    "A whistled language used on La Gomera"
+   ],
+   "c": 3,
+   "fact": "UNESCO recognises it as a cultural heritage.",
+   "cat": "Culture"
+  },
+  {
+   "q": "Who were the Guanches?",
+   "a": [
+    "British sailors who were shipwrecked",
+    "The original inhabitants of Tenerife",
+    "Spanish soldiers who arrived in the 1400s",
+    "Portuguese traders who settled in the south"
+   ],
+   "c": 1,
+   "fact": "They lived on the island until the Spanish conquest in the 1400s.",
+   "cat": "Culture"
+  },
+  {
+   "q": "When did Spain complete the conquest of Tenerife?",
+   "a": [
+    "1588",
+    "1392",
+    "1496",
+    "1704"
+   ],
+   "c": 2,
+   "fact": "The Guanche kingdoms (menceyatos) fell to the Spanish in that decade.",
+   "cat": "Culture"
+  },
+  {
+   "q": "Which British admiral lost his arm attacking Santa Cruz in 1797?",
+   "a": [
+    "Jack Hawkins",
+    "Walter Raleigh",
+    "Francis Drake",
+    "Horatio Nelson"
+   ],
+   "c": 3,
+   "fact": "The Spanish defenders won that battle.",
+   "cat": "Culture"
+  },
+  {
+   "q": "The statues beside Candelaria's basilica show who?",
+   "a": [
+    "Spanish conquerors",
+    "Pirates",
+    "Guanche kings",
+    "Saints"
+   ],
+   "c": 2,
+   "fact": "The patron saint of the Canaries is the Virgin of Candelaria, and pilgrims come on 15 August.",
+   "cat": "Culture"
+  },
+  {
+   "q": "What happens in La Orotava at Corpus Christi?",
+   "a": [
+    "Streets are carpeted with flowers and coloured sand",
+    "A night-long fireworks battle between two neighbouring villages",
+    "A giant bull run through the old town",
+    "A boat parade with decorated yachts"
+   ],
+   "c": 0,
+   "fact": "The carpets are made overnight and trampled by processions.",
+   "cat": "Culture"
+  },
+  {
+   "q": "What is the Canarian accent like?",
+   "a": [
+    "Almost exactly the same as Portuguese spoken in Lisbon",
+    "Closer to Latin American than mainland Spanish",
+    "Closer to Catalan than any other form of Spanish",
+    "Very close to Italian as spoken in Rome"
+   ],
+   "c": 1,
+   "fact": "Historic links across the Atlantic shaped it.",
+   "cat": "People"
+  },
+  {
+   "q": "What are the colours of the Canary Islands flag, left to right?",
+   "a": [
+    "Red, yellow, red, with a crest in the middle",
+    "White, blue, yellow",
+    "Blue, white, green",
+    "Yellow, red, blue"
+   ],
+   "c": 1,
+   "fact": "The flag is a vertical tricolour. Spain's is red, yellow, red.",
+   "cat": "Flag",
+   "art": "pic:canflag"
+  },
+  {
+   "q": "Tap Tenerife, where you are heading.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 3,
+   "fact": "It's in the middle of the group, with Gran Canaria to the east and La Gomera to the west.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap La Gomera, the island you reach by ferry from Los Cristianos.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 2,
+   "fact": "The crossing takes about an hour.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap Lanzarote, the island with the volcanic Timanfaya landscape.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 6,
+   "fact": "César Manrique shaped much of its look.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap Fuerteventura, known for its long sandy beaches and wind sports.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 5,
+   "fact": "It is the Canary island closest to Africa.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap Gran Canaria, home of the Maspalomas dunes.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 4,
+   "fact": "Las Palmas, its capital, is the biggest city in the islands.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap La Palma, where a volcano erupted in 2021.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 1,
+   "fact": "The Cumbre Vieja eruption lasted nearly three months.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap El Hierro, the smallest and westernmost of the main islands.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 0,
+   "fact": "It once marked the end of the known world on old maps.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap the Canary island closest to the African coast.",
+   "a": [
+    "El Hierro",
+    "La Palma",
+    "La Gomera",
+    "Tenerife",
+    "Gran Canaria",
+    "Fuerteventura",
+    "Lanzarote"
+   ],
+   "c": 5,
+   "fact": "It's roughly 100 km from Morocco.",
+   "cat": "Canary map",
+   "art": "map:canaries"
+  },
+  {
+   "q": "Tap Mount Teide, in the middle of the island.",
+   "a": [
+    "Los Cristianos",
+    "Puerto de la Cruz",
+    "El Médano",
+    "Teide",
+    "Garachico",
+    "Santa Cruz"
+   ],
+   "c": 3,
+   "fact": "It rises out of a huge crater, and the cable car starts on its south-east side.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Santa Cruz, the capital, on the north-east coast.",
+   "a": [
+    "Costa Adeje",
+    "Teide",
+    "Garachico",
+    "Santa Cruz",
+    "Los Gigantes",
+    "El Médano"
+   ],
+   "c": 3,
+   "fact": "A busy port with a carnival and a modern auditorium.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Puerto de la Cruz, the classic northern resort.",
+   "a": [
+    "Playa de las Américas",
+    "Los Cristianos",
+    "Puerto de la Cruz",
+    "Santa Cruz",
+    "El Médano",
+    "Candelaria"
+   ],
+   "c": 2,
+   "fact": "Home to Loro Parque and the Lago Martiánez pools.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Los Cristianos, the southern port with ferries to La Gomera.",
+   "a": [
+    "Santa Cruz",
+    "Masca",
+    "Los Cristianos",
+    "Garachico",
+    "Anaga",
+    "Puerto de la Cruz"
+   ],
+   "c": 2,
+   "fact": "It sits right next to Playa de las Américas.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Los Gigantes, below the great sea cliffs on the west coast.",
+   "a": [
+    "Santa Cruz",
+    "Puerto de la Cruz",
+    "Los Gigantes",
+    "El Médano",
+    "Los Cristianos",
+    "La Laguna"
+   ],
+   "c": 2,
+   "fact": "Dolphins are often seen on boat trips from here.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Masca, the mountain village in the Teno mountains.",
+   "a": [
+    "El Médano",
+    "Puerto de la Cruz",
+    "Masca",
+    "Santa Cruz",
+    "Los Cristianos",
+    "Candelaria"
+   ],
+   "c": 2,
+   "fact": "It sits above a deep ravine that leads to the sea.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap El Médano, the windy south-east spot for windsurfing and kitesurfing.",
+   "a": [
+    "El Médano",
+    "Masca",
+    "Garachico",
+    "La Laguna",
+    "Puerto de la Cruz",
+    "Los Gigantes"
+   ],
+   "c": 0,
+   "fact": "Its beach and the Montaña Roja volcano cone are well known.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Garachico, the town with lava rock pools.",
+   "a": [
+    "Candelaria",
+    "Costa Adeje",
+    "Santa Cruz",
+    "El Médano",
+    "Los Cristianos",
+    "Garachico"
+   ],
+   "c": 5,
+   "fact": "A 1706 eruption buried its harbour.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap La Laguna, the UNESCO-listed university city.",
+   "a": [
+    "El Médano",
+    "Masca",
+    "La Laguna",
+    "Los Gigantes",
+    "Los Cristianos",
+    "Costa Adeje"
+   ],
+   "c": 2,
+   "fact": "It is just inland from Santa Cruz.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Costa Adeje, home of Siam Park.",
+   "a": [
+    "Garachico",
+    "El Médano",
+    "Santa Cruz",
+    "La Laguna",
+    "Puerto de la Cruz",
+    "Costa Adeje"
+   ],
+   "c": 5,
+   "fact": "One of the smartest parts of the south-west.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Playa de las Américas, the nightlife resort.",
+   "a": [
+    "Puerto de la Cruz",
+    "El Médano",
+    "Masca",
+    "Playa de las Américas",
+    "Garachico",
+    "Santa Cruz"
+   ],
+   "c": 3,
+   "fact": "It was a fishing hamlet before it grew into a resort.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Anaga, the green mountain tip of the north-east.",
+   "a": [
+    "Los Cristianos",
+    "Anaga",
+    "Costa Adeje",
+    "El Médano",
+    "Masca",
+    "Los Gigantes"
+   ],
+   "c": 1,
+   "fact": "It has ancient laurel forest and good walking.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Icod de los Vinos, home of the Drago Milenario.",
+   "a": [
+    "Los Cristianos",
+    "El Médano",
+    "La Laguna",
+    "Santa Cruz",
+    "Icod de los Vinos",
+    "Costa Adeje"
+   ],
+   "c": 4,
+   "fact": "The dragon tree is its best-known sight.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  },
+  {
+   "q": "Tap Candelaria, with its famous basilica and Guanche statues.",
+   "a": [
+    "Los Gigantes",
+    "Masca",
+    "Garachico",
+    "Puerto de la Cruz",
+    "Costa Adeje",
+    "Candelaria"
+   ],
+   "c": 5,
+   "fact": "A pilgrimage town on the east coast.",
+   "cat": "Tenerife map",
+   "art": "map:tenerife"
+  }
+ ]
+}

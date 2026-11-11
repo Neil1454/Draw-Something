@@ -205,7 +205,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.MONOPOLY -> JSONObject().put("len", set.monopolyLen)
             GameKind.TETRIS -> JSONObject().put("mode", set.tetrisMode).put("lvl", set.tetrisLevel)
                 .put("mins", set.tetrisMins).put("gifts", set.tetrisGifts).put("tl", set.tetrisLines)
-            GameKind.HOLIDAY -> JSONObject().put("pack", set.holidayPack).put("len", set.holidayLen)
+            GameKind.HOLIDAY -> JSONObject().put("pack", set.holidayPack).put("len", set.holidayLen).put("bonus", set.holidayBonus)
                 .put("secs", HolidayRules.SECONDS[set.holidaySecs.coerceIn(0, HolidayRules.SECONDS.lastIndex)])
             else -> JSONObject().put("size", set.flipSize)
         }

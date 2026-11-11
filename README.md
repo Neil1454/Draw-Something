@@ -64,6 +64,19 @@ tap a dot on a map of the islands (or of Sal) to choose it, then tap it again or
 Add `"art": "pic:flag"` (also `plug`, `clock:15:00`, `tag:330_CVE`, `turtle`, `kite`, `beachflag:red`) or `"art": "map:islands"` / `"map:sal"`
 to a question; map questions list the places (up to 10) as their answers.
 
+**Extra time.** While the clock is ticking you can press "Give me more time" (up to 3 times per quiz, once per question). You get
+extra seconds (half the question time, at least 10), but a right answer is then worth a flat 35 points: no speed bonus and never the
+"first right answer" bonus. So the points always rank in this order: first right answer (100 + speed) > slower right answer (40) > right
+with extra time (35) > ran out of time (0) > wrong (-25).
+
+**Bonus (redemption) round.** After the last question each player gets their own round made from the questions they got wrong or didn't
+answer (up to 8, most valuable first, in a fresh answer order). A right answer wins back exactly the points you lost on that question
+(never more, so wild guessing can't pay), or 10 for a question you didn't answer. Get every bonus question right for a +10
+perfect-recall bonus. Nobody has to wait: the two rounds run side by side, and a player with nothing to redo just waits. The host can switch
+the bonus round off in the lobby. The end screen shows main-round and bonus points separately.
+
+There are two holidays so far: **Cape Verde · Sal** and **Tenerife**, both written for what a visitor will actually meet.
+
 The first holiday is **Cape Verde · Sal**, focused on what a visitor will actually meet: money and prices, getting around, food and menus, beaches and sea safety,
 excursions, hotels, language and people. The questions are written from general knowledge, so double-check
 anything time-sensitive (entry rules, prices) before you travel.
