@@ -308,7 +308,7 @@ private fun Hud(c: ArcadeCommon, theirName: String, isHost: Boolean, title: Stri
             Text("WAVE ${c.level}/${c.levels}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White)
             PowerChips(c.mine)
         }
-        Box(Modifier.weight(1f)) { SidePill(theirName, c.theirs, theirs, false) }
+        Box(Modifier.weight(1f).padding(end = 38.dp), contentAlignment = Alignment.CenterEnd) { SidePill(theirName, c.theirs, theirs, false) }
     }
 }
 

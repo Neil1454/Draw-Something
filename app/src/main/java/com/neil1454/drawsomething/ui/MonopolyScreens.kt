@@ -325,7 +325,7 @@ private fun DrawScope.drawBoardBase(m: TextMeasurer) {
 
 private fun DrawScope.text(m: TextMeasurer, s: String, centre: Offset, size: Float, colour: Color = Ink, weight: FontWeight = FontWeight.Bold, maxW: Float = 0f, maxLines: Int = 3, topAligned: Boolean = false) {
     val c = if (maxW > 0f) Constraints(maxWidth = maxW.toInt().coerceAtLeast(4)) else Constraints()
-    val r = m.measure(s, TextStyle(fontSize = (size / density).sp, fontWeight = weight, color = colour, textAlign = TextAlign.Center, lineHeight = (size * 1.08f / density).sp), maxLines = maxLines, overflow = TextOverflow.Ellipsis, constraints = c)
+    val r = m.measure(s, TextStyle(fontSize = size.toSp(), fontWeight = weight, color = colour, textAlign = TextAlign.Center, lineHeight = (size * 1.08f).toSp()), maxLines = maxLines, overflow = TextOverflow.Ellipsis, constraints = c)
     drawText(r, topLeft = Offset(centre.x - r.size.width / 2f, if (topAligned) centre.y else centre.y - r.size.height / 2f))
 }
 
@@ -540,7 +540,7 @@ private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, m
                 drawOval(Color.Black.copy(alpha = 0.35f), Offset(spot.x - 24f, spot.y + 18f), Size(48f, 16f))
                 drawCircle(col, 31f, p)
                 drawCircle(Color.White, 31f, p, style = Stroke(5f))
-                val r = m.measure(emoji, TextStyle(fontSize = (34f / density).sp))
+                val r = m.measure(emoji, TextStyle(fontSize = 34f.toSp()))
                 drawText(r, topLeft = Offset(p.x - r.size.width / 2f, p.y - r.size.height / 2f))
                 if (active) {
                     val a = Path().apply { moveTo(p.x, p.y - 44f - bob.value * 8f); lineTo(p.x - 12f, p.y - 62f - bob.value * 8f); lineTo(p.x + 12f, p.y - 62f - bob.value * 8f); close() }
