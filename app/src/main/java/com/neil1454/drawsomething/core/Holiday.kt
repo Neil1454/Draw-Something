@@ -28,7 +28,11 @@ class HolidayQuestion(
     /** A "did you know" shown after the answer is revealed. */
     val fact: String,
     val category: String,
-)
+    /** "" for a plain text question, "pic:<name>" to show a picture, "map:<name>" to answer by tapping a map. */
+    val art: String = "",
+) {
+    val isMap get() = art.startsWith("map:")
+}
 
 class HolidayPack(
     val id: String,
@@ -54,15 +58,17 @@ class HolidayPack(
             for (i in 0 until minOf(arr.length(), 500)) {
                 val q = arr.optJSONObject(i) ?: continue
                 val opts = q.optJSONArray("a") ?: continue
-                val options = List(minOf(opts.length(), 4)) { clean(opts.optString(it), 90) }.filter { it.isNotEmpty() }
+                val art = clean(q.optString("art"), 24).lowercase().filter { it.isLetterOrDigit() || it == ':' || it == '_' || it == '-' || it == ',' || it == '.' }
+                val cap = if (art.startsWith("map:")) HolidayRules.MAX_OPTIONS else 4
+                val options = List(minOf(opts.length(), cap)) { clean(opts.optString(it), 90) }.filter { it.isNotEmpty() }
                 val c = q.optInt("c", -1)
                 val qt = clean(q.optString("q"), 220)
-                if (qt.isEmpty() || options.size < 3 || c !in 0 until minOf(opts.length(), 4) || opts.optString(c).isBlank()) continue
+                if (qt.isEmpty() || options.size < 3 || c !in 0 until minOf(opts.length(), cap) || opts.optString(c).isBlank()) continue
                 // the answer index must survive removing any blank options before it
                 val answerText = clean(opts.optString(c), 90)
                 val ci = options.indexOf(answerText)
                 if (ci < 0 || options.toSet().size != options.size) continue
-                qs.add(HolidayQuestion(qt, options, ci, clean(q.optString("fact"), 260), clean(q.optString("cat"), 24)))
+                qs.add(HolidayQuestion(qt, options, ci, clean(q.optString("fact"), 260), clean(q.optString("cat"), 24), art))
             }
             if (id.isEmpty() || title.isEmpty() || qs.isEmpty()) null
             else HolidayPack(id, title, clean(o.optString("emoji", "🏝️"), 8).ifEmpty { "🏝️" }, clean(o.optString("blurb"), 200), qs)
@@ -93,6 +99,9 @@ enum class HolidayLength(val label: String, val questions: Int) {
 object HolidayRules {
     const val DEFAULT_SECONDS = 30
 
+    /** Most answers a question can have (map questions list the places you can tap). */
+    const val MAX_OPTIONS = 10
+
     /** Time-per-question choices in the lobby. 0 means no timer at all. */
     val SECONDS = listOf(15, 30, 60, 0)
 
@@ -121,6 +130,8 @@ data class HolidayState(
     val packTitle: String = "",
     val packEmoji: String = "🏝️",
     val category: String = "",
+    /** "", "pic:<name>" or "map:<name>" (see [HolidayQuestion.art]). */
+    val art: String = "",
     val question: String = "",
     val options: List<String> = emptyList(),
     /** 0 = no timer. */
@@ -302,7 +313,7 @@ class HolidayEngine(
             .put("ov", over)
         if (qs.isNotEmpty()) {
             val q = current()
-            o.put("q", q.text).put("ct", q.category).put("op", JSONArray(perm.map { q.options[it] }))
+            o.put("q", q.text).put("ct", q.category).put("ar", q.art).put("op", JSONArray(perm.map { q.options[it] }))
             if (reveal) {
                 o.put("cr", correctDisplay()).put("c1", choice[1]).put("c2", choice[2])
                     .put("m1", ms[1]).put("m2", ms[2]).put("d1", delta[1]).put("d2", delta[2]).put("ft", q.fact)
@@ -322,13 +333,13 @@ class HolidayEngine(
         val ov = s.optBoolean("ov", false)
         val stRaw = s.getString("st").take(8)
         val opsArr = s.optJSONArray("op")
-        val options = if (opsArr == null) emptyList() else List(minOf(opsArr.length(), 4)) { opsArr.optString(it, "").filter { c -> !c.isISOControl() }.take(100) }
+        val options = if (opsArr == null) emptyList() else List(minOf(opsArr.length(), HolidayRules.MAX_OPTIONS)) { opsArr.optString(it, "").filter { c -> !c.isISOControl() }.take(100) }
         val revealed = stRaw == "REVEAL" || stRaw == "END"
         val s1 = s.getInt("s1").coerceIn(0, 100_000)
         val s2 = s.getInt("s2").coerceIn(0, 100_000)
         val mine = if (me1) s1 else s2
         val theirs = if (me1) s2 else s1
-        fun pickOf(key: String) = if (revealed) s.optInt(key, -1).coerceIn(-1, 3) else -1
+        fun pickOf(key: String) = if (revealed) s.optInt(key, -1).coerceIn(-1, HolidayRules.MAX_OPTIONS - 1) else -1
         val c1 = pickOf("c1")
         val c2 = pickOf("c2")
         state = state.copy(
@@ -340,13 +351,14 @@ class HolidayEngine(
             packTitle = s.optString("pk", "").filter { !it.isISOControl() }.take(40),
             packEmoji = s.optString("em", "🏝️").filter { !it.isISOControl() }.take(8),
             category = s.optString("ct", "").filter { !it.isISOControl() }.take(24),
+            art = s.optString("ar", "").filter { it.isLetterOrDigit() || it == ':' || it == '_' || it == '-' || it == ',' || it == '.' }.take(24),
             question = s.optString("q", "").filter { !it.isISOControl() }.take(220),
             options = options,
             limitSecs = s.getInt("lm").coerceIn(0, 120),
             secsLeft = s.getInt("sl").coerceIn(-1, 120),
             myChoice = if (revealed) (if (me1) c1 else c2) else myPick,
             theyAnswered = s.optBoolean(if (me1) "a2" else "a1", false),
-            correct = if (revealed) s.optInt("cr", -1).coerceIn(-1, 3) else -1,
+            correct = if (revealed) s.optInt("cr", -1).coerceIn(-1, HolidayRules.MAX_OPTIONS - 1) else -1,
             theirChoice = if (me1) c2 else c1,
             myMs = if (revealed) s.optInt(if (me1) "m1" else "m2", -1).coerceIn(-1, 120_000) else -1,
             theirMs = if (revealed) s.optInt(if (me1) "m2" else "m1", -1).coerceIn(-1, 120_000) else -1,

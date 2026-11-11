@@ -50,7 +50,7 @@ private val Coral = Color(0xFFFF8A3D)
 @Composable
 fun HolidayHelp() {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("A quiz about where you're going! You both see the same question and four answers at the same time.")
+        Text("A quiz about where you're going! You both see the same question at the same time. Some have pictures, and some are maps: tap a dot to choose it, then tap it again (or press Lock in) to answer.")
         Text("• The FIRST correct answer wins ${HolidayRules.CORRECT} points, plus up to ${HolidayRules.SPEED_BONUS} more for being quick.")
         Text("• If you're also right but slower, you still get ${HolidayRules.ALSO_RIGHT}.")
         Text("• A wrong answer costs ${-HolidayRules.WRONG} points, so think before you tap!")
@@ -112,6 +112,8 @@ fun HolidayScreen(
             )
             TimerBar(s, revealed)
 
+            val isMap = s.art.startsWith("map:")
+            if (s.art.startsWith("pic:")) HolidayPicture(s.art)
             // the question
             Box(
                 Modifier.fillMaxWidth()
@@ -121,12 +123,21 @@ fun HolidayScreen(
                     .padding(16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(s.question, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, textAlign = TextAlign.Center)
+                Text(s.question, fontSize = if (isMap || s.art.isNotEmpty()) 18.sp else 21.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, textAlign = TextAlign.Center)
             }
 
             // the answers
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                s.options.forEachIndexed { i, text ->
+                if (isMap) {
+                    HolidayMap(
+                        kind = s.art.removePrefix("map:"), options = s.options, questionKey = s.seq, revealed = revealed, correct = s.correct,
+                        myChoice = s.myChoice, theirChoice = s.theirChoice, theirName = s.theirName,
+                        enabled = !revealed && s.myChoice == -1 && s.phase == GPhase.PLAYING,
+                    ) { i ->
+                        Sfx.play(Sound.TAP)
+                        engine.pick(i)
+                    }
+                } else s.options.forEachIndexed { i, text ->
                     AnswerButton(i, text, s, revealed) {
                         Sfx.play(Sound.TAP)
                         engine.pick(i)

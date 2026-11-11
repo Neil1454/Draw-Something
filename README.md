@@ -39,7 +39,13 @@ A head-to-head quiz about where you're going. Both phones see the same question 
 wrong answer costs 25. After each question the right answer and a "did you know" fact appear. The correct answer
 is never sent to the other phone until it is revealed, and the answers are shuffled every time.
 
-The first holiday is **Cape Verde · Sal**. The questions are written from general knowledge, so double-check
+Questions can also be **pictures** (a flag, a clock, a price tag, a plug, a beach flag, a turtle, a kitesurfer, all drawn in code) and **maps**:
+tap a dot on a map of the islands (or of Sal) to choose it, then tap it again or press "Lock in". Place names stay hidden until the answer is revealed.
+Add `"art": "pic:flag"` (also `plug`, `clock:15:00`, `tag:330_CVE`, `turtle`, `kite`, `beachflag:red`) or `"art": "map:islands"` / `"map:sal"`
+to a question; map questions list the places (up to 10) as their answers.
+
+The first holiday is **Cape Verde · Sal**, focused on what a visitor will actually meet: money and prices, getting around, food and menus, beaches and sea safety,
+excursions, hotels, language and people. The questions are written from general knowledge, so double-check
 anything time-sensitive (entry rules, prices) before you travel.
 
 ### Adding another holiday

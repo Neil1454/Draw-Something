@@ -32,22 +32,52 @@ class HolidayPackTest {
         for (p in packs) {
             assertTrue("${p.id} needs a good number of questions", p.questions.size >= 60)
             for (q in p.questions) {
-                assertEquals("${q.text} should have four answers", 4, q.options.size)
-                assertEquals(4, q.options.toSet().size)
-                assertTrue(q.correct in 0..3)
-                assertTrue(q.text.endsWith("?") || q.text.endsWith("…"))
+                if (q.isMap) {
+                    assertTrue("${q.text} lists the places to tap", q.options.size in 3..HolidayRules.MAX_OPTIONS)
+                    assertEquals(q.options.size, q.options.toSet().size)
+                    assertTrue(q.correct in q.options.indices)
+                    assertTrue(q.text.endsWith(".") || q.text.endsWith("?"))
+                } else {
+                    assertEquals("${q.text} should have four answers", 4, q.options.size)
+                    assertEquals(4, q.options.toSet().size)
+                    assertTrue(q.correct in 0..3)
+                    assertTrue(q.text.endsWith("?") || q.text.endsWith("…"))
+                }
             }
             assertEquals("questions must be unique", p.questions.size, p.questions.map { it.text }.toSet().size)
         }
     }
 
     @Test fun answersAreNotAlwaysInTheSamePlaceOrTheLongestOne() {
-        val q = PackFiles.all().first().questions
+        val q = PackFiles.all().first().questions.filter { !it.isMap }
         val counts = IntArray(4)
         q.forEach { counts[it.correct]++ }
         assertTrue("correct answers should be spread across A-D: ${counts.toList()}", counts.all { it >= q.size / 8 })
-        val longest = q.count { it.options[it.correct].length == it.options.maxOf { o -> o.length } }
+        val longest = q.count { x -> x.options.filterIndexed { i, _ -> i != x.correct }.all { it.length < x.options[x.correct].length } }
         assertTrue("the longest option shouldn't give the answer away ($longest of ${q.size})", longest < q.size * 0.40)
+    }
+
+    @Test fun theCapeVerdePackHasPicturesAndMapsAndPracticalTopics() {
+        val p = PackFiles.all().first { it.id == "cape_verde_sal" }
+        assertTrue("map questions", p.questions.count { it.isMap } >= 8)
+        assertTrue("picture questions", p.questions.count { it.art.startsWith("pic:") } >= 8)
+        val cats = p.questions.map { it.category }.toSet()
+        for (c in listOf("Food & drink", "Beach & sea", "Excursions", "Hotels", "People", "Language", "Money")) assertTrue("category $c", c in cats)
+        val maps = p.questions.filter { it.isMap }
+        assertTrue(maps.any { it.art == "map:islands" } && maps.any { it.art == "map:sal" })
+        val known = setOf("Santo Antão", "São Vicente", "Santa Luzia", "São Nicolau", "Sal", "Boa Vista", "Maio", "Santiago", "Fogo", "Brava",
+            "Buracona", "Palmeira", "Espargos", "Pedra de Lume", "Santa Maria")
+        for (q in maps) assertTrue("${q.text} uses places the map knows", q.options.all { it in known })
+    }
+
+    @Test fun mapQuestionsKeepTheirPlacesAndPicturesKeepTheirArt() {
+        val j = """{"id":"x","title":"T","questions":[
+            {"q":"Tap B.","art":"map:islands","a":["A","B","C","D","E","F","G"],"c":1},
+            {"q":"Which?","art":"pic:flag","a":["a","b","c","d"],"c":0}]}"""
+        val p = HolidayPack.parse(j)!!
+        assertEquals(7, p.questions[0].options.size)
+        assertTrue(p.questions[0].isMap)
+        assertEquals("pic:flag", p.questions[1].art)
     }
 
     @Test fun badPacksAreRejectedAndBadQuestionsSkipped() {
@@ -226,7 +256,7 @@ class HolidayQuizTest {
         for (seed in 1..160) {
             val e = HolidayEngine("A", "B", true, { }, Random(seed)) { 0L }
             e.start(JSONObject().put("pack", "cape_verde_sal"))
-            counts[e.secretCorrect()!!]++
+            e.secretCorrect()!!.let { if (it < 4) counts[it]++ } // map questions can have more places
         }
         assertTrue("positions ${counts.toList()}", counts.all { it in 18..65 })
     }
