@@ -136,7 +136,14 @@ class HolidayQuizTest {
         p.host.pick(right, forcedMs = 2000)
         p.client.pick(p.wrongAnswer(), forcedMs = 2500)
         p.pump()
-        // both answered -> resolved at once
+        // both answered -> first the picks are shown (without saying who is right)...
+        assertEquals("LOCK", p.host.state.step)
+        assertEquals(-1, p.client.state.correct)
+        assertEquals(right, p.host.state.myChoice)
+        assertEquals(p.host.state.myChoice, p.client.state.theirChoice)
+        assertEquals(0, p.host.state.myDelta)
+        // ...then the answer is revealed
+        p.advance(HolidayRules.LOCK_MS + 100)
         val h = p.host.state
         assertEquals("REVEAL", h.step)
         assertEquals(right, h.correct)
@@ -147,6 +154,19 @@ class HolidayQuizTest {
         assertTrue(p.client.state.fact.isNotBlank() || p.client.state.correct >= 0)
     }
 
+    @Test fun theRightAnswerIsNeverSentWhilePicksAreShown() {
+        val sent = ArrayList<String>()
+        val e = HolidayEngine("A", "B", true, { sent.add(String(it.encode())) }, Random(5)) { 0L }
+        e.start(JSONObject().put("pack", "cape_verde_sal").put("len", 0).put("secs", 30))
+        e.pick(0, forcedMs = 1000)
+        sent.clear()
+        e.onMessage(GMsg.Act("HOLIDAY", JSONObject().put("a", "pick").put("i", 1).put("ms", 2000).put("sq", e.state.seq)))
+        assertEquals("LOCK", e.state.step)
+        assertTrue(sent.isNotEmpty())
+        sent.forEach { assertFalse("answer leaked during the lock: $it", it.contains("\"cr\"") || it.contains("\"d1\"")) }
+        assertTrue("the picks are shown", sent.any { it.contains("\"c1\"") && it.contains("\"c2\"") })
+    }
+
     @Test fun slowerRightAnswerStillGetsAConsolation() {
         val p = pair()
         val right = p.rightAnswer()
@@ -154,6 +174,7 @@ class HolidayQuizTest {
         p.pump()
         p.host.pick(right, forcedMs = 4000)
         p.pump()
+        p.advance(HolidayRules.LOCK_MS + 100)
         assertEquals(HolidayRules.ALSO_RIGHT, p.host.state.myDelta)
         assertTrue(p.client.state.myDelta > HolidayRules.CORRECT)
     }
@@ -166,6 +187,7 @@ class HolidayQuizTest {
         assertTrue(p.client.state.theyAnswered)
         p.client.pick(p.rightAnswer(), forcedMs = 3000)
         p.pump()
+        p.advance(HolidayRules.LOCK_MS + 100)
         assertEquals("REVEAL", p.host.state.step)
         assertTrue(p.client.state.myDelta > 0)
     }
@@ -176,6 +198,8 @@ class HolidayQuizTest {
         p.pump()
         assertEquals("ASK", p.host.state.step)
         p.advance(HolidayRules.GRACE_MS + 200)
+        assertEquals("LOCK", p.host.state.step)
+        p.advance(HolidayRules.LOCK_MS + 100)
         assertEquals("REVEAL", p.host.state.step)
         assertEquals(0, p.client.state.myDelta) // didn't answer
     }
@@ -197,6 +221,7 @@ class HolidayQuizTest {
         p.host.pick(p.rightAnswer(), forcedMs = 5_000)
         p.client.pick(p.wrongAnswer(), forcedMs = 8_000)
         p.pump()
+        p.advance(HolidayRules.LOCK_MS + 100)
         assertEquals("REVEAL", p.host.state.step)
         assertTrue(p.host.state.myDelta > HolidayRules.CORRECT)
     }

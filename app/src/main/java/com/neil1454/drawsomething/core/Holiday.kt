@@ -112,6 +112,8 @@ object HolidayRules {
     const val ALSO_RIGHT = 40        // right, but not the quickest
     const val WRONG = -25            // a wrong answer costs this (score never drops below 0)
     const val GRACE_MS = 700L        // after the first right answer, wait this long for the other phone's answer
+    const val LOCK_MS = 1900L        // both answers are shown (not yet marked right or wrong) for this long
+    const val HURRY_SECS = 5         // the "hurry up" warning starts when this many seconds are left
     const val REVEAL_MS = 4500L
     const val REVEAL_NO_FACT_MS = 3000L
     const val MIN_REACTION_MS = 150
@@ -187,6 +189,7 @@ class HolidayEngine(
     private var startAt = 0L
     private var firstCorrectAt = -1L
     private var revealUntil = 0L
+    private var lockUntil = 0L
     private var lastSecs = -1
     private val choice = IntArray(3) { -1 }
     private val ms = IntArray(3) { -1 }
@@ -266,6 +269,8 @@ class HolidayEngine(
                     }
                 }
             }
+        } else if (step == "LOCK") {
+            if (now >= lockUntil) reveal(now)
         } else if (now >= revealUntil) {
             if (idx + 1 >= qs.size) {
                 over = true
@@ -278,7 +283,18 @@ class HolidayEngine(
         }
     }
 
+    /** Both answers are in (or time is up): show who picked what, without saying who is right yet. */
     private fun resolve(now: Long) {
+        if (choice[1] == -1 && choice[2] == -1) {
+            reveal(now)
+            return
+        }
+        step = "LOCK"
+        lockUntil = now + HolidayRules.LOCK_MS
+        publish()
+    }
+
+    private fun reveal(now: Long) {
         step = "REVEAL"
         val cd = correctDisplay()
         val rightWho = (1..2).filter { choice[it] == cd }
@@ -314,6 +330,7 @@ class HolidayEngine(
         if (qs.isNotEmpty()) {
             val q = current()
             o.put("q", q.text).put("ct", q.category).put("ar", q.art).put("op", JSONArray(perm.map { q.options[it] }))
+            if (step == "LOCK") o.put("c1", choice[1]).put("c2", choice[2]) // picks are shown, the right answer is not
             if (reveal) {
                 o.put("cr", correctDisplay()).put("c1", choice[1]).put("c2", choice[2])
                     .put("m1", ms[1]).put("m2", ms[2]).put("d1", delta[1]).put("d2", delta[2]).put("ft", q.fact)
@@ -335,11 +352,12 @@ class HolidayEngine(
         val opsArr = s.optJSONArray("op")
         val options = if (opsArr == null) emptyList() else List(minOf(opsArr.length(), HolidayRules.MAX_OPTIONS)) { opsArr.optString(it, "").filter { c -> !c.isISOControl() }.take(100) }
         val revealed = stRaw == "REVEAL" || stRaw == "END"
+        val picksShown = revealed || stRaw == "LOCK"
         val s1 = s.getInt("s1").coerceIn(0, 100_000)
         val s2 = s.getInt("s2").coerceIn(0, 100_000)
         val mine = if (me1) s1 else s2
         val theirs = if (me1) s2 else s1
-        fun pickOf(key: String) = if (revealed) s.optInt(key, -1).coerceIn(-1, HolidayRules.MAX_OPTIONS - 1) else -1
+        fun pickOf(key: String) = if (picksShown) s.optInt(key, -1).coerceIn(-1, HolidayRules.MAX_OPTIONS - 1) else -1
         val c1 = pickOf("c1")
         val c2 = pickOf("c2")
         state = state.copy(
@@ -356,7 +374,7 @@ class HolidayEngine(
             options = options,
             limitSecs = s.getInt("lm").coerceIn(0, 120),
             secsLeft = s.getInt("sl").coerceIn(-1, 120),
-            myChoice = if (revealed) (if (me1) c1 else c2) else myPick,
+            myChoice = if (picksShown) (if (me1) c1 else c2) else myPick,
             theyAnswered = s.optBoolean(if (me1) "a2" else "a1", false),
             correct = if (revealed) s.optInt("cr", -1).coerceIn(-1, HolidayRules.MAX_OPTIONS - 1) else -1,
             theirChoice = if (me1) c2 else c1,

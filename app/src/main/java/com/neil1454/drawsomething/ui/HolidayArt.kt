@@ -104,6 +104,9 @@ fun HolidayMap(
     theirChoice: Int,
     theirName: String,
     enabled: Boolean,
+    locked: Boolean = false,
+    myCol: Color = Color(0xFF3B82F6),
+    theirCol: Color = Color(0xFFF59E0B),
     onLock: (Int) -> Unit,
 ) {
     val points = remember(kind) { mapPoints(kind) }
@@ -165,23 +168,24 @@ fun HolidayMap(
                 val p = points[name] ?: return@forEachIndexed
                 val c = Offset(p.x * size.width, p.y * size.height)
                 val isCorrect = revealed && i == correct
+                val shown = revealed || locked
                 val ring = when {
                     isCorrect -> Color(0xFF22C55E)
-                    revealed && i == myChoice -> Color(0xFFEF4444)
-                    revealed && i == theirChoice -> Color(0xFFF59E0B)
+                    shown && i == myChoice -> myCol
+                    shown && i == theirChoice -> theirCol
                     !revealed && i == sel -> Color(0xFFFACC15)
                     else -> Color.White
                 }
-                val big = isCorrect || (!revealed && i == sel) || (revealed && (i == myChoice || i == theirChoice))
+                val big = isCorrect || (!revealed && i == sel) || (shown && (i == myChoice || i == theirChoice))
                 if (big) drawCircle(ring.copy(alpha = 0.35f), radius = 26f)
                 drawCircle(Color(0xFF0B1B33), radius = 11f)
                 drawCircle(ring, radius = if (big) 9f else 7f)
                 val tags = buildList {
-                    if (revealed && i == myChoice) add("YOU")
-                    if (revealed && i == theirChoice) add(theirName.take(8).uppercase())
+                    if (shown && i == myChoice) add("YOU")
+                    if (shown && i == theirChoice) add(theirName.take(8).uppercase())
                 }
                 val label = when {
-                    revealed -> name + if (tags.isNotEmpty()) "  (" + tags.joinToString(" & ") + ")" else ""
+                    revealed || (locked && tags.isNotEmpty()) -> name + if (tags.isNotEmpty()) "  (" + tags.joinToString(" & ") + ")" else ""
                     i == sel -> name
                     else -> ""
                 }
@@ -194,7 +198,7 @@ fun HolidayMap(
                 }
             }
         }
-        if (!revealed) {
+        if (!revealed && !locked) {
             val label = if (sel >= 0) "Lock in: ${options[sel]}" else "Tap a dot on the map"
             Box(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
