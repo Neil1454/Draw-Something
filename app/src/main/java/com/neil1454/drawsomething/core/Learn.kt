@@ -29,6 +29,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
     private var lastGift = 0
     private var finishedAt = 0L
     private var bonusSaid = false
+    private var tipAt = 0L
+    private var tipN = 0
 
     /** Move the demo forward by [ms] (virtual milliseconds). */
     fun advance(ms: Long) {
@@ -83,6 +85,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.DRAUGHTS -> h.draughts.start(JSONObject())
             GameKind.LUDO -> h.ludo.start(JSONObject())
             GameKind.MONOPOLY -> h.monopoly.start(JSONObject().put("len", 2))
+            GameKind.INVADERS -> h.invaders.start(JSONObject().put("waves", 3).put("lives", 3))
+            GameKind.CENTIPEDE -> h.centipede.start(JSONObject().put("waves", 3).put("lives", 3))
         }
     }
 
@@ -261,6 +265,28 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                             else -> "Rolled ${s.die}: a piece moves ${s.die} steps." + tip(LUDO_TIPS, s.moves)
                         },
                     )
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.INVADERS -> {
+                val s = duel.host.invaders.state
+                if (s.c.level != lastSeq && s.phase == GPhase.PLAYING) {
+                    lastSeq = s.c.level
+                    say("🌊 Wave ${s.c.level} of ${s.c.levels}! The invaders march sideways and drop down at the edges. Both ships fire at the same time; you score for the invaders you hit.")
+                } else if (duel.now >= tipAt && s.phase == GPhase.PLAYING) {
+                    tipAt = duel.now + 25_000L
+                    say(ARCADE_TIPS[(tipN++) % ARCADE_TIPS.size] + "\n(You ${s.myScore} · Player 2 ${s.theirScore})")
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.CENTIPEDE -> {
+                val s = duel.host.centipede.state
+                if (s.c.level != lastSeq && s.phase == GPhase.PLAYING) {
+                    lastSeq = s.c.level
+                    say("🐛 Level ${s.c.level} of ${s.c.levels}! Shoot the centipede: every segment you hit becomes a mushroom and splits it in two. The head is worth the most.")
+                } else if (duel.now >= tipAt && s.phase == GPhase.PLAYING) {
+                    tipAt = duel.now + 25_000L
+                    say(CENTI_TIPS[(tipN++) % CENTI_TIPS.size] + "\n(You ${s.myScore} · Player 2 ${s.theirScore})")
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
@@ -454,6 +480,18 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "A wrong answer costs 25 points, so don't just guess wildly!",
             "After each answer a 'did you know' fact appears: great for learning before you land.",
         )
+        private val ARCADE_TIPS = listOf(
+            "Hold your finger down to fire and slide it to fly. The shields in front of you crumble, so use them.",
+            "The mystery ship at the top is worth big points and drops a power-up: rapid fire, triple shot, or an extra life.",
+            "The fewer invaders are left, the faster they come. Take out the lowest ones first, they are the ones that bomb you.",
+            "If one of you is knocked out, you come back when the wave is cleared. If the invaders reach the bottom, it is over for both of you.",
+        )
+        private val CENTI_TIPS = listOf(
+            "Hold your finger down to fire and slide it to fly. Mushrooms stop the centipede and make it drop a row.",
+            "Shoot the head for 100 points. Body segments are 10, and each one you hit turns into a mushroom.",
+            "The spider zig-zags along the bottom: the closer you shoot it, the more it is worth. The flea drops mushrooms as it falls.",
+            "A power-up from the spider can give you rapid fire, a triple shot or an extra life.",
+        )
         private val DRAUGHTS_TIPS = listOf(
             "Move diagonally forward onto an empty dark square.",
             "If you can jump, you MUST jump. Setting up a forced jump is how you win pieces.",
@@ -499,6 +537,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.TETRIS -> "🧱 Tetris: falling blocks, side by side. You are Player 1 (the left board). Clear lines and the pieces you blow up are sent to your rival."
             GameKind.DRAUGHTS -> "♟️ Draughts: jump the other player's pieces. Captures are compulsory. You are Player 1 (the bottom pieces)."
             GameKind.LUDO -> "🏠 Ludo: roll a 6 to bring a piece out, race round the board, and get all four home with exact rolls. You are Player 1 (red)."
+            GameKind.INVADERS -> "👾 Space Invaders: both players fly at the bottom of the same screen and shoot the invaders as they march down. You are Player 1 (the left ship)."
+            GameKind.CENTIPEDE -> "🐛 Centipede: shoot the centipede as it winds down through the mushrooms. Every hit splits it. You are Player 1."
             GameKind.MONOPOLY -> "🎩 Monopoly (UK): buy streets, collect rent, build houses and hotels. You are Player 1. This is a quick 15-turn demo."
             GameKind.HOLIDAY -> "🏝️ Do you know your Holiday? A quiz about where you're going. You are Player 1; the quickest correct answer wins the most points."
         }

@@ -294,6 +294,8 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.DRAUGHTS -> DraughtsHelp()
                     GameKind.LUDO -> LudoHelp()
                     GameKind.MONOPOLY -> MonopolyHelp()
+                    GameKind.INVADERS -> InvadersHelp()
+                    GameKind.CENTIPEDE -> CentipedeHelp()
                 }
             }
         },
@@ -565,6 +567,8 @@ fun GameBrowser(
             GameKind.DRAUGHTS -> DraughtsLobby(ui, connected, onStartSync)
             GameKind.LUDO -> LudoLobby(ui, connected, onStartSync)
             GameKind.MONOPOLY -> MonopolyLobby(ui, connected, onSettings, onStartSync)
+            GameKind.INVADERS -> ArcadeLobby(ui, connected, GameKind.INVADERS, { InvadersHelp() }, onSettings, onStartSync)
+            GameKind.CENTIPEDE -> ArcadeLobby(ui, connected, GameKind.CENTIPEDE, { CentipedeHelp() }, onSettings, onStartSync)
         }
     }
 }
@@ -901,6 +905,18 @@ private fun DraughtsLobby(ui: UiState, connected: Boolean, onStart: (GameKind, J
 @Composable
 private fun LudoLobby(ui: UiState, connected: Boolean, onStart: (GameKind, JSONObject) -> Unit) {
     SyncLobby(ui, connected, GameKind.LUDO, { LudoHelp() }, {}) { onStart(GameKind.LUDO, JSONObject()) }
+}
+
+@Composable
+private fun ArcadeLobby(
+    ui: UiState, connected: Boolean, kind: GameKind, help: @Composable () -> Unit,
+    onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit,
+) {
+    val set = ui.settings
+    SyncLobby(ui, connected, kind, help, {
+        ChipRow(if (kind == GameKind.INVADERS) "Waves" else "Levels", listOf("3", "5", "7"), listOf(3, 5, 7).indexOf(set.arcadeWaves).coerceAtLeast(0)) { onSettings(set.copy(arcadeWaves = listOf(3, 5, 7)[it])) }
+        ChipRow("Lives each", listOf("2", "3", "5"), listOf(2, 3, 5).indexOf(set.arcadeLives).coerceAtLeast(1)) { onSettings(set.copy(arcadeLives = listOf(2, 3, 5)[it])) }
+    }) { onStart(kind, JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives)) }
 }
 
 @Composable

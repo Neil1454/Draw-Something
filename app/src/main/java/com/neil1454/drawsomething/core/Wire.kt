@@ -18,6 +18,8 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     DRAUGHTS("Draughts", "♟️", "Also called Checkers. Jump their pieces, crown your kings. Captures are compulsory."),
     LUDO("Ludo", "🏠", "Also called Frustration. Roll a 6 to start, race round the board, and get home with the exact roll."),
     MONOPOLY("Monopoly", "🎩", "The UK property game on the London board: buy, build, trade and bankrupt your rival."),
+    INVADERS("Space Invaders", "👾", "Two ships, one sky. Fly and fire together as the invaders march down. Five waves, shields, a mystery ship."),
+    CENTIPEDE("Centipede", "🐛", "Blast the centipede as it winds down through the mushrooms. Watch out for the spider and the flea."),
 }
 
 /** Games that are switched on. The holiday quiz can be switched off in one place: see [Features]. */

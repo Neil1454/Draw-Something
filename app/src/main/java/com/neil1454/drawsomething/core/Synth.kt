@@ -9,7 +9,7 @@ import kotlin.random.Random
 
 /** Every sound effect in the app. They are generated in code, so there are no audio files to ship. */
 enum class Sound {
-    TAP, POP, GOOD, BAD, WIN, LOSE, EXPLODE, SPLASH, FLIP, TICK, CHIME, CARD, COIN, WHOOSH, DROP, ROLL, GO, BUZZ,
+    TAP, POP, GOOD, BAD, WIN, LOSE, EXPLODE, SPLASH, FLIP, TICK, CHIME, CARD, COIN, WHOOSH, DROP, ROLL, GO, BUZZ, ZAP, THUD,
 }
 
 /**
@@ -52,6 +52,8 @@ object Synth {
         )
         Sound.GO -> listOf(seg(1200, 220, 0.5, Wave.SQUARE, decay = 1.5))
         Sound.BUZZ -> listOf(seg(150, 300, 0.4, Wave.SQUARE, decay = 1.5))
+        Sound.ZAP -> listOf(seg(1500, 90, 0.22, Wave.SQUARE, to = 380, decay = 3.5))
+        Sound.THUD -> listOf(seg(95, 120, 0.5, to = 55, decay = 4.0))
     }
 
     /** The samples for [sound]: 16-bit, mono, [RATE] Hz. */

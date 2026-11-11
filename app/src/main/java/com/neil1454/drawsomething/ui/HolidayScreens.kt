@@ -134,6 +134,7 @@ fun HolidayScreen(
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscape = maxWidth > maxHeight
+            val isMap = s.art.startsWith("map:")
             val topPart: @Composable ColumnScope.() -> Unit = {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PlayerPill(
@@ -177,7 +178,6 @@ fun HolidayScreen(
                 }
             }
 
-            val isMap = s.art.startsWith("map:")
             if (!bonusWaiting && s.art.startsWith("pic:")) HolidayPicture(s.art, height = if (landscape) 110.dp else 150.dp)
             // the question
             if (!bonusWaiting) Box(

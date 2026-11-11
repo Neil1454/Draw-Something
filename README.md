@@ -23,6 +23,8 @@ and you can switch games without reconnecting.
 | ♟️ **Draughts** | English draughts (Checkers). Compulsory captures, multiple jumps, kings. Tap a piece, tap where it goes. |
 | 🏠 **Ludo** | Also called Frustration. Roll a 6 to start, race round the board, send rivals home, and finish with the exact roll. Tap the dice in the middle to roll. |
 | 🎩 **Monopoly** | The UK (London) board: buy, auction, build houses and hotels, mortgage, trade, Chance and Community Chest, Jail, bankruptcy. Full, 30-turn or 15-turn games. |
+| 👾 **Space Invaders** | Two ships on one screen at the same time, shooting the invaders as they march down. Shields that crumble, a mystery ship that drops power-ups, five faster waves. You score separately: partners against the aliens, rivals for the top score. |
+| 🐛 **Centipede** | Blast the centipede as it winds down through the mushrooms; every hit splits it. Watch out for the spider and the flea. Both players share the bottom of the screen. |
 
 ### The new board games
 
@@ -40,6 +42,21 @@ Unwanted properties go to a two-player auction. You can mortgage (and lift it fo
 price, and trade properties and cash. If you can't cover a bill you must raise the money or go bankrupt. The 16 Chance and 16 Community
 Chest cards follow the UK edition (the wording is paraphrased). Choose a short game and the richest player wins after 15 or 30 turns each.
 The computer plays all three, including bidding at auctions and judging trade offers.
+
+### Space Invaders and Centipede
+
+Both are real-time, two players on the same screen. Slide your finger anywhere to fly your ship and hold it down to fire (you can rest your
+thumb wherever is comfortable: it moves your ship by how far you slide it). The host's phone runs the whole game about 30 times a second and
+sends the picture to the other phone; the other phone only sends where its finger is and whether it is firing, so there is nothing to cheat
+with. Power-ups (rapid fire, triple shot, extra life) come from the mystery ship in Space Invaders and the spider in Centipede. A ship that
+runs out of lives comes back when the wave or level is cleared, and the game ends when both are out, the invaders land, or all waves are done.
+Both can be played portrait or landscape, and the playfield resizes to fit.
+
+### Screen orientation
+
+Games that suit it have a layout for each way up (Othello, Connect 4, Pairs, Ludo, Draughts, Tetris, Minesweeper, Battleships, Pig, the
+holiday quiz and the arcade games), and resize as you turn the phone. **Monopoly is landscape only**: it turns the phone for you while you play.
+Its board is much bigger, every square has its full name, and you can pinch to zoom, drag to move, and double-tap to zoom in and out.
 
 ### Saving long games
 

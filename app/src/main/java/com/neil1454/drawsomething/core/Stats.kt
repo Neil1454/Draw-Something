@@ -31,6 +31,8 @@ object Outcomes {
         is DraughtsState -> sync(state.phase, GameKind.DRAUGHTS, state.myCount, state.theirCount, state.result)
         is LudoState -> sync(state.phase, GameKind.LUDO, state.myHome, state.theirHome, state.result)
         is MonopolyState -> sync(state.phase, GameKind.MONOPOLY, state.myWorth, state.theirWorth, state.result)
+        is InvadersState -> sync(state.phase, GameKind.INVADERS, state.myScore, state.theirScore, state.result)
+        is CentipedeState -> sync(state.phase, GameKind.CENTIPEDE, state.myScore, state.theirScore, state.result)
         is HolidayState -> sync(state.phase, GameKind.HOLIDAY, state.myScore, state.theirScore, state.result)
         else -> null
     }

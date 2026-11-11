@@ -20,6 +20,8 @@ import com.neil1454.drawsomething.core.FlipEngine
 import com.neil1454.drawsomething.core.DraughtsEngine
 import com.neil1454.drawsomething.core.LudoEngine
 import com.neil1454.drawsomething.core.MonopolyEngine
+import com.neil1454.drawsomething.core.InvadersEngine
+import com.neil1454.drawsomething.core.CentipedeEngine
 import com.neil1454.drawsomething.core.HiLoEngine
 import com.neil1454.drawsomething.core.HolidayEngine
 import com.neil1454.drawsomething.core.HolidayPack
@@ -109,6 +111,8 @@ data class LobbySettings(
     val holidayLen: Int = 1,
     val holidaySecs: Int = 1,
     val monopolyLen: Int = 0,
+    val arcadeWaves: Int = 5,
+    val arcadeLives: Int = 3,
     val holidayBonus: Boolean = true,
     val tetrisMode: Int = 0,
     val tetrisLevel: Int = 0,
@@ -618,6 +622,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             DraughtsEngine(me, partner, host, sendG, clock = clock),
             LudoEngine(me, partner, host, sendG, clock = clock),
             MonopolyEngine(me, partner, host, sendG, clock = clock),
+            InvadersEngine(me, partner, host, sendG, clock = clock),
+            CentipedeEngine(me, partner, host, sendG, clock = clock),
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }
@@ -796,7 +802,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         const val MAX_NAME = 20
         const val COMPUTER_NAME = "Computer 🤖"
         const val MAX_PENDING_REQUESTS = 5
-        const val TICK_MS = 100L
+        const val TICK_MS = 33L
         const val SAVE_DELAY_MS = 700L
     }
 }
