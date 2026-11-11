@@ -217,6 +217,35 @@ class LudoEngine(
         publish()
     }
 
+    override fun saveModel(): JSONObject? {
+        if (state.phase != GPhase.PLAYING || over) return null
+        return JSONObject().put("p1", SaveFormat.ints(pos[0])).put("p2", SaveFormat.ints(pos[1])).put("turn", turn).put("die", die)
+            .put("six", sixes).put("ev", event).put("by", eventBy).put("lp", lastPiece).put("mv", moves).put("rl", rolls).put("auto", autoAt >= 0)
+    }
+
+    override fun saveSummary(): String = "${nameOf1()}: ${pos[0].count { it == Ludo.HOME }} home · ${nameOf2()}: ${pos[1].count { it == Ludo.HOME }} home · ${moves} moves"
+
+    private fun nameOf1() = if (isHost) myName else theirName
+    private fun nameOf2() = if (isHost) theirName else myName
+
+    override fun hostRestore(model: JSONObject): Boolean {
+        val a = SaveFormat.readInts(model, "p1", 4, Ludo.BASE..Ludo.HOME) ?: return false
+        val b = SaveFormat.readInts(model, "p2", 4, Ludo.BASE..Ludo.HOME) ?: return false
+        val t = model.optInt("turn", 0)
+        if (t !in 1..2) return false
+        a.copyInto(pos[0]); b.copyInto(pos[1])
+        turn = t; die = model.optInt("die", 0).coerceIn(0, 6); sixes = model.optInt("six", 0).coerceIn(0, 3)
+        event = model.optString("ev", "").take(8); eventBy = model.optInt("by", 0).coerceIn(0, 2); lastPiece = model.optInt("lp", -1).coerceIn(-1, 3)
+        moves = model.optInt("mv", 0).coerceIn(0, 1_000_000); rolls = model.optInt("rl", 0).coerceIn(0, 1_000_000)
+        over = false; winner = 0
+        // a roll that was waiting to be passed on is passed on shortly after resuming
+        autoAt = if (model.optBoolean("auto", false)) clock() + 1200L else -1L
+        // a piece still to be chosen: make sure that is still possible, otherwise start the go again
+        if (die != 0 && autoAt < 0 && Ludo.movable(pos[turn - 1], pos[2 - turn], turn, die).isEmpty()) { die = 0 }
+        forcedRolls.clear()
+        return true
+    }
+
     override fun hostSnapshot(): JSONObject = JSONObject()
         .put("p1", JSONArray(pos[0].toList())).put("p2", JSONArray(pos[1].toList()))
         .put("turn", turn).put("die", die).put("six", sixes).put("ev", event).put("by", eventBy).put("lp", lastPiece)

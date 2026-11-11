@@ -197,6 +197,29 @@ class DraughtsEngine(
         publish()
     }
 
+    override fun saveModel(): JSONObject? {
+        if (state.phase != GPhase.PLAYING || over) return null
+        return JSONObject().put("g", Draughts.encode(grid)).put("turn", turn).put("must", must).put("lf", lastFrom).put("lt", lastTo)
+            .put("cap", captured).put("kg", crowned).put("mv", moves).put("q", quiet)
+    }
+
+    override fun saveSummary(): String =
+        "${if (isHost) myName else theirName}: ${Draughts.count(grid, 1)} pieces · ${if (isHost) theirName else myName}: ${Draughts.count(grid, 2)} pieces · move $moves"
+
+    override fun hostRestore(model: JSONObject): Boolean {
+        val g = Draughts.decode(model.optString("g", "")) ?: return false
+        val t = model.optInt("turn", 0)
+        if (t !in 1..2) return false
+        val m = model.optInt("must", -1).coerceIn(-1, 63)
+        if (Draughts.moves(g, t, m).isEmpty()) return false
+        grid = g; turn = t; must = m
+        lastFrom = model.optInt("lf", -1).coerceIn(-1, 63); lastTo = model.optInt("lt", -1).coerceIn(-1, 63)
+        captured = model.optInt("cap", -1).coerceIn(-1, 63); crowned = model.optBoolean("kg", false)
+        moves = model.optInt("mv", 0).coerceIn(0, 1_000_000); quiet = model.optInt("q", 0).coerceIn(0, Draughts.DRAW_PLIES)
+        over = false; winner = 0; reason = ""
+        return true
+    }
+
     override fun hostSnapshot(): JSONObject = JSONObject()
         .put("g", Draughts.encode(grid)).put("turn", turn).put("must", must).put("lf", lastFrom).put("lt", lastTo)
         .put("cap", captured).put("kg", crowned).put("mv", moves).put("over", over).put("win", winner).put("why", reason)

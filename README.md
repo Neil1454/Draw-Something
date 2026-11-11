@@ -41,6 +41,22 @@ price, and trade properties and cash. If you can't cover a bill you must raise t
 Chest cards follow the UK edition (the wording is paraphrased). Choose a short game and the richest player wins after 15 or 30 turns each.
 The computer plays all three, including bidding at auctions and judging trade offers.
 
+### Saving long games
+
+Monopoly, Ludo and Draughts can be saved and finished later.
+- **Automatic.** While a long game is being played, the host's phone keeps a save up to date after every move, and writes it again the
+  moment the app goes into the background or closes. If the app is closed, the phone runs out of battery or the app crashes, the game is
+  still there (at worst the last second or so is missing). The save is written to a temporary file and then renamed, so a crash can't
+  leave a half-written save.
+- **Leaving.** Pressing ✕ or Back in a long game asks "Save your game?" with *Save and leave*, *Don't save* and *Keep playing*. *Don't save*
+  asks a second time, because everything is lost for both players. The guest is simply told the host keeps the progress.
+- **Resuming.** The host opens the app, pairs up with their partner the normal way (or plays the computer), opens the game's lobby and presses
+  **Resume** on the green saved-game card (it shows the score, when it was saved and who it was with). The partner just joins as usual and
+  sees the game continue exactly where it stopped, including a half-finished auction or a debt in Monopoly. You can also **Discard** it.
+  Starting a new game while one is saved asks first, and a finished game removes its save automatically.
+- **Where it lives.** Only on the host's phone, in the app's private storage (one file per game), and it is never sent anywhere except to
+  your partner during the game. Damaged or tampered saves are checked and refused.
+
 ## Play solo, or learn by watching
 
 - **🤖 Solo vs computer.** Press it on the home screen, choose Easy, Normal or Hard, then pick any game as

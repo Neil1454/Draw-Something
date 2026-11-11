@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -55,6 +56,7 @@ import com.neil1454.drawsomething.core.Difficulty
 import com.neil1454.drawsomething.core.DiceTarget
 import com.neil1454.drawsomething.core.DropSize
 import com.neil1454.drawsomething.core.FlipSize
+import com.neil1454.drawsomething.core.canSave
 import com.neil1454.drawsomething.core.MonopolyLength
 import com.neil1454.drawsomething.core.HiLoRows
 import com.neil1454.drawsomething.core.HolidayLength
@@ -128,6 +130,14 @@ fun HomeScreen(
                 RoundIconButton(if (soundOn) "🔊" else "🔇", { onSound(!soundOn) })
             }
             if (showSettings) SettingsDialog(soundOn, onSound) { showSettings = false }
+            val savedGames = LocalSaves.current.saves
+            if (savedGames.isNotEmpty()) {
+                Text(
+                    "💾 Saved game" + (if (savedGames.size == 1) "" else "s") + ": " + savedGames.keys.joinToString(", ") { it.label } +
+                        ". To carry on, host a game, pick it and press Resume.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+                )
+            }
             // ---- hero
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 availableGames().forEachIndexed { i, k ->
@@ -802,14 +812,19 @@ private fun SyncLobby(
     options: @Composable () -> Unit,
     onStart: () -> Unit,
 ) {
+    val saves = LocalSaves.current
+    val saved = if (ui.isHost && kind.canSave) saves.saves[kind] else null
+    var confirmNew by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (saved != null) SavedGameCard(kind, saved, connected, onResume = { saves.resume(kind) }, onDiscard = { saves.discard(kind) })
         Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp)) { help() } }
         if (ui.isHost) {
             options()
             FunkyButton(
-                if (connected) "${kind.emoji}  Start ${kind.label}" else "Start (waiting for your partner…)",
-                onStart, Modifier.fillMaxWidth(), kind.colors(), enabled = connected, fontSize = 18.sp,
+                if (connected) "${kind.emoji}  ${if (saved != null) "Start a NEW" else "Start"} ${kind.label}" else "Start (waiting for your partner…)",
+                { if (saved != null) confirmNew = true else onStart() }, Modifier.fillMaxWidth(), kind.colors(), enabled = connected, fontSize = 18.sp,
             )
+            if (confirmNew && saved != null) ReplaceSaveDialog(kind, saved, onReplace = { confirmNew = false; onStart() }, onCancel = { confirmNew = false })
         } else if (connected) {
             WaitingForHost(ui, "Waiting for {name} to start the game…")
         }

@@ -1,5 +1,10 @@
 package com.neil1454.drawsomething
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.neil1454.drawsomething.ui.LocalSaves
+import com.neil1454.drawsomething.ui.SaveActions
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -38,13 +43,22 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
             DrawSomethingTheme {
-                DrawSomethingApp(
-                    vm,
-                    onHost = { withPermissions { vm.host() } },
-                    onJoin = { withPermissions { vm.join() } },
-                )
+                val saves by vm.saves.collectAsStateWithLifecycle()
+                CompositionLocalProvider(LocalSaves provides SaveActions(saves, vm::resumeGame, vm::discardSave)) {
+                    DrawSomethingApp(
+                        vm,
+                        onHost = { withPermissions { vm.host() } },
+                        onJoin = { withPermissions { vm.join() } },
+                    )
+                }
             }
         }
+    }
+
+    override fun onStop() {
+        // Going into the background (or being closed): make sure a long game in progress is saved.
+        vm.flushSave()
+        super.onStop()
     }
 
     override fun onStart() {

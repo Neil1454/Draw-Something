@@ -81,6 +81,30 @@ abstract class SyncEngine(
     protected abstract fun reset()
     protected open fun hostTick(now: Long) {}
 
+    // ---- saving long games (host only): the full private model, so a game can be finished later
+    /** The whole game as JSON, or null if this game can't be saved (or isn't being played). */
+    open fun saveModel(): JSONObject? = null
+
+    /** One line saying how the game stands, for the "saved game" card. */
+    open fun saveSummary(): String = ""
+
+    /** Host only: put the game back exactly as saved. Return false if the data isn't usable. */
+    protected open fun hostRestore(model: JSONObject): Boolean = false
+
+    /** Host only: carry on a saved game. The partner is told as for a new game and then receives the restored position. */
+    fun resume(model: JSONObject): Boolean {
+        if (!isHost || !kind.canSave) return false
+        val ok = try {
+            hostRestore(model)
+        } catch (e: Exception) {
+            false
+        }
+        if (!ok) return false
+        send(GMsg.Setup(kind.name, JSONObject().put("resume", true)))
+        publish()
+        return true
+    }
+
     /** Host only: start (or restart) a game. */
     fun start(opts: JSONObject = JSONObject()) {
         if (!isHost) return

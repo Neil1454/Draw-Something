@@ -56,6 +56,8 @@ import com.neil1454.drawsomething.core.MinesPhase
 import com.neil1454.drawsomething.core.QuickEngine
 import com.neil1454.drawsomething.core.QuickState
 import com.neil1454.drawsomething.core.SyncEngine
+import com.neil1454.drawsomething.core.GPhase
+import com.neil1454.drawsomething.core.canSave
 import com.neil1454.drawsomething.core.Sound
 import com.neil1454.drawsomething.sound.Sfx
 import org.json.JSONObject
@@ -179,7 +181,15 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
         )
     }
 
-    if (confirmLeave) {
+    val longGame = ui.syncEngines.values.firstOrNull { it.kind.canSave && it.phase == GPhase.PLAYING }
+    if (confirmLeave && longGame != null) {
+        LeaveLongGameDialog(
+            kind = longGame.kind, summary = if (ui.isHost) longGame.saveSummary() else "", isHost = ui.isHost,
+            onSaveAndLeave = { confirmLeave = false; vm.saveAndLeave() },
+            onDiscardAndLeave = { confirmLeave = false; vm.leaveDiscarding() },
+            onStay = { confirmLeave = false },
+        )
+    } else if (confirmLeave) {
         AlertDialog(
             onDismissRequest = { confirmLeave = false },
             title = { Text("Leave the game?") },

@@ -28,6 +28,10 @@ import com.neil1454.drawsomething.core.Features
 import com.neil1454.drawsomething.core.Outcomes
 import com.neil1454.drawsomething.sound.Sfx
 import com.neil1454.drawsomething.stats.StatsStore
+import com.neil1454.drawsomething.save.SaveStore
+import com.neil1454.drawsomething.core.SavedGame
+import com.neil1454.drawsomething.core.canSave
+import com.neil1454.drawsomething.core.GPhase
 import com.neil1454.drawsomething.core.GMsg
 import com.neil1454.drawsomething.core.MemoryEngine
 import com.neil1454.drawsomething.core.QuickEngine
@@ -146,6 +150,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Wins, losses and the leaderboards, kept on this phone. */
     val stats = StatsStore(app)
+
+    private val saveStore = SaveStore(app)
+    private val _saves = MutableStateFlow(saveStore.all())
+
+    /** Games saved on this phone that can be resumed (host side). */
+    val saves: StateFlow<Map<GameKind, SavedGame>> = _saves
+    private var saveJob: Job? = null
 
     init {
         Sfx.init(app)
@@ -683,9 +694,84 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         recordFinished()
+        autosave()
+    }
+
+    // ---------------------------------------------------------------- saving long games
+
+    /** The long game being played right now, if this phone is the host. */
+    private fun savableEngine(): SyncEngine? =
+        if (!_ui.value.isHost) null else syncEngines.values.firstOrNull { it.kind.canSave && it.phase == GPhase.PLAYING }
+
+    /** Called whenever a game changes: keep the save up to date, and remove it when the game is over. */
+    private fun autosave() {
+        if (!_ui.value.isHost) return
+        for ((kind, e) in syncEngines) {
+            if (!kind.canSave) continue
+            when (e.phase) {
+                GPhase.PLAYING -> {
+                    saveJob?.cancel()
+                    saveJob = viewModelScope.launch {
+                        delay(SAVE_DELAY_MS)
+                        writeSave(kind)
+                    }
+                }
+                GPhase.OVER -> if (_saves.value.containsKey(kind)) deleteSave(kind)
+                else -> Unit
+            }
+        }
+    }
+
+    private fun writeSave(kind: GameKind) {
+        val e = syncEngines[kind] ?: return
+        val s = _ui.value
+        if (!s.isHost) return
+        val model = e.saveModel() ?: return
+        val saved = SavedGame(kind, System.currentTimeMillis(), s.name.trim(), s.partnerName, e.saveSummary(), model)
+        if (saveStore.write(saved)) _saves.update { it + (kind to saved) }
+    }
+
+    private fun deleteSave(kind: GameKind) {
+        saveStore.delete(kind)
+        _saves.update { it - kind }
+    }
+
+    /** Write the save right now (the app is going into the background, or you are leaving). */
+    fun flushSave() {
+        saveJob?.cancel()
+        savableEngine()?.let { writeSave(it.kind) }
+    }
+
+    /** Host: carry on a saved game. The partner joins in as for a new game. */
+    fun resumeGame(kind: GameKind) {
+        val s = _ui.value
+        val saved = _saves.value[kind]
+        val e = syncEngines[kind]
+        if (!s.isHost || saved == null || e == null) return
+        resetOthers(kind)
+        if (!e.resume(saved.model)) {
+            deleteSave(kind)
+            showNotice("That saved game couldn't be loaded, so it has been removed.")
+        }
+    }
+
+    fun discardSave(kind: GameKind) = deleteSave(kind)
+
+    /** Leave, keeping the game so it can be finished later. */
+    fun saveAndLeave() {
+        flushSave()
+        leave()
+    }
+
+    /** Leave and throw the current long game away (the player has confirmed). */
+    fun leaveDiscarding() {
+        savableEngine()?.let { deleteSave(it.kind) }
+        leave()
     }
 
     private fun teardown() {
+        saveJob?.cancel()
+        saveJob = null
         recorded.clear()
         computer = null
         acceptedId = null
@@ -711,5 +797,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         const val COMPUTER_NAME = "Computer 🤖"
         const val MAX_PENDING_REQUESTS = 5
         const val TICK_MS = 100L
+        const val SAVE_DELAY_MS = 700L
     }
 }

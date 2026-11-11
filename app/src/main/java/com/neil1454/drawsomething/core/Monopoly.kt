@@ -668,6 +668,85 @@ class MonopolyEngine(
         return if (parts.isEmpty()) "nothing" else parts.joinToString(", ")
     }
 
+    // ------------------------------------------------------------------ saving
+    override fun saveModel(): JSONObject? {
+        if (state.phase != GPhase.PLAYING || over) return null
+        val o = JSONObject()
+        o.put("cash", SaveFormat.ints(cash)).put("pos", SaveFormat.ints(pos)).put("jt", SaveFormat.ints(jailTries))
+            .put("jl", JSONArray(jailed.map { if (it) 1 else 0 }))
+            .put("fc", JSONArray(freeCards.map { JSONArray(it) }))
+            .put("own", SaveFormat.ints(owner)).put("hs", SaveFormat.ints(houses))
+            .put("mt", JSONArray(mortgaged.map { if (it) 1 else 0 }))
+            .put("chance", JSONArray(chance.toList())).put("chest", JSONArray(chest.toList()))
+            .put("turn", turn).put("step", step).put("d1", d1).put("d2", d2).put("dbl", doubles).put("ne", noExtra)
+            .put("log", JSONArray(log)).put("seq", seq).put("ev", ev).put("by", evBy).put("esq", evSq).put("eam", evAmount)
+            .put("ct", cardText).put("cd", cardDeck)
+            .put("debt", debt).put("dto", debtTo).put("dwhy", debtWhy).put("rs", resumeSteps)
+            .put("as", aSq).put("ab", aBid).put("al", aLeader).put("at", aTurn).put("ap", aPasses)
+            .put("max", maxTurns).put("tt", SaveFormat.ints(turnsTaken)).put("mv", moves)
+        tradeOffer?.let {
+            o.put("tf", it.from).put("tgs", JSONArray(it.giveSq)).put("tgc", it.giveCash).put("tws", JSONArray(it.getSq)).put("twc", it.getCash)
+        }
+        return o
+    }
+
+    override fun saveSummary(): String {
+        val turn = (turnsTaken[1] + turnsTaken[2]) / 2 + 1
+        return "Turn $turn · ${nameOf(1)} £${cash[1]} · ${nameOf(2)} £${cash[2]}" + if (maxTurns > 0) " · ${maxTurns}-turn game" else ""
+    }
+
+    override fun hostRestore(model: JSONObject): Boolean {
+        val n = MonopolyBoard.SIZE
+        val c = SaveFormat.readInts(model, "cash", 3, 0..10_000_000) ?: return false
+        val p = SaveFormat.readInts(model, "pos", 3, 0..n - 1) ?: return false
+        val jt = SaveFormat.readInts(model, "jt", 3, 0..3) ?: return false
+        val jl = SaveFormat.readInts(model, "jl", 3, 0..1) ?: return false
+        val own = SaveFormat.readInts(model, "own", n, 0..2) ?: return false
+        val hs = SaveFormat.readInts(model, "hs", n, 0..5) ?: return false
+        val mt = SaveFormat.readInts(model, "mt", n, 0..1) ?: return false
+        val tt = SaveFormat.readInts(model, "tt", 3, 0..100_000) ?: return false
+        val fcArr = model.optJSONArray("fc") ?: return false
+        if (fcArr.length() != 3) return false
+        val cards = List(3) { i -> val a = fcArr.optJSONArray(i) ?: JSONArray(); List(minOf(a.length(), 4)) { a.optInt(it, 0).coerceIn(0, 1) } }
+        fun deck(key: String, size: Int): List<Int>? {
+            val a = model.optJSONArray(key) ?: return null
+            val l = List(a.length()) { a.optInt(it, -1) }
+            return if (l.any { it !in 0 until size } || l.size > size) null else l
+        }
+        val ch = deck("chance", MonopolyCards.chance.size) ?: return false
+        val cc = deck("chest", MonopolyCards.chest.size) ?: return false
+        val turn0 = model.optInt("turn", 0)
+        val step0 = model.optString("step", "")
+        if (turn0 !in 1..2 || step0 !in listOf("ROLL", "BUY", "AUCTION", "DEBT", "END")) return false
+        for (i in 0 until n) if (own[i] != 0 && !MonopolyBoard.squares[i].ownable) return false
+        cash.fill(0); pos.fill(0); jailTries.fill(0); jailed.fill(false)
+        for (i in 0..2) { cash[i] = c[i]; pos[i] = p[i]; jailTries[i] = jt[i]; jailed[i] = jl[i] == 1; turnsTaken[i] = tt[i]; freeCards[i].clear(); freeCards[i].addAll(cards[i]) }
+        for (i in 0 until n) { owner[i] = own[i]; houses[i] = hs[i]; mortgaged[i] = mt[i] == 1 }
+        chance = ArrayDeque(ch); chest = ArrayDeque(cc)
+        turn = turn0; step = step0
+        d1 = model.optInt("d1", 0).coerceIn(0, 6); d2 = model.optInt("d2", 0).coerceIn(0, 6)
+        doubles = model.optInt("dbl", 0).coerceIn(0, 3); noExtra = model.optBoolean("ne", false)
+        log.clear()
+        model.optJSONArray("log")?.let { a -> for (i in 0 until minOf(a.length(), 14)) log.add(a.optString(i, "").filter { ch2 -> !ch2.isISOControl() }.take(160)) }
+        seq = model.optInt("seq", 0).coerceIn(0, 1_000_000); ev = model.optString("ev", "").take(10)
+        evBy = model.optInt("by", 0).coerceIn(0, 2); evSq = model.optInt("esq", -1).coerceIn(-1, n - 1); evAmount = model.optInt("eam", 0)
+        cardText = model.optString("ct", "").filter { !it.isISOControl() }.take(160); cardDeck = model.optInt("cd", 0).coerceIn(0, 1)
+        debt = model.optInt("debt", 0).coerceIn(0, 10_000_000); debtTo = model.optInt("dto", 0).coerceIn(0, 2)
+        debtWhy = model.optString("dwhy", "").filter { !it.isISOControl() }.take(40); resumeSteps = model.optInt("rs", 0).coerceIn(0, 12)
+        aSq = model.optInt("as", -1).coerceIn(-1, n - 1); aBid = model.optInt("ab", 0).coerceIn(0, 10_000_000)
+        aLeader = model.optInt("al", 0).coerceIn(0, 2); aTurn = model.optInt("at", 0).coerceIn(0, 2); aPasses = model.optInt("ap", 0).coerceIn(0, 2)
+        if (step == "AUCTION" && (aSq < 0 || aTurn == 0)) return false
+        val tf = model.optInt("tf", 0)
+        tradeOffer = if (tf in 1..2) TradeOffer(
+            tf, model.ints("tgs", 28).filter { it in 0 until n }, model.optInt("tgc", 0).coerceIn(0, 10_000_000),
+            model.ints("tws", 28).filter { it in 0 until n }, model.optInt("twc", 0).coerceIn(0, 10_000_000),
+        ) else null
+        maxTurns = model.optInt("max", 0).coerceIn(0, 200); moves = model.optInt("mv", 0).coerceIn(0, 1_000_000)
+        over = false; winner = 0; why = ""
+        forcedDice.clear()
+        return true
+    }
+
     // ------------------------------------------------------------------ sync
     override fun hostSnapshot(): JSONObject {
         val o = JSONObject()
