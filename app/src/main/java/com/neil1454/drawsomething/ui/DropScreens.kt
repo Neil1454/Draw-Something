@@ -203,7 +203,7 @@ fun DropScreen(
                 subtitle = if (s.result == 3) "The board is full." else "Four in a line!",
                 how = if (s.result == 3) "The board filled up with no line, so it's a draw."
                 else WinStory.dropLine(s.line, s.w, s.h).let { where ->
-                    (if (s.result == 1) "Your line: " else "${s.theirName}'s line: ") + where + ". Tap 'See the board' to see it glowing."
+                    (if (s.result == 1) "Your line: " else "${s.theirName}'s line: ") + where + ". It is glowing on the board."
                 },
                 win = s.result == 1, isHost = engine.isHost, theirName = s.theirName,
                 playAgainLabel = "Play again", colors = listOf(Funk.Red, Funk.Sun),

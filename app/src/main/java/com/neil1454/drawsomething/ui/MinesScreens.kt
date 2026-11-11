@@ -438,6 +438,6 @@ private fun MinesOverlay(s: MinesState, win: Int, onPlayAgain: () -> Unit, onBac
         how = if (result == 3) "The minefield was cleared and you finished level on points."
         else "The minefield was cleared, and " + (if (result == 1) "you" else s.theirName) + " had the higher score, winning " +
             WinStory.by(maxOf(s.myScore, s.theirScore), minOf(s.myScore, s.theirScore), "point") +
-            ". Tap 'See the board' to see the opened squares and the bombs.",
+            ". The opened squares and the bombs are shown on the board.",
     )
 }

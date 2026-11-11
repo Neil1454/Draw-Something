@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -108,10 +109,36 @@ fun EndOverlay(
     onBackToGames: () -> Unit,
     onLeave: () -> Unit,
     how: String = "",
+    /** How long the finished board is shown on its own, with just a banner saying how it was won, before the results card. */
+    revealMs: Long = 3500L,
 ) {
     var confetti by remember { mutableIntStateOf(0) }
     var peek by remember { mutableStateOf(false) }
-    LaunchedEffect(win) { if (win) confetti++ else Sfx.play(Sound.LOSE) }
+    var revealing by remember { mutableStateOf(revealMs > 0L) }
+    LaunchedEffect(Unit) {
+        if (revealing) {
+            delay(revealMs)
+            revealing = false
+        }
+    }
+    LaunchedEffect(win, revealing) { if (!revealing) { if (win) confetti++ else Sfx.play(Sound.LOSE) } }
+    if (revealing) {
+        // The game has just ended: leave the board in plain view (winning line, last move) with a banner saying how.
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            Row(
+                Modifier.fillMaxWidth().background(Color(0xE60B0624)).padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, fontSize = 18.sp, fontWeight = FontWeight.Black, color = if (win) Funk.Sun else Funk.Pink, maxLines = 1)
+                    if (how.isNotBlank()) Text(how, fontSize = 13.sp, color = Color.White.copy(alpha = 0.92f), maxLines = 4)
+                }
+                FunkyButton("Skip", { revealing = false }, Modifier, listOf(Funk.Violet, Funk.Pink), fontSize = 13.sp)
+            }
+        }
+        return
+    }
     if (peek) {
         // Just a slim bar, so the board underneath is fully visible.
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
