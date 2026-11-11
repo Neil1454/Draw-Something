@@ -44,6 +44,17 @@ import com.neil1454.drawsomething.core.LearnSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
+/** Playback speeds: 1 is real time, so 0.25 is slow motion. */
+private val LearnSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 2f)
+
+private fun speedLabel(s: Float): String = when (s) {
+    0.25f -> "🐢 ¼×"
+    0.5f -> "🐌 ½×"
+    0.75f -> "¾×"
+    1f -> "1×"
+    else -> "🐇 2×"
+}
+
 /** Pick a game to watch and learn. */
 @Composable
 fun LearnMenu(onPick: (GameKind) -> Unit, onBack: () -> Unit) {
@@ -57,7 +68,7 @@ fun LearnMenu(onPick: (GameKind) -> Unit, onBack: () -> Unit) {
             GradientText("📖 Learn to play", fontSize = 34.sp)
             Text(
                 "Pick a game and watch it play itself, with captions that explain every step. No reading the rules needed. " +
-                    "Nobody else has to be there and nothing needs connecting.",
+                    "Nobody else has to be there and nothing needs connecting. Fast games start in slow motion; the speed button (🐢 ¼× to 🐇 2×) changes it, and Pause and Next let you take it one step at a time.",
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -76,14 +87,16 @@ fun LearnScreen(kind: GameKind, onBack: () -> Unit) {
     var seed by remember(kind) { mutableIntStateOf(1) }
     val session = remember(kind, seed) { LearnSession(kind, seed) }
     var playing by remember { mutableStateOf(true) }
-    var speed by remember { mutableIntStateOf(1) }
+    // fast games start in slow motion so you can follow what the captions are saying; change it with the speed button
+    var speedIdx by remember(kind) { mutableIntStateOf(LearnSpeeds.indexOf(LearnSession.defaultSpeed(kind))) }
+    val speed = LearnSpeeds[speedIdx.coerceIn(0, LearnSpeeds.lastIndex)]
     var frame by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(session, playing, speed) {
         while (isActive) {
-            delay(50)
+            delay(33)
             if (playing && !session.finished) {
-                session.advance(50L * speed)
+                session.advance((33f * speed).toLong().coerceAtLeast(1L))
                 frame++
             }
         }
@@ -117,7 +130,7 @@ fun LearnScreen(kind: GameKind, onBack: () -> Unit) {
             CaptionPanel(
                 session = session, tick = frame, playing = playing, speed = speed,
                 onTogglePlay = { playing = !playing },
-                onSpeed = { speed = if (speed >= 4) 1 else speed * 2 },
+                onSpeed = { speedIdx = (speedIdx + 1) % LearnSpeeds.size },
                 onStep = step, onExit = onBack, modifier = m,
             )
         }
@@ -140,7 +153,7 @@ private fun CaptionPanel(
     session: LearnSession,
     tick: Int,
     playing: Boolean,
-    speed: Int,
+    speed: Float,
     onTogglePlay: () -> Unit,
     onSpeed: () -> Unit,
     onStep: () -> Unit,
@@ -166,7 +179,7 @@ private fun CaptionPanel(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FunkyButton(if (playing) "⏸ Pause" else "▶ Play", onTogglePlay, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), fontSize = 14.sp)
             FunkyButton("⏭ Next", onStep, Modifier.weight(1f), listOf(Funk.Mint, Funk.Cyan), fontSize = 14.sp)
-            FunkyButton("${speed}×", onSpeed, Modifier.width(64.dp), listOf(Funk.Orange, Funk.Pink), fontSize = 14.sp)
+            FunkyButton(speedLabel(speed), onSpeed, Modifier.width(78.dp), listOf(Funk.Orange, Funk.Pink), fontSize = 13.sp)
         }
         TextButton(onClick = onExit, Modifier.align(Alignment.CenterHorizontally)) { Text("✕ Finish learning") }
     }

@@ -31,6 +31,20 @@ class LearnSession(val kind: GameKind, val seed: Int) {
     private var bonusSaid = false
     private var tipAt = 0L
     private var tipN = 0
+    private var lastNoteAt = 0L
+    private var waveSaid = false
+    private var bombSaid = false
+    private var ufoSaid = false
+    private var powerSaid = false
+    private var shieldSaid = false
+    private var headSaid = false
+    private var segSaid = false
+    private var spiderSaid = false
+    private var fleaSaid = false
+    private var lastMyLives = 99
+    private var lastTheirLives = 99
+    private var lastMyScore = 0
+    private var lastTheirScore = 0
 
     /** Move the demo forward by [ms] (virtual milliseconds). */
     fun advance(ms: Long) {
@@ -270,23 +284,59 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             }
             GameKind.INVADERS -> {
                 val s = duel.host.invaders.state
-                if (s.c.level != lastSeq && s.phase == GPhase.PLAYING) {
-                    lastSeq = s.c.level
-                    say("🌊 Wave ${s.c.level} of ${s.c.levels}! The invaders march sideways and drop down at the edges. Both ships fire at the same time; you score for the invaders you hit.")
-                } else if (duel.now >= tipAt && s.phase == GPhase.PLAYING) {
-                    tipAt = duel.now + 25_000L
-                    say(ARCADE_TIPS[(tipN++) % ARCADE_TIPS.size] + "\n(You ${s.myScore} · Player 2 ${s.theirScore})")
+                val now = duel.now
+                if (s.phase == GPhase.PLAYING) {
+                    val me = s.c.mine
+                    val them = s.c.theirs
+                    when {
+                        s.c.level != lastSeq -> {
+                            lastSeq = s.c.level; lastNoteAt = now
+                            say("🌊 Wave ${s.c.level} of ${s.c.levels}! The invaders march sideways, then drop down a row at each edge, and speed up as they die. Both ships fire at once; each of you scores for your own hits.")
+                        }
+                        s.c.stage == "WAVE" && !waveSaid -> { waveSaid = true; say("✅ Wave cleared! Both players get a bonus, and anyone who was knocked out comes back for the next wave.") }
+                        s.bombs.isNotEmpty() && !bombSaid -> { bombSaid = true; lastNoteAt = now; say("💣 The invaders drop bombs. A bomb that touches your ship costs a life, so slide out of the way. Your ship fires by itself while the finger is held down.") }
+                        s.ufoX > -50f && !ufoSaid -> { ufoSaid = true; lastNoteAt = now; say("🛸 The mystery ship flies across the top. Hit it for 50 to 300 points AND a power-up: rapid fire, triple shot or an extra life.") }
+                        (me.rapid || me.triple || them.rapid || them.triple) && !powerSaid -> { powerSaid = true; lastNoteAt = now; say("⚡ A power-up! Rapid fire shoots faster, triple shot fires three bullets, and the timer is shown at the top of the screen.") }
+                        s.shields.count { it == '1' } < 330 && !shieldSaid -> { shieldSaid = true; lastNoteAt = now; say("🛡 The green shields soak up bullets and bombs but crumble away. Even your own shots chip them, so hide behind them when it gets busy.") }
+                        me.lives < lastMyLives || them.lives < lastTheirLives -> {
+                            val mine = me.lives < lastMyLives
+                            say("💔 ${if (mine) "You were" else "Player 2 was"} hit and lost a life. The ship flashes for a few seconds when it returns, and can't be hurt while it flashes.")
+                            lastNoteAt = now
+                        }
+                        s.myScore > lastMyScore && now - lastNoteAt > 5_000L -> { lastNoteAt = now; say("🎯 You hit an invader! Squids at the top are worth 30, crabs 20 and octopuses 10, and later waves pay more. You have ${s.myScore} points.") }
+                        s.theirScore > lastTheirScore && now - lastNoteAt > 5_000L -> { lastNoteAt = now; say("🎯 Player 2 hit one. They have ${s.theirScore} points to your ${s.myScore}. The best score wins, but you are on the same side against the invaders.") }
+                        now >= tipAt -> { tipAt = now + 40_000L; say(ARCADE_TIPS[(tipN++) % ARCADE_TIPS.size]) }
+                    }
+                    lastMyLives = me.lives; lastTheirLives = them.lives; lastMyScore = s.myScore; lastTheirScore = s.theirScore
+                    if (s.c.stage != "WAVE") waveSaid = false
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.CENTIPEDE -> {
                 val s = duel.host.centipede.state
-                if (s.c.level != lastSeq && s.phase == GPhase.PLAYING) {
-                    lastSeq = s.c.level
-                    say("🐛 Level ${s.c.level} of ${s.c.levels}! Shoot the centipede: every segment you hit becomes a mushroom and splits it in two. The head is worth the most.")
-                } else if (duel.now >= tipAt && s.phase == GPhase.PLAYING) {
-                    tipAt = duel.now + 25_000L
-                    say(CENTI_TIPS[(tipN++) % CENTI_TIPS.size] + "\n(You ${s.myScore} · Player 2 ${s.theirScore})")
+                val now = duel.now
+                if (s.phase == GPhase.PLAYING) {
+                    val me = s.c.mine
+                    val them = s.c.theirs
+                    when {
+                        s.c.level != lastSeq -> {
+                            lastSeq = s.c.level; lastNoteAt = now
+                            say("🐛 Level ${s.c.level} of ${s.c.levels}! A centipede winds down through the mushrooms. It turns and drops a row whenever it hits a mushroom or the edge. Stop it before it reaches the bottom.")
+                        }
+                        s.c.stage == "WAVE" && !waveSaid -> { waveSaid = true; say("✅ Level cleared! Both players get a bonus. Anyone who was knocked out comes back for the next level.") }
+                        s.myScore >= lastMyScore + 100 && s.myScore > 100 && !headSaid -> { headSaid = true; lastNoteAt = now; say("🎯 A head shot! Heads are worth 100 points, other segments only 10, so aim for the head when you can.") }
+                        s.myScore > lastMyScore && !segSaid -> { segSaid = true; lastNoteAt = now; say("💥 You hit a segment! It turns into a mushroom and the centipede splits in two, and the back half gets a new head.") }
+                        s.spider != null && !spiderSaid -> { spiderSaid = true; lastNoteAt = now; say("🕷 The spider zig-zags along the bottom and will catch your ship. Shoot it for 300 to 900 points (more the closer it is) and a power-up.") }
+                        s.flea != null && !fleaSaid -> { fleaSaid = true; lastNoteAt = now; say("🦟 The flea drops straight down leaving new mushrooms behind it. It takes two hits to stop.") }
+                        me.lives < lastMyLives || them.lives < lastTheirLives -> {
+                            val mine = me.lives < lastMyLives
+                            say("💔 ${if (mine) "You were" else "Player 2 was"} caught and lost a life. The ship flashes for a few seconds when it comes back.")
+                            lastNoteAt = now
+                        }
+                        now >= tipAt -> { tipAt = now + 40_000L; say(CENTI_TIPS[(tipN++) % CENTI_TIPS.size] + "\n(You ${s.myScore} · Player 2 ${s.theirScore})") }
+                    }
+                    lastMyLives = me.lives; lastTheirLives = them.lives; lastMyScore = s.myScore; lastTheirScore = s.theirScore
+                    if (s.c.stage != "WAVE") waveSaid = false
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
@@ -523,6 +573,14 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "Ships run in straight lines, so line up your shots once you find one.",
             "Each player also has one radar scan and one cluster bomb.",
         )
+
+        /** How fast the demo starts (1 = real time): the quick games begin in slow motion so the captions can keep up. */
+        fun defaultSpeed(kind: GameKind): Float = when (kind) {
+            GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.TETRIS -> 0.25f
+            GameKind.QUICK, GameKind.HOLIDAY -> 0.5f
+            GameKind.DICE, GameKind.MEMORY, GameKind.HILO, GameKind.MINES, GameKind.SEA, GameKind.DRAW, GameKind.DROP -> 0.75f
+            else -> 1f
+        }
 
         fun intro(kind: GameKind): String = when (kind) {
             GameKind.DRAW -> "🎨 Pictionary: one player draws a word, the other guesses it. You are watching a full round."

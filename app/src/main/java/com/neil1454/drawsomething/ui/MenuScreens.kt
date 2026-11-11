@@ -139,10 +139,14 @@ fun HomeScreen(
                 )
             }
             // ---- hero
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                availableGames().forEachIndexed { i, k ->
-                    val b = bobbing(phase = if (i % 2 == 0) 0f else 1f, amount = 6f, millis = 1100 + i * 90)
-                    Text(k.emoji, Modifier.graphicsLayer { translationY = b * density }, fontSize = 24.sp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                availableGames().chunked(9).forEachIndexed { rowIdx, rowKinds ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        rowKinds.forEachIndexed { i, k ->
+                            val b = bobbing(phase = if ((i + rowIdx) % 2 == 0) 0f else 1f, amount = 5f, millis = 1100 + i * 90)
+                            GameIcon(k, 32.dp, Modifier.graphicsLayer { translationY = b * density })
+                        }
+                    }
                 }
             }
             GradientText(APP_NAME, fontSize = 34.sp)
@@ -273,7 +277,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
     AlertDialog(
         onDismissRequest = onClose,
         confirmButton = { TextButton(onClick = onClose) { Text("Got it") } },
-        title = { Text("${kind.emoji} ${kind.label}") },
+        title = { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { GameIcon(kind, 34.dp); Text(kind.label) } },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (kind) {

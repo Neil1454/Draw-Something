@@ -177,7 +177,7 @@ fun GameTile(kind: GameKind, selected: Boolean, enabled: Boolean, modifier: Modi
             .padding(14.dp),
     ) {
         Column {
-            Text(kind.emoji, fontSize = 40.sp)
+            GameIcon(kind, 52.dp)
             Text(kind.label, fontSize = 17.sp, fontWeight = FontWeight.Black, color = Color.White)
             Text(kind.blurb, fontSize = 11.sp, color = Color.White.copy(alpha = 0.92f), lineHeight = 14.sp)
         }
