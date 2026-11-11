@@ -5,7 +5,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Bomb Find: minesweeper for two. Players take turns revealing squares on a shared grid.
+// Minesweeper: minesweeper for two. Players take turns revealing squares on a shared grid.
 //
 // - A safe square scores points (a "0" square opens its neighbours too, so a lucky open earns a lot).
 // - A bomb costs points and ends your turn, but the game goes on.
@@ -48,7 +48,7 @@ object MineRules {
 data class MineEvent(val kind: String, val byHost: Boolean, val value: Int = 0, val count: Int = 0, val cell: Int = -1)
 
 sealed class MineMsg {
-    /** Host starts (or restarts) Bomb Find. */
+    /** Host starts (or restarts) Minesweeper. */
     data class Setup(val size: Int, val hostFirst: Boolean) : MineMsg()
 
     /** Partner asks to reveal a square on their turn. */

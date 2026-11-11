@@ -189,5 +189,8 @@ private fun LearnGameView(kind: GameKind, session: LearnSession, tick: Int, rest
         GameKind.HILO -> HiLoScreen(host.hilo.state, host.hilo, restart, onBack, onBack)
         GameKind.HOLIDAY -> HolidayScreen(host.holiday.state, host.holiday, restart, onBack, onBack)
         GameKind.TETRIS -> TetrisScreen(host.tetris.state, host.tetris, restart, onBack, onBack)
+        GameKind.DRAUGHTS -> DraughtsScreen(host.draughts.state, host.draughts, restart, onBack, onBack)
+        GameKind.LUDO -> LudoScreen(host.ludo.state, host.ludo, restart, onBack, onBack)
+        GameKind.MONOPOLY -> MonopolyScreen(host.monopoly.state, host.monopoly, restart, onBack, onBack)
     }
 }

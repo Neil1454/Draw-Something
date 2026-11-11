@@ -55,6 +55,7 @@ import com.neil1454.drawsomething.core.Difficulty
 import com.neil1454.drawsomething.core.DiceTarget
 import com.neil1454.drawsomething.core.DropSize
 import com.neil1454.drawsomething.core.FlipSize
+import com.neil1454.drawsomething.core.MonopolyLength
 import com.neil1454.drawsomething.core.HiLoRows
 import com.neil1454.drawsomething.core.HolidayLength
 import com.neil1454.drawsomething.core.HolidayPacks
@@ -245,7 +246,7 @@ fun HomeScreen(
                         )
                     }
                     Text(
-                        "Draw Something is practice only: the computer can't read drawings, so it pretends to guess.",
+                        "Pictionary is practice only: the computer can't read drawings, so it pretends to guess.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -280,6 +281,9 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.HILO -> HiLoHelp()
                     GameKind.HOLIDAY -> HolidayHelp()
                     GameKind.TETRIS -> TetrisHelp()
+                    GameKind.DRAUGHTS -> DraughtsHelp()
+                    GameKind.LUDO -> LudoHelp()
+                    GameKind.MONOPOLY -> MonopolyHelp()
                 }
             }
         },
@@ -548,6 +552,9 @@ fun GameBrowser(
             GameKind.HILO -> HiLoLobby(ui, connected, onSettings, onStartSync)
             GameKind.HOLIDAY -> HolidayLobby(ui, connected, onSettings, onStartSync)
             GameKind.TETRIS -> TetrisLobby(ui, connected, onSettings, onStartSync)
+            GameKind.DRAUGHTS -> DraughtsLobby(ui, connected, onStartSync)
+            GameKind.LUDO -> LudoLobby(ui, connected, onStartSync)
+            GameKind.MONOPOLY -> MonopolyLobby(ui, connected, onSettings, onStartSync)
         }
     }
 }
@@ -746,7 +753,7 @@ private fun MinesLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettin
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = { onStart(size) }, enabled = connected, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-                Text(if (connected) "Start Bomb Find" else "Start (waiting for your partner…)", fontSize = 18.sp)
+                Text(if (connected) "Start Minesweeper" else "Start (waiting for your partner…)", fontSize = 18.sp)
             }
         } else if (connected) {
             WaitingForHost(ui, "Waiting for {name} to start the game…")
@@ -775,7 +782,7 @@ private fun SeaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = { onStart(size) }, enabled = connected, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-                Text(if (connected) "Start Sea Battle" else "Start (waiting for your partner…)", fontSize = 18.sp)
+                Text(if (connected) "Start Battleships" else "Start (waiting for your partner…)", fontSize = 18.sp)
             }
         } else if (connected) {
             WaitingForHost(ui, "Waiting for {name} to start the game…")
@@ -869,6 +876,24 @@ private fun FlipLobby(ui: UiState, connected: Boolean, onSettings: (LobbySetting
     SyncLobby(ui, connected, GameKind.FLIP, { FlipHelp() }, {
         ChipRow("Board", FlipSize.values().map { it.label }, set.flipSize) { onSettings(set.copy(flipSize = it)) }
     }) { onStart(GameKind.FLIP, JSONObject().put("size", set.flipSize)) }
+}
+
+@Composable
+private fun DraughtsLobby(ui: UiState, connected: Boolean, onStart: (GameKind, JSONObject) -> Unit) {
+    SyncLobby(ui, connected, GameKind.DRAUGHTS, { DraughtsHelp() }, {}) { onStart(GameKind.DRAUGHTS, JSONObject()) }
+}
+
+@Composable
+private fun LudoLobby(ui: UiState, connected: Boolean, onStart: (GameKind, JSONObject) -> Unit) {
+    SyncLobby(ui, connected, GameKind.LUDO, { LudoHelp() }, {}) { onStart(GameKind.LUDO, JSONObject()) }
+}
+
+@Composable
+private fun MonopolyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.MONOPOLY, { MonopolyHelp() }, {
+        ChipRow("Game length", MonopolyLength.values().map { it.label }, set.monopolyLen) { onSettings(set.copy(monopolyLen = it)) }
+    }) { onStart(GameKind.MONOPOLY, JSONObject().put("len", set.monopolyLen)) }
 }
 
 @Composable

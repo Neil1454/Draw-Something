@@ -17,6 +17,9 @@ import java.io.File
 import com.neil1454.drawsomething.core.DiceEngine
 import com.neil1454.drawsomething.core.DropEngine
 import com.neil1454.drawsomething.core.FlipEngine
+import com.neil1454.drawsomething.core.DraughtsEngine
+import com.neil1454.drawsomething.core.LudoEngine
+import com.neil1454.drawsomething.core.MonopolyEngine
 import com.neil1454.drawsomething.core.HiLoEngine
 import com.neil1454.drawsomething.core.HolidayEngine
 import com.neil1454.drawsomething.core.HolidayPack
@@ -101,6 +104,7 @@ data class LobbySettings(
     val holidayPack: String = "",
     val holidayLen: Int = 1,
     val holidaySecs: Int = 1,
+    val monopolyLen: Int = 0,
     val tetrisMode: Int = 0,
     val tetrisLevel: Int = 0,
     val tetrisGifts: Boolean = true,
@@ -125,9 +129,9 @@ data class UiState(
     val lobbyGame: GameKind = GameKind.DRAW, // the game the host has picked (before or after pairing)
     val settings: LobbySettings = LobbySettings(),
     val game: GameState? = null,             // Draw Something
-    val mines: MinesState? = null,           // Bomb Find
-    val sea: SeaState? = null,               // Sea Battle
-    val syncEngines: Map<GameKind, SyncEngine> = emptyMap(), // Drop Four, Memory Match, Quick Draw, Lucky Dice, Flip Fight
+    val mines: MinesState? = null,           // Minesweeper
+    val sea: SeaState? = null,               // Battleships
+    val syncEngines: Map<GameKind, SyncEngine> = emptyMap(), // Connect 4, Pairs, Quick Draw, Pig, Othello
     val sync: Map<GameKind, Any> = emptyMap(),               // their latest states (changes when anything changes)
     val board: StrokeBoard? = null,
     val boardVersion: Int = 0,
@@ -425,12 +429,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         engine?.block()
     }
 
-    /** Run something on the Bomb Find engine. */
+    /** Run something on the Minesweeper engine. */
     fun mines(block: MinesEngine.() -> Unit) {
         minesEngine?.block()
     }
 
-    /** Run something on the Sea Battle engine. */
+    /** Run something on the Battleships engine. */
     fun sea(block: SeaEngine.() -> Unit) {
         seaEngine?.block()
     }
@@ -459,7 +463,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         seaEngine?.start(size)
     }
 
-    /** Start one of the turn-based games (Drop Four, Memory Match, Quick Draw, Lucky Dice, Flip Fight). */
+    /** Start one of the turn-based games (Connect 4, Pairs, Quick Draw, Pig, Othello). */
     fun startSync(kind: GameKind, options: JSONObject) {
         resetOthers(kind)
         syncEngines[kind]?.start(options)
@@ -599,6 +603,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             HiLoEngine(me, partner, host, sendG, clock = clock),
             HolidayEngine(me, partner, host, sendG, clock = clock),
             TetrisEngine(me, partner, host, sendG, clock = clock),
+            DraughtsEngine(me, partner, host, sendG, clock = clock),
+            LudoEngine(me, partner, host, sendG, clock = clock),
+            MonopolyEngine(me, partner, host, sendG, clock = clock),
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }

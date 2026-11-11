@@ -79,6 +79,9 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.HILO -> h.hilo.start(JSONObject().put("rows", 0).put("odds", true))
             GameKind.TETRIS -> h.tetris.start(JSONObject().put("mode", 1).put("lvl", 0).put("gifts", true).put("mins", 0))
             GameKind.HOLIDAY -> h.holiday.start(JSONObject().put("len", 0).put("secs", 30))
+            GameKind.DRAUGHTS -> h.draughts.start(JSONObject())
+            GameKind.LUDO -> h.ludo.start(JSONObject())
+            GameKind.MONOPOLY -> h.monopoly.start(JSONObject().put("len", 2))
         }
     }
 
@@ -217,6 +220,56 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                         say("🎁 Gift pieces are on their way! They wait a few seconds (clearing rows cancels them), then arrive in your NEXT queue as gold pieces you place yourself.")
                     }
                 }
+            }
+            GameKind.DRAUGHTS -> {
+                val s = duel.host.draughts.state
+                if (s.moves != last) {
+                    last = s.moves
+                    if (s.moves > 0) {
+                        val mine = s.grid.getOrNull(s.last)?.let { it == 'a' || it == 'A' } == true
+                        val files = "abcdefgh"
+                        fun name(i: Int) = "${files[i % 8]}${8 - i / 8}"
+                        say(
+                            if (s.result != 0) {
+                                if (s.result == 3) "No captures for a long time: it's a draw." else "${who(s.result == 1)} win${if (s.result == 1) "" else "s"}: the other side has no moves left!"
+                            } else {
+                                "${who(mine)} move${if (mine) "" else "s"} ${name(s.lastFrom)} to ${name(s.last)}" +
+                                    (if (s.captured >= 0) " and JUMP a piece! Captures are compulsory." else ".") +
+                                    (if (s.crowned) " It reaches the far side and becomes a KING (it can now move backwards too)." else "") +
+                                    tip(DRAUGHTS_TIPS, s.moves)
+                            },
+                        )
+                    }
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.LUDO -> {
+                val s = duel.host.ludo.state
+                val key = s.rolls * 1000 + s.moves
+                if (key != last) {
+                    last = key
+                    val mine = s.eventByMe
+                    say(
+                        if (s.result != 0) "${who(s.result == 1)} get${if (s.result == 1) "" else "s"} all four pieces home and win!"
+                        else when (s.event) {
+                            "capture" -> "${who(mine)} land${if (mine) "" else "s"} on a lone piece and send it back to base!"
+                            "home" -> "${who(mine)} reach${if (mine) "" else "es"} home with an exact roll."
+                            "out" -> "${who(mine)} roll${if (mine) "" else "s"} a 6 and bring a piece out onto the track."
+                            "stuck" -> "Rolled ${s.die}: no piece can use it (you need a 6 to start, and an exact roll to finish)."
+                            "triple" -> "Three 6s in a row lose the turn!"
+                            else -> "Rolled ${s.die}: a piece moves ${s.die} steps." + tip(LUDO_TIPS, s.moves)
+                        },
+                    )
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.MONOPOLY -> {
+                val s = duel.host.monopoly.state
+                if (s.seq != last) {
+                    last = s.seq
+                    s.log.lastOrNull()?.let { say(it + tip(MONOPOLY_TIPS, s.seq / 4)) }
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.HOLIDAY -> {
                 val s = duel.host.holiday.state
@@ -397,6 +450,23 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "A wrong answer costs 25 points, so don't just guess wildly!",
             "After each answer a 'did you know' fact appears: great for learning before you land.",
         )
+        private val DRAUGHTS_TIPS = listOf(
+            "Move diagonally forward onto an empty dark square.",
+            "If you can jump, you MUST jump. Setting up a forced jump is how you win pieces.",
+            "Reach the far row to be crowned a king: kings move and jump both ways.",
+            "Keep your back row home for a while: it stops the other side getting kings.",
+        )
+        private val LUDO_TIPS = listOf(
+            "Roll a 6 to bring a piece out. A 6 also gives you another go.",
+            "Land on a lone opposing piece and it goes back to its base. Stars and start squares are safe.",
+            "To get home you must roll the exact number needed, so don't leave it too late.",
+        )
+        private val MONOPOLY_TIPS = listOf(
+            "Buy what you land on when you can: owning a whole colour set lets you build.",
+            "Houses must be built evenly across a set. Hotels need four houses first.",
+            "Short of cash? Mortgage property for half its price, or sell buildings.",
+            "Three doubles in a row sends you to jail. In jail you can pay £50, use a card, or roll a double.",
+        )
         private val TETRIS_TIPS = listOf(
             "Move and turn the falling piece to fill gaps. Keep the stack low and flat.",
             "A full row disappears. The more rows at once, the bigger the score.",
@@ -413,16 +483,19 @@ class LearnSession(val kind: GameKind, val seed: Int) {
         )
 
         fun intro(kind: GameKind): String = when (kind) {
-            GameKind.DRAW -> "🎨 Draw Something: one player draws a word, the other guesses it. You are watching a full round."
-            GameKind.MINES -> "💣 Bomb Find: take turns revealing squares on a shared minefield. You are Player 1. Watch how the numbers guide the choices."
-            GameKind.SEA -> "🚢 Sea Battle: hide your fleet and sink theirs. You are Player 1."
-            GameKind.DROP -> "🔴 Drop Four: take turns dropping discs. The first to connect four wins. You are Player 1."
-            GameKind.MEMORY -> "🃏 Memory Match: find the matching pairs. You are Player 1."
+            GameKind.DRAW -> "🎨 Pictionary: one player draws a word, the other guesses it. You are watching a full round."
+            GameKind.MINES -> "💣 Minesweeper: take turns revealing squares on a shared minefield. You are Player 1. Watch how the numbers guide the choices."
+            GameKind.SEA -> "🚢 Battleships: hide your fleet and sink theirs. You are Player 1."
+            GameKind.DROP -> "🔴 Connect 4: take turns dropping discs. The first to connect four wins. You are Player 1."
+            GameKind.MEMORY -> "🃏 Pairs: find the matching pairs. You are Player 1."
             GameKind.QUICK -> "⚡ Quick Draw: a reflex duel. Watch the screen and learn when to tap."
-            GameKind.DICE -> "🎲 Lucky Dice: roll to build points, then bank them before you bust. You are Player 1."
-            GameKind.FLIP -> "⚫ Flip Fight: trap the other player's discs to flip them. You are Player 1 (black)."
+            GameKind.DICE -> "🎲 Pig: roll to build points, then bank them before you bust. You are Player 1."
+            GameKind.FLIP -> "⚫ Othello: trap the other player's discs to flip them. You are Player 1 (black)."
             GameKind.HILO -> "🎴 Higher or Lower: guess whether each next card is higher or lower, and climb the prize ladder. You are Player 1."
             GameKind.TETRIS -> "🧱 Tetris: falling blocks, side by side. You are Player 1 (the left board). Clear lines and the pieces you blow up are sent to your rival."
+            GameKind.DRAUGHTS -> "♟️ Draughts: jump the other player's pieces. Captures are compulsory. You are Player 1 (the bottom pieces)."
+            GameKind.LUDO -> "🏠 Ludo: roll a 6 to bring a piece out, race round the board, and get all four home with exact rolls. You are Player 1 (red)."
+            GameKind.MONOPOLY -> "🎩 Monopoly (UK): buy streets, collect rent, build houses and hotels. You are Player 1. This is a quick 15-turn demo."
             GameKind.HOLIDAY -> "🏝️ Do you know your Holiday? A quiz about where you're going. You are Player 1; the quickest correct answer wins the most points."
         }
 

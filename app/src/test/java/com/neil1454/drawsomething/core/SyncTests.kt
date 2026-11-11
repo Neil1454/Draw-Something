@@ -32,7 +32,7 @@ class SyncPair<E : SyncEngine>(
     }
 }
 
-// ====================================================================================== Drop Four
+// ====================================================================================== Connect 4
 
 class DropTest {
     private fun pair(power: Boolean = false, size: Int = 0, seed: Int = 1): SyncPair<DropEngine> {
@@ -227,7 +227,7 @@ class DropTest {
     }
 }
 
-// ====================================================================================== Memory Match
+// ====================================================================================== Pairs
 
 class MemoryTest {
     private fun pair(size: Int = 0, seed: Int = 3): SyncPair<MemoryEngine> {
@@ -347,7 +347,7 @@ class MemoryTest {
     }
 }
 
-// ====================================================================================== Lucky Dice
+// ====================================================================================== Pig
 
 class DiceTest {
     private fun pair(two: Boolean = false, target: Int = 1, seed: Int = 5): SyncPair<DiceEngine> {
@@ -484,7 +484,7 @@ class DiceTest {
     }
 }
 
-// ====================================================================================== Flip Fight
+// ====================================================================================== Othello
 
 class FlipTest {
     private fun pair(size: Int = 0): SyncPair<FlipEngine> {

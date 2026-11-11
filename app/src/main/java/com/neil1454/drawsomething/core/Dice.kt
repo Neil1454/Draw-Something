@@ -5,7 +5,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Lucky Dice: push your luck. On your turn keep rolling to build up points, then BANK them
+// Pig: push your luck. On your turn keep rolling to build up points, then BANK them
 // to keep them. Roll a 1 and you lose everything you were holding and your turn.
 // Two-dice mode: double 1s wipes your WHOLE score, one 1 is a bust, doubles count double.
 // First to the target (banked) wins.

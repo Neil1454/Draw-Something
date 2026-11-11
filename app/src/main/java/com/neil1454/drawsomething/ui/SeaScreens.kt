@@ -350,7 +350,7 @@ fun SeaBattleScreen(s: SeaState, act: ActSea) {
         AlertDialog(
             onDismissRequest = { help = false },
             confirmButton = { TextButton(onClick = { help = false }) { Text("Got it") } },
-            title = { Text("🚢 Sea Battle") },
+            title = { Text("🚢 Battleships") },
             text = { Column(Modifier.verticalScroll(rememberScrollState())) { SeaHelp() } },
         )
     }
@@ -466,7 +466,7 @@ fun SeaOverScreen(s: SeaState, onPlayAgain: () -> Unit, onBackToGames: () -> Uni
     }
 }
 
-/** Picks the right Sea Battle screen for the current phase. */
+/** Picks the right Battleships screen for the current phase. */
 @Composable
 fun SeaRoot(s: SeaState, act: ActSea, onPlayAgain: () -> Unit, onBackToGames: () -> Unit, onLeave: () -> Unit) {
     when (s.phase) {

@@ -5,7 +5,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Flip Fight (Reversi / Othello). Place a disc so that it traps a line of the other player's
+// Othello (Reversi / Othello). Place a disc so that it traps a line of the other player's
 // discs between your new disc and another of yours: every trapped disc flips to your colour.
 // If you can't move you pass; when nobody can move, most discs wins.
 // ====================================================================================

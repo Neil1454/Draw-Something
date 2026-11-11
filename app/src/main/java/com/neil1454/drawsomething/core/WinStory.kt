@@ -5,7 +5,7 @@ object WinStory {
     private val numberWords = mapOf(2 to "Two", 3 to "Three", 4 to "Four", 5 to "Five", 6 to "Six", 7 to "Seven")
 
     /**
-     * Where a Drop Four line is, e.g. "Four in a row across row 2 from the bottom, columns 3 to 6".
+     * Where a Connect 4 line is, e.g. "Four in a row across row 2 from the bottom, columns 3 to 6".
      * [line] holds the winning cells (row by row from the top-left) and [w]/[h] the board size.
      */
     fun dropLine(line: List<Int>, w: Int, h: Int): String {

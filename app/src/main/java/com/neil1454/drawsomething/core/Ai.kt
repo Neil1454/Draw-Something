@@ -40,7 +40,7 @@ abstract class Brain(protected val skill: Skill, protected val random: Random) {
     protected fun pct(p: Int) = random.nextInt(100) < p
 }
 
-// ====================================================================== Drop Four
+// ====================================================================== Connect 4
 
 class DropBrain(private val e: DropEngine, skill: Skill, random: Random) : Brain(skill, random) {
     override fun think(now: Long) {
@@ -163,7 +163,7 @@ object DropAi {
     }
 }
 
-// ====================================================================== Flip Fight (Reversi)
+// ====================================================================== Othello (Reversi)
 
 class FlipBrain(private val e: FlipEngine, skill: Skill, random: Random) : Brain(skill, random) {
     override fun think(now: Long) {
@@ -246,7 +246,7 @@ object FlipAi {
     }
 }
 
-// ====================================================================== Memory Match
+// ====================================================================== Pairs
 
 class MemoryBrain(private val e: MemoryEngine, skill: Skill, random: Random) : Brain(skill, random) {
     private val known = HashMap<Int, Char>() // card -> symbol I remember seeing
@@ -286,7 +286,7 @@ class MemoryBrain(private val e: MemoryEngine, skill: Skill, random: Random) : B
     }
 }
 
-// ====================================================================== Lucky Dice
+// ====================================================================== Pig
 
 class DiceBrain(private val e: DiceEngine, skill: Skill, random: Random) : Brain(skill, random) {
     override fun think(now: Long) {
@@ -339,7 +339,7 @@ class QuickBrain(private val e: QuickEngine, skill: Skill, random: Random) : Bra
     }
 }
 
-// ====================================================================== Bomb Find
+// ====================================================================== Minesweeper
 
 class MinesBrain(private val e: MinesEngine, skill: Skill, random: Random) : Brain(skill, random) {
     override fun think(now: Long) {
@@ -423,7 +423,7 @@ object MinesAi {
     }
 }
 
-// ====================================================================== Sea Battle
+// ====================================================================== Battleships
 
 class SeaBrain(private val e: SeaEngine, skill: Skill, random: Random) : Brain(skill, random) {
     override fun think(now: Long) {

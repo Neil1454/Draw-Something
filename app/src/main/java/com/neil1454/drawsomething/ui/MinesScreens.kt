@@ -274,7 +274,7 @@ fun MinesScreen(
         AlertDialog(
             onDismissRequest = { help = false },
             confirmButton = { TextButton(onClick = { help = false }) { Text("Got it") } },
-            title = { Text("💣 Bomb Find") },
+            title = { Text("💣 Minesweeper") },
             text = { Column(Modifier.verticalScroll(rememberScrollState())) { MinesHelp() } },
         )
     }

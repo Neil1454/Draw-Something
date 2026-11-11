@@ -5,7 +5,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Sea Battle: battleships for two.
+// Battleships: battleships for two.
 //
 // Each player has a hidden fleet (placed randomly, with a shuffle button). Take turns firing at
 // the other player's grid. A HIT lets you fire again. Each player also gets one Radar scan

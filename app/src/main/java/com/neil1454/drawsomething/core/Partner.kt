@@ -34,10 +34,14 @@ class PlayerSide(
     val hilo = HiLoEngine(myName, theirName, isHost, send, random, clock)
     val holiday = HolidayEngine(myName, theirName, isHost, send, random, clock)
     val tetris = TetrisEngine(myName, theirName, isHost, send, random, clock)
+    val draughts = DraughtsEngine(myName, theirName, isHost, send, random, clock)
+    val ludo = LudoEngine(myName, theirName, isHost, send, random, clock)
+    val monopoly = MonopolyEngine(myName, theirName, isHost, send, random, clock)
 
     private val syncByKind: Map<GameKind, SyncEngine> = mapOf(
         GameKind.DROP to drop, GameKind.MEMORY to memory, GameKind.QUICK to quick,
         GameKind.DICE to dice, GameKind.FLIP to flip, GameKind.HILO to hilo, GameKind.HOLIDAY to holiday, GameKind.TETRIS to tetris,
+        GameKind.DRAUGHTS to draughts, GameKind.LUDO to ludo, GameKind.MONOPOLY to monopoly,
     )
 
     /** The Draw Something guesser only makes sense on the guest side (the host is the drawer). */
@@ -53,6 +57,9 @@ class PlayerSide(
         HiLoBrain(hilo, skill, random),
         HolidayBrain(holiday, isHost, holidayKey, skill, random),
         TetrisBrain(tetris, skill, random),
+        DraughtsBrain(draughts, skill, random),
+        LudoBrain(ludo, skill, random),
+        MonopolyBrain(monopoly, skill, random),
     )
 
     /** The computer agrees to the Draw Something rules straight away. */

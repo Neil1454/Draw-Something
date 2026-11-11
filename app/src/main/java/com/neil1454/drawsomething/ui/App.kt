@@ -37,6 +37,12 @@ import com.neil1454.drawsomething.core.DiceState
 import com.neil1454.drawsomething.core.DropEngine
 import com.neil1454.drawsomething.core.DropState
 import com.neil1454.drawsomething.core.FlipEngine
+import com.neil1454.drawsomething.core.DraughtsEngine
+import com.neil1454.drawsomething.core.DraughtsState
+import com.neil1454.drawsomething.core.LudoEngine
+import com.neil1454.drawsomething.core.LudoState
+import com.neil1454.drawsomething.core.MonopolyEngine
+import com.neil1454.drawsomething.core.MonopolyState
 import com.neil1454.drawsomething.core.FlipState
 import com.neil1454.drawsomething.core.GameKind
 import com.neil1454.drawsomething.core.HiLoEngine
@@ -195,6 +201,8 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.QUICK -> JSONObject().put("match", set.quickMatch).put("fake", set.quickFake)
             GameKind.DICE -> JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)
             GameKind.HILO -> JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)
+            GameKind.DRAUGHTS, GameKind.LUDO -> JSONObject()
+            GameKind.MONOPOLY -> JSONObject().put("len", set.monopolyLen)
             GameKind.TETRIS -> JSONObject().put("mode", set.tetrisMode).put("lvl", set.tetrisLevel)
                 .put("mins", set.tetrisMins).put("gifts", set.tetrisGifts).put("tl", set.tetrisLines)
             GameKind.HOLIDAY -> JSONObject().put("pack", set.holidayPack).put("len", set.holidayLen)
@@ -212,6 +220,9 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is HiLoEngine && state is HiLoState -> HiLoScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HolidayEngine && state is HolidayState -> HolidayScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is TetrisEngine && state is TetrisState -> TetrisScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is DraughtsEngine && state is DraughtsState -> DraughtsScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is LudoEngine && state is LudoState -> LudoScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is MonopolyEngine && state is MonopolyState -> MonopolyScreen(state, engine, again, vm::backToGames, vm::leave)
     }
 }
 

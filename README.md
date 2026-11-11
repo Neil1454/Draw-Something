@@ -11,22 +11,42 @@ and you can switch games without reconnecting.
 
 | Game | What it is |
 |---|---|
-| 🎨 **Draw Something** | One draws a word, the other watches it appear live and guesses. Fast guesses score big. |
-| 💣 **Bomb Find** | Minesweeper for two. Take turns clearing a shared minefield, dodge bombs, grab power-ups. |
-| 🚢 **Sea Battle** | Battleships. Hide your fleet, hunt theirs. Hit a ship and fire again. |
-| 🔴 **Drop Four** | The classic four-in-a-row (Connect Four style). Full-screen board, slide-and-release to drop, glowing winning line, three colour themes, optional power discs (bomb and double drop). |
-| 🃏 **Memory Match** | Flip cards, find pairs, build streaks. Four card themes, three board sizes. |
+| 🎨 **Pictionary** (Draw Something) | One draws a word, the other watches it appear live and guesses. Fast guesses score big. |
+| 💣 **Minesweeper** | Minesweeper for two. Take turns clearing a shared minefield, dodge bombs, grab power-ups. |
+| 🚢 **Battleships** | Battleships. Hide your fleet, hunt theirs. Hit a ship and fire again. |
+| 🔴 **Connect 4** | The classic four-in-a-row (Connect Four style). Full-screen board, slide-and-release to drop, glowing winning line, three colour themes, optional power discs (bomb and double drop). |
+| 🃏 **Pairs** | Flip cards, find pairs, build streaks. Four card themes, three board sizes. |
 | ⚡ **Quick Draw** | A reflex duel: tap first when the screen turns green. Optional fake-out decoys. |
-| 🎲 **Lucky Dice** | Push your luck: keep rolling, bank it before you bust. One or two dice. |
-| ⚫ **Flip Fight** | Reversi. Trap lines of their discs to flip them. 8×8 or 6×6. |
+| 🎲 **Pig** | Push your luck: keep rolling, bank it before you bust. One or two dice. |
+| ⚫ **Othello** | Reversi. Trap lines of their discs to flip them. 8×8 or 6×6. |
 | 🎴 **Higher or Lower** | Guess whether the next card is higher or lower and climb the prize ladder, like the TV game show. Change card once, optional odds. |
+| ♟️ **Draughts** | English draughts (Checkers). Compulsory captures, multiple jumps, kings. Tap a piece, tap where it goes. |
+| 🏠 **Ludo** | Also called Frustration. Roll a 6 to start, race round the board, send rivals home, and finish with the exact roll. Tap the dice in the middle to roll. |
+| 🎩 **Monopoly** | The UK (London) board: buy, auction, build houses and hotels, mortgage, trade, Chance and Community Chest, Jail, bankruptcy. Full, 30-turn or 15-turn games. |
+
+### The new board games
+
+**Draughts** follows the English rules: men move diagonally forward, kings one step in any direction, every capture is compulsory,
+you must keep jumping with the same piece, and a man that reaches the far row becomes a king and stops there. The game is a draw after
+80 half-moves with no capture and no man moved.
+
+**Ludo** (Frustration) has two players on the classic cross board, four pieces each. A 6 brings a piece out and gives another go (three 6s
+in a row lose the turn). Landing on a lone enemy piece sends it back to base unless it sits on a start square or a star. To get home you
+need the exact number, so a roll that is too big can't be used by that piece.
+
+**Monopoly** uses the UK London board (Old Kent Road to Mayfair, four stations, two utilities), £1500 each, £200 for GO, £50 jail fine.
+Rent doubles on a complete unbuilt set, houses must be built evenly, hotels need four houses first, and the bank has 32 houses and 12 hotels.
+Unwanted properties go to a two-player auction. You can mortgage (and lift it for the loan plus 10%), sell buildings back for half
+price, and trade properties and cash. If you can't cover a bill you must raise the money or go bankrupt. The 16 Chance and 16 Community
+Chest cards follow the UK edition (the wording is paraphrased). Choose a short game and the richest player wins after 15 or 30 turns each.
+The computer plays all three, including bidding at auctions and judging trade offers.
 
 ## Play solo, or learn by watching
 
 - **🤖 Solo vs computer.** Press it on the home screen, choose Easy, Normal or Hard, then pick any game as
   usual. The computer is a stand-in for a second phone, so every game, rule and option works exactly as it
   does with a real partner. It only uses what you could see (it can't peek at hidden cards, ships or mines).
-  In Draw Something it's practice only: you draw every round and the computer pretends to guess, because it
+  In Pictionary it's practice only: you draw every round and the computer pretends to guess, because it
   can't read a drawing.
 - **📖 Learn to play.** Pick a game and watch it play itself with captions explaining each step (and a few
   tips), instead of reading the rules. Pause, step through one caption at a time, or speed it up. Nothing
@@ -75,7 +95,7 @@ Set `Features.HOLIDAY` to `false` in `core/Holiday.kt` and the quiz disappears f
 
 Every finished game is recorded on both phones for both players (by name). **Scores** on the home screen shows a
 leaderboard for each game (ranked by wins, then points) and the overall **Dominator** table: a win is worth 100, a draw 40,
-a loss 10, plus up to 25 for the points you scored in the game. Games against an Easy computer, and Draw Something practice,
+a loss 10, plus up to 25 for the points you scored in the game. Games against an Easy computer, and Pictionary practice,
 don't count; scores live only on the phone (and can be reset).
 
 ## Sound
@@ -119,7 +139,7 @@ Gentle / Fast / Frantic start speeds. Both players get exactly the same piece se
 simulates its own board so the controls never lag; only the board picture, gift pieces and curses cross the link. It works against the
 computer too (Easy / Normal / Hard, and it knows how to aim a bomb) and has a Learn demo.
 
-## Bomb Find (minesweeper for two)
+## Minesweeper (minesweeper for two)
 
 A shared grid (6×6, 8×8, 10×10 or 12×12). You **take turns** tapping a square; a number tells you how
 many bombs touch it. Your first square is always safe.
@@ -134,7 +154,7 @@ many bombs touch it. Your first square is always safe.
 The host's phone holds the real minefield and referees every move; the other phone is only ever sent
 what has been revealed, so there is nothing to peek at.
 
-## Sea Battle (battleships)
+## Battleships (battleships)
 
 Each player has a hidden fleet (4 ships on 8×8, 5 on 10×10), placed for you with a **Shuffle** button.
 Take turns firing at the other player's grid:

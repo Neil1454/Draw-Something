@@ -4,13 +4,13 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 /**
- * The shared plumbing for the turn-based "sync" games (Drop Four, Memory Match, Quick Draw,
- * Lucky Dice, Flip Fight).
+ * The shared plumbing for the turn-based "sync" games (Connect 4, Pairs, Quick Draw,
+ * Pig, Othello).
  *
  * The HOST's phone is the referee: it holds the real game, applies every move (its own and the
  * partner's), and broadcasts a full snapshot after each change. The partner's phone only sends
  * its moves and displays the latest snapshot. That keeps the two screens identical, keeps hidden
- * information (Memory Match's cards) off the partner's phone, and means the rules live in one place.
+ * information (Pairs's cards) off the partner's phone, and means the rules live in one place.
  */
 sealed class GMsg {
     abstract val game: String

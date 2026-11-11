@@ -5,7 +5,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Memory Match: flip two cards; a pair scores and you go again, a miss passes the turn.
+// Pairs: flip two cards; a pair scores and you go again, a miss passes the turn.
 // Streaks of pairs are worth more. Card positions live ONLY on the host's phone; the partner's
 // phone is sent just the cards that are face up.
 // ====================================================================================

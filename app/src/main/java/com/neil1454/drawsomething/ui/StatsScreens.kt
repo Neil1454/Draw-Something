@@ -100,7 +100,7 @@ fun LeaderboardScreen(stats: StatsStore, myName: String, onBack: () -> Unit) {
                 }
             }
             Text(
-                "Scores are kept on this phone only. Games against an Easy computer, and Draw Something practice, don't count.",
+                "Scores are kept on this phone only. Games against an Easy computer, and Pictionary practice, don't count.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
             )
             FunkyButton("Back", onBack, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Blue))

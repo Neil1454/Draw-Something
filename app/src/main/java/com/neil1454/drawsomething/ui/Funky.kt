@@ -152,6 +152,9 @@ fun GameKind.colors(): List<Color> = when (this) {
     GameKind.HILO -> listOf(Color(0xFF0E8A56), Color(0xFFB88A00))
     GameKind.HOLIDAY -> listOf(Color(0xFF00A99D), Color(0xFFFF8A3D))
     GameKind.TETRIS -> listOf(Color(0xFF6A3DE8), Color(0xFF00B8D9))
+    GameKind.DRAUGHTS -> listOf(Color(0xFF3B2A1A), Color(0xFFC0392B))
+    GameKind.LUDO -> listOf(Color(0xFFE53935), Color(0xFF1E88E5))
+    GameKind.MONOPOLY -> listOf(Color(0xFFC62828), Color(0xFF2E7D32))
 }
 
 @Composable

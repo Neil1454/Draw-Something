@@ -5,7 +5,7 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // ====================================================================================
-// Drop Four: connect four. Take turns dropping a disc into a column; first to line up the
+// Connect 4: connect four. Take turns dropping a disc into a column; first to line up the
 // required number in a row, column or diagonal wins.
 //
 // POWER mode gives each player two one-shot power discs:

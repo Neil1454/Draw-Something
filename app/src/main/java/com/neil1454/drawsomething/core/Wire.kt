@@ -4,17 +4,20 @@ import org.json.JSONObject
 
 /** The games in the app. The host picks one in the lobby. */
 enum class GameKind(val label: String, val emoji: String, val blurb: String) {
-    DRAW("Draw Something", "🎨", "One draws, the other guesses. Fast guesses score big."),
-    MINES("Bomb Find", "💣", "Take turns clearing a minefield. Dodge bombs, grab power-ups."),
-    SEA("Sea Battle", "🚢", "Hide your fleet, hunt theirs. Hit a ship and fire again."),
-    DROP("Drop Four", "🔴", "The classic four-in-a-row. Drop discs, block, win. Power discs blow things up."),
-    MEMORY("Memory Match", "🃏", "Flip cards, find pairs, build streaks."),
+    DRAW("Pictionary", "🎨", "One draws, the other guesses. Fast guesses score big."),
+    MINES("Minesweeper", "💣", "Take turns clearing a minefield. Dodge bombs, grab power-ups."),
+    SEA("Battleships", "🚢", "Hide your fleet, hunt theirs. Hit a ship and fire again."),
+    DROP("Connect 4", "🔴", "The classic four-in-a-row. Drop discs, block, win. Power discs blow things up."),
+    MEMORY("Pairs", "🃏", "Flip cards, find pairs, build streaks."),
     QUICK("Quick Draw", "⚡", "Wait for it… then tap first. Don't fall for the fake-out."),
-    DICE("Lucky Dice", "🎲", "Push your luck. Bank it or bust."),
-    FLIP("Flip Fight", "⚫", "Outflank and flip their discs. Easy to learn, hard to master."),
+    DICE("Pig", "🎲", "Push your luck: keep rolling to build points, but roll a 1 and you lose the lot."),
+    FLIP("Othello", "⚫", "Also called Reversi. Outflank and flip their discs. Easy to learn, hard to master."),
     HILO("Higher or Lower", "🎴", "Will the next card be higher or lower? Climb the prize ladder."),
     TETRIS("Tetris", "🧱", "Falling blocks, side by side. Clear lines to send gift pieces to your rival."),
     HOLIDAY("Do you know your Holiday?", "🏝️", "A head-to-head quiz about where you're going. Quickest correct answer wins."),
+    DRAUGHTS("Draughts", "♟️", "Also called Checkers. Jump their pieces, crown your kings. Captures are compulsory."),
+    LUDO("Ludo", "🏠", "Also called Frustration. Roll a 6 to start, race round the board, and get home with the exact roll."),
+    MONOPOLY("Monopoly", "🎩", "The UK property game on the London board: buy, build, trade and bankrupt your rival."),
 }
 
 /** Games that are switched on. The holiday quiz can be switched off in one place: see [Features]. */
@@ -31,7 +34,7 @@ object LobbyMsg {
 
 /**
  * Everything that can arrive from the partner, whichever game it belongs to. Each game's
- * messages have their own prefix on the "t" field ("m_" Bomb Find, "s_" Sea Battle, "l_" lobby,
+ * messages have their own prefix on the "t" field ("m_" Minesweeper, "s_" Battleships, "l_" lobby,
  * anything else is Draw Something). Unreadable or implausible packets decode to null.
  */
 sealed class Packet {

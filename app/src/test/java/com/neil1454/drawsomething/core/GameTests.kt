@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
 
-// ====================================================================================== Bomb Find
+// ====================================================================================== Minesweeper
 
 /** Host + partner engines joined by in-memory queues, using the real wire encoding. */
 class MinesPair(seed: Int, size: MineSize = MineSize.LARGE) {
@@ -325,7 +325,7 @@ class MinesTest {
     }
 }
 
-// ====================================================================================== Sea Battle
+// ====================================================================================== Battleships
 
 class SeaPair(seed: Int, size: SeaSize = SeaSize.CLASSIC) {
     private val toClient = ArrayDeque<ByteArray>()
