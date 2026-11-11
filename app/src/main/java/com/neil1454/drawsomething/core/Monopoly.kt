@@ -84,12 +84,22 @@ data class MonopolyState(
     val result: Int = 0,
     /** "bankrupt" or "worth". */
     val why: String = "",
+    /** The opening roll (0 = not rolled yet), and whether it was a tie that has to be rolled again. */
+    val firstMine: Int = 0,
+    val firstTheirs: Int = 0,
+    val firstTie: Boolean = false,
+    /** House rule: you can't buy until you have been round the board once (collected from GO). */
+    val lapRule: Boolean = false,
+    val myPassedGo: Boolean = true,
+    val theirPassedGo: Boolean = true,
 ) {
     val total get() = d1 + d2
     val ownerArr get() = IntArray(owner.size) { owner[it] }
     val housesArr get() = IntArray(houses.size) { houses[it] }
     val mortArr get() = BooleanArray(mortgaged.size) { mortgaged[it] }
     val canRoll get() = myTurn && step == "ROLL"
+    /** The opening roll to decide who goes first: highest total wins. */
+    val canFirstRoll get() = step == "FIRST" && (firstMine == 0 || firstTie)
     val canManage get() = myTurn && (step == "ROLL" || step == "END" || step == "DEBT")
     val canTrade get() = myTurn && (step == "ROLL" || step == "END") && trade == null
     fun owns(sq: Int) = owner[sq] == 1
@@ -148,6 +158,10 @@ class MonopolyEngine(
     private var aPasses = 0
     private var tradeOffer: TradeOffer? = null
     private var maxTurns = 0
+    private val firstRoll = IntArray(3)
+    private var firstTie = false
+    private var lapRule = false
+    private val passedGo = BooleanArray(3)
     private val turnsTaken = IntArray(3)
     private var moves = 0
     private var over = false
@@ -163,13 +177,16 @@ class MonopolyEngine(
         owner.fill(0); houses.fill(0); mortgaged.fill(false)
         chance = ArrayDeque((0 until MonopolyCards.chance.size).shuffled(random))
         chest = ArrayDeque((0 until MonopolyCards.chest.size).shuffled(random))
-        turn = 1; step = "ROLL"; d1 = 0; d2 = 0; doubles = 0; noExtra = false
+        lapRule = opts.optBoolean("lap", true)
+        passedGo.fill(false)
+        firstRoll.fill(0); firstTie = false
+        turn = 0; step = "FIRST"; d1 = 0; d2 = 0; doubles = 0; noExtra = false
         log.clear(); seq = 0; ev = ""; evBy = 0; evSq = -1; evAmount = 0; cardText = ""
         debt = 0; debtTo = 0; debtWhy = ""; resumeSteps = 0
         aSq = -1; aBid = 0; aLeader = 0; aTurn = 0; aPasses = 0
         tradeOffer = null
         turnsTaken.fill(0); moves = 0; over = false; winner = 0; why = ""
-        say("Game on! ${nameOf(1)} goes first.")
+        say("Roll the dice: the highest total goes first.")
     }
 
     // ------------------------------------------------------------------ what the screens call
@@ -228,6 +245,10 @@ class MonopolyEngine(
             publish()
             return
         }
+        if (step == "FIRST") {
+            if (action == "roll" && doFirstRoll(who)) publish()
+            return
+        }
         if (who != turn) return
         val ok = when (action) {
             "roll" -> doRoll(who)
@@ -255,6 +276,27 @@ class MonopolyEngine(
     private fun throwDice() {
         val f = forcedDice.removeFirstOrNull()
         if (f != null) { d1 = f.first; d2 = f.second } else { d1 = random.nextInt(1, 7); d2 = random.nextInt(1, 7) }
+    }
+
+    /** The opening roll: each player rolls once, the highest total goes first, a tie is rolled again. */
+    private fun doFirstRoll(who: Int): Boolean {
+        if (firstTie) { firstRoll.fill(0); firstTie = false }
+        if (firstRoll[who] != 0) return false
+        throwDice()
+        firstRoll[who] = d1 + d2
+        event("roll", who)
+        say("${nameOf(who)} rolls $d1 + $d2 = ${d1 + d2}.")
+        if (firstRoll[1] != 0 && firstRoll[2] != 0) {
+            if (firstRoll[1] == firstRoll[2]) {
+                firstTie = true
+                say("A tie! Roll again.")
+            } else {
+                turn = if (firstRoll[1] > firstRoll[2]) 1 else 2
+                step = "ROLL"
+                say("${nameOf(turn)} rolled highest and goes first!")
+            }
+        }
+        return true
     }
 
     private fun doRoll(who: Int): Boolean {
@@ -306,6 +348,7 @@ class MonopolyEngine(
     }
 
     private fun collectGo(who: Int) {
+        passedGo[who] = true
         cash[who] += MonopolyBoard.GO_SALARY
         say("${nameOf(who)} passes GO and collects £${MonopolyBoard.GO_SALARY}.")
         event("go", who, 0, MonopolyBoard.GO_SALARY)
@@ -348,6 +391,10 @@ class MonopolyEngine(
         val s = MonopolyBoard.squares[sq]
         val o = owner[sq]
         when {
+            o == 0 && lapRule && !passedGo[who] -> {
+                say("${nameOf(who)} lands on ${s.name} but can't buy yet: house rule, go round the board once first.")
+                finishMove(who)
+            }
             o == 0 -> {
                 step = "BUY"
                 say("${nameOf(who)} lands on ${s.name} (£${s.price}), which is for sale.")
@@ -411,7 +458,7 @@ class MonopolyEngine(
     }
 
     private fun auctionBid(who: Int, amount: Int) {
-        if (amount <= aBid || amount < aBid + 10 && aBid > 0 || amount < 10 || amount > cash[who]) return
+        if (amount <= aBid || amount < 1 || amount > cash[who]) return
         aBid = amount; aLeader = who; aTurn = 3 - who; aPasses = 0
         say("${nameOf(who)} bids £$amount.")
     }
@@ -624,6 +671,9 @@ class MonopolyEngine(
         if (t.giveSq.toSet().size != t.giveSq.size || t.getSq.toSet().size != t.getSq.size) return false
         for (sq in t.giveSq) if (sq !in 0 until MonopolyBoard.SIZE || owner[sq] != from || !MonopolyBoard.squares[sq].ownable || groupHasBuildings(sq)) return false
         for (sq in t.getSq) if (sq !in 0 until MonopolyBoard.SIZE || owner[sq] != to || !MonopolyBoard.squares[sq].ownable || groupHasBuildings(sq)) return false
+        // each side must also be able to pay the 10% interest on any mortgaged property they receive
+        if (cash[from] - t.giveCash + t.getCash - MonopolyRules.tradeInterest(t.getSq, mortgaged) < 0) return false
+        if (cash[to] + t.giveCash - t.getCash - MonopolyRules.tradeInterest(t.giveSq, mortgaged) < 0) return false
         return true
     }
 
@@ -653,8 +703,11 @@ class MonopolyEngine(
         if (!tradeValid(t)) { say("The trade is no longer possible."); return }
         val from = t.from
         val to = 3 - from
-        cash[from] += t.getCash - t.giveCash
-        cash[to] += t.giveCash - t.getCash
+        val feeFrom = MonopolyRules.tradeInterest(t.getSq, mortgaged)
+        val feeTo = MonopolyRules.tradeInterest(t.giveSq, mortgaged)
+        cash[from] += t.getCash - t.giveCash - feeFrom
+        cash[to] += t.giveCash - t.getCash - feeTo
+        if (feeFrom + feeTo > 0) say("Mortgaged property changed hands, so the new owner pays the bank 10% interest (£$feeFrom and £$feeTo).")
         t.giveSq.forEach { owner[it] = to }
         t.getSq.forEach { owner[it] = from }
         say("Trade done! ${nameOf(from)} gets ${describe(t.getSq, t.getCash)}; ${nameOf(to)} gets ${describe(t.giveSq, t.giveCash)}.")
@@ -670,8 +723,9 @@ class MonopolyEngine(
 
     // ------------------------------------------------------------------ saving
     override fun saveModel(): JSONObject? {
-        if (state.phase != GPhase.PLAYING || over) return null
+        if (state.phase != GPhase.PLAYING || over || step == "FIRST") return null
         val o = JSONObject()
+        o.put("lap", lapRule).put("pg", JSONArray(passedGo.map { if (it) 1 else 0 }))
         o.put("cash", SaveFormat.ints(cash)).put("pos", SaveFormat.ints(pos)).put("jt", SaveFormat.ints(jailTries))
             .put("jl", JSONArray(jailed.map { if (it) 1 else 0 }))
             .put("fc", JSONArray(freeCards.map { JSONArray(it) }))
@@ -715,6 +769,10 @@ class MonopolyEngine(
         }
         val ch = deck("chance", MonopolyCards.chance.size) ?: return false
         val cc = deck("chest", MonopolyCards.chest.size) ?: return false
+        lapRule = model.optBoolean("lap", false)
+        val pgArr = model.optJSONArray("pg")
+        for (i in 0..2) passedGo[i] = pgArr == null || pgArr.optInt(i, 1) == 1
+        firstRoll.fill(0); firstTie = false
         val turn0 = model.optInt("turn", 0)
         val step0 = model.optString("step", "")
         if (turn0 !in 1..2 || step0 !in listOf("ROLL", "BUY", "AUCTION", "DEBT", "END")) return false
@@ -763,6 +821,8 @@ class MonopolyEngine(
             .put("as", aSq).put("ab", aBid).put("al", aLeader).put("at", aTurn)
             .put("max", maxTurns).put("t1", turnsTaken[1]).put("t2", turnsTaken[2])
             .put("mv", moves).put("over", over).put("win", winner).put("why", why)
+            .put("fr1", firstRoll[1]).put("fr2", firstRoll[2]).put("ft", firstTie)
+            .put("lap", lapRule).put("pg1", passedGo[1]).put("pg2", passedGo[2])
         tradeOffer?.let {
             o.put("tf", it.from).put("tgs", JSONArray(it.giveSq)).put("tgc", it.giveCash).put("tws", JSONArray(it.getSq)).put("twc", it.getCash)
         }
@@ -827,6 +887,9 @@ class MonopolyEngine(
             maxTurns = s.optInt("max", 0).coerceIn(0, 200),
             myTurnsTaken = (if (isHost) s.getInt("t1") else s.getInt("t2")).coerceIn(0, 100_000),
             theirTurnsTaken = (if (isHost) s.getInt("t2") else s.getInt("t1")).coerceIn(0, 100_000),
+            firstMine = s.optInt(if (isHost) "fr1" else "fr2", 0).coerceIn(0, 12), firstTheirs = s.optInt(if (isHost) "fr2" else "fr1", 0).coerceIn(0, 12),
+            firstTie = s.optBoolean("ft", false), lapRule = s.optBoolean("lap", false),
+            myPassedGo = s.optBoolean(if (isHost) "pg1" else "pg2", true), theirPassedGo = s.optBoolean(if (isHost) "pg2" else "pg1", true),
             myWorth = myWorth, theirWorth = thWorth,
             moves = s.optInt("mv", 0).coerceIn(0, 1_000_000),
             result = if (!over) 0 else if (win == 3) 3 else if (win == me) 1 else 2,

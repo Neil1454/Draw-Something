@@ -89,10 +89,13 @@ import kotlinx.coroutines.delay
 fun MonopolyHelp() {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Monopoly on the UK (London) board, for two. Everyone starts with £1500 and collects £200 each time they pass GO.")
-        Text("• Roll the dice and move. Buy the property you land on, or let it go to auction. Land on someone else's and pay rent.")
+        Text("• To start, each player rolls once and the highest total goes first (a tie is rolled again).")
+        Text("• Roll the dice and move. Buy the property you land on, or let it go to auction (either player can bid, from £1). Land on someone else's and pay rent.")
+        Text("• Official rules: you can buy from your very first go. The lobby has a popular HOUSE RULE, on by default, that you must go all the way round the board once (collecting from GO) before you can buy. Switch it off for the book rules.")
         Text("• Own every street of a colour to build houses (evenly), then hotels. Rent shoots up. Stations and utilities pay more the more you own.")
         Text("• Chance and Community Chest cards, Income Tax, Super Tax, and Jail (pay £50, use a card, or roll a double). Three doubles in a row sends you to Jail.")
-        Text("• Short of cash? Mortgage property or sell buildings. You can also trade properties and cash with the other player.")
+        Text("• Short of cash? Mortgage property (half its price) or sell buildings back for half. Lifting a mortgage costs the loan plus 10%. You can also trade properties and cash; whoever receives a mortgaged property pays the bank 10% interest at once.")
+        Text("• In jail you can still collect rent, build, trade and mortgage. Get out by paying £50 or using a card before you roll, or by rolling a double; after three failed tries you pay £50 and move. Free Parking is just a rest.")
         Text("• If you can't pay what you owe, you're bankrupt and the other player wins. Shorter games end after a set number of turns: the richest player wins.")
         Text("• Tap any square on the board to read its deed card.")
     }
@@ -503,7 +506,7 @@ private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, m
     val rollP = remember { Animatable(1f) }
     var d1 by remember { mutableIntStateOf(s.d1) }
     var d2 by remember { mutableIntStateOf(s.d2) }
-    LaunchedEffect(s.moves, s.d1, s.d2) {
+    LaunchedEffect(s.moves, s.d1, s.d2, s.seq) {
         if (s.d1 > 0 && s.ev == "roll") {
             rollP.snapTo(0f)
             val job = launch { rollP.animateTo(1f, tween(900, easing = LinearEasing)) }
@@ -594,6 +597,13 @@ private fun PlayerRow(s: MonopolyState, myCol: Color, theirCol: Color, myToken: 
         PlayerBox("You $myToken", s.myCash, s.owner.count { it == 1 }, s.myJail, s.myFreeCards, myCol, s.myTurn && !over, Modifier.weight(1f))
         PlayerBox("${s.theirName} $theirToken", s.theirCash, s.owner.count { it == 2 }, s.theirJail, s.theirFreeCards, theirCol, !s.myTurn && !over, Modifier.weight(1f))
     }
+    if (s.lapRule && !over && s.step != "FIRST" && (!s.myPassedGo || !s.theirPassedGo)) {
+        Text(
+            (if (!s.myPassedGo) "🏁 You can start buying once you've passed GO. " else "") +
+                (if (!s.theirPassedGo) "${s.theirName} can't buy until they've passed GO." else ""),
+            fontSize = 11.sp, color = Funk.Sun, textAlign = TextAlign.Center,
+        )
+    }
     if (s.maxTurns > 0 && !over) {
         Text("Turn ${minOf(s.myTurnsTaken, s.theirTurnsTaken) + 1} of ${s.maxTurns} · richest wins when time is up", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
     }
@@ -659,6 +669,15 @@ private fun ActionBar(s: MonopolyState, engine: MonopolyEngine, over: Boolean, o
         if (over) return@Column
         if (s.step == "AUCTION") {
             Text("🔨 Auction in progress…", color = Color.White, fontWeight = FontWeight.Bold)
+            return@Column
+        }
+        if (s.step == "FIRST") {
+            val mine = if (s.firstMine > 0) "You rolled ${s.firstMine}" else "You haven't rolled"
+            val theirs = if (s.firstTheirs > 0) "${s.theirName} rolled ${s.firstTheirs}" else "${s.theirName} hasn't rolled"
+            Text("🎲 Roll to see who goes first: the highest total wins.", color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("$mine · $theirs", color = Funk.Sun, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            if (s.firstTie) Text("A tie! Roll again.", color = Funk.Pink, fontWeight = FontWeight.Black)
+            BigAction(if (s.canFirstRoll) "🎲  ROLL FOR FIRST GO" else "Waiting for ${s.theirName} to roll…", green, s.canFirstRoll, Modifier.fillMaxWidth()) { engine.roll() }
             return@Column
         }
         if (!s.myTurn) {
@@ -908,6 +927,8 @@ private fun TradeResponse(s: MonopolyState, engine: MonopolyEngine) {
                     Text("You get: ${list(t.giveSq, t.giveCash)}", fontWeight = FontWeight.Bold)
                     Text("You give: ${list(t.getSq, t.getCash)}", fontWeight = FontWeight.Bold)
                     if (t.getCash > s.myCash) Text("You don't have enough cash for this deal.", color = MaterialTheme.colorScheme.error)
+                    val fee = MonopolyRules.tradeInterest(t.giveSq, s.mortArr)
+                    if (fee > 0) Text("Some of it is mortgaged, so you pay the bank ${money(fee)} interest (10%) straight away.", fontSize = 12.sp)
                 }
             },
             confirmButton = { TextButton(enabled = t.getCash <= s.myCash, onClick = { engine.acceptTrade() }) { Text("Accept") } },
@@ -937,7 +958,7 @@ private fun AuctionDialog(s: MonopolyState, engine: MonopolyEngine) {
                 Column(horizontalAlignment = Alignment.End) {
                     val base = maxOf(s.auctionBid, 0)
                     Row {
-                        for (inc in listOf(10, 50, 100)) {
+                        for (inc in listOf(1, 10, 50, 100)) {
                             val amt = if (base == 0) inc else base + inc
                             TextButton(enabled = amt <= s.myCash, onClick = { engine.bid(amt) }) { Text(money(amt)) }
                         }

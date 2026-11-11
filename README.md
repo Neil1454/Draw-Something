@@ -38,8 +38,10 @@ need the exact number, so a roll that is too big can't be used by that piece.
 
 **Monopoly** uses the UK London board (Old Kent Road to Mayfair, four stations, two utilities), £1500 each, £200 for GO, £50 jail fine.
 Rent doubles on a complete unbuilt set, houses must be built evenly, hotels need four houses first, and the bank has 32 houses and 12 hotels.
-Unwanted properties go to a two-player auction. You can mortgage (and lift it for the loan plus 10%), sell buildings back for half
-price, and trade properties and cash. If you can't cover a bill you must raise the money or go bankrupt. The 16 Chance and 16 Community
+The game opens with a roll to see who goes first (highest total, ties re-rolled). **House rule (on by default, switch off in the lobby):** you
+must go round the board once, collecting from GO, before you can buy; the official rulebook lets you buy from your first go. Unwanted
+properties go to a two-player auction (either player can bid, from £1). You can mortgage (and lift it for the loan plus 10%), sell buildings back for half
+price, and trade properties and cash (whoever receives a mortgaged property pays the bank 10% interest straight away, as in the official rules). If you can't cover a bill you must raise the money or go bankrupt. The 16 Chance and 16 Community
 Chest cards follow the UK edition (the wording is paraphrased). Choose a short game and the richest player wins after 15 or 30 turns each.
 The computer plays all three, including bidding at auctions and judging trade offers.
 

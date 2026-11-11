@@ -43,7 +43,9 @@ class ResumeTest {
     // ---- Monopoly
     private fun monoPair(): SyncPair<MonopolyEngine> {
         val p = SyncPair({ n, o, h, s, r, c -> MonopolyEngine(n, o, h, s, r, c) }, 4)
-        p.host.start(JSONObject().put("len", 0)); p.pump()
+        p.host.start(JSONObject().put("len", 0).put("lap", false)); p.pump()
+        p.host.forcedDice.add(6 to 5); p.host.roll(); p.pump()
+        p.host.forcedDice.add(1 to 2); p.client.roll(); p.pump()
         return p
     }
 
@@ -98,6 +100,7 @@ class ResumeTest {
     @Test fun nonsenseIsNotRestored() {
         val q = monoPair()
         assertFalse(q.host.resume(JSONObject()))
+        // the opening roll can't be saved
         assertFalse(q.host.resume(JSONObject("""{"cash":[0,1,2]}""")))
         val good = monoPair().host.saveModel()!!
         val bad = JSONObject(good.toString()).put("turn", 7)
@@ -118,7 +121,7 @@ class ResumeTest {
     @Test fun theComputerFinishesAResumedMonopolyGame() {
         val d = Duel(5, Skill.NORMAL, Skill.NORMAL)
         d.host.monopoly.start(JSONObject().put("len", 2))
-        d.advance(120_000)
+        d.advance(30_000)
         val saved = d.host.monopoly.saveModel()
         assertNotNull(saved)
         val d2 = Duel(9, Skill.NORMAL, Skill.NORMAL)

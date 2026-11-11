@@ -111,6 +111,7 @@ data class LobbySettings(
     val holidayLen: Int = 1,
     val holidaySecs: Int = 1,
     val monopolyLen: Int = 0,
+    val monopolyLap: Boolean = true,
     val arcadeWaves: Int = 5,
     val arcadeLives: Int = 3,
     val holidayBonus: Boolean = true,

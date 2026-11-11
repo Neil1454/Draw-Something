@@ -224,6 +224,10 @@ object MonopolyRules {
         return v
     }
 
+    /** Official rule: whoever receives a mortgaged property in a trade must pay the bank 10% of its mortgage value straight away. */
+    fun tradeInterest(sqs: List<Int>, mortgaged: BooleanArray): Int =
+        sqs.filter { it in 0 until MonopolyBoard.SIZE && mortgaged[it] }.sumOf { (MonopolyBoard.squares[it].mortgageValue + 9) / 10 }
+
     fun housesUsed(houses: IntArray): Int = houses.sumOf { if (it in 1..4) it else 0 }
     fun hotelsUsed(houses: IntArray): Int = houses.count { it == 5 }
 }

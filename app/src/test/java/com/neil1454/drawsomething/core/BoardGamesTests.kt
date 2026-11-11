@@ -320,10 +320,13 @@ class MonopolyBoardTest {
 }
 
 class MonopolyEngineTest {
-    private fun pair(len: Int = 0, seed: Int = 1): SyncPair<MonopolyEngine> {
+    private fun pair(len: Int = 0, seed: Int = 1, lap: Boolean = false, hostFirst: Boolean = true): SyncPair<MonopolyEngine> {
         val p = SyncPair({ n, o, h, s, r, c -> MonopolyEngine(n, o, h, s, r, c) }, seed)
-        p.host.start(JSONObject().put("len", len))
+        p.host.start(JSONObject().put("len", len).put("lap", lap))
         p.pump()
+        // the opening roll: highest total goes first
+        p.host.forcedDice.add((if (hostFirst) 6 else 1) to (if (hostFirst) 5 else 2)); p.host.roll(); p.pump()
+        p.host.forcedDice.add((if (hostFirst) 1 else 6) to (if (hostFirst) 2 else 5)); p.client.roll(); p.pump()
         return p
     }
 
@@ -350,6 +353,81 @@ class MonopolyEngineTest {
         assertTrue(p.host.state.canRoll)
         assertFalse(p.client.state.canRoll)
         assertEquals(40, p.client.state.owner.size)
+    }
+
+    @Test fun theHighestOpeningRollGoesFirst() {
+        val a = pair(hostFirst = true)
+        assertTrue(a.host.state.canRoll)
+        assertFalse(a.client.state.canRoll)
+        val b = pair(hostFirst = false)
+        assertTrue(b.client.state.canRoll)
+        assertFalse(b.host.state.canRoll)
+        assertEquals("ROLL", b.host.state.step)
+    }
+
+    @Test fun aTiedOpeningRollIsRolledAgain() {
+        val p = SyncPair({ n, o, h, s, r, c -> MonopolyEngine(n, o, h, s, r, c) }, 1)
+        p.host.start(JSONObject().put("lap", false)); p.pump()
+        assertEquals("FIRST", p.host.state.step)
+        assertTrue(p.host.state.canFirstRoll && p.client.state.canFirstRoll)
+        p.host.forcedDice.add(3 to 4); p.host.roll(); p.pump()
+        assertFalse("you only roll once", p.host.state.canFirstRoll)
+        assertEquals(7, p.client.state.firstTheirs)
+        p.host.forcedDice.add(2 to 5); p.client.roll(); p.pump()
+        assertTrue(p.host.state.firstTie)
+        assertEquals("FIRST", p.host.state.step)
+        assertTrue("both can roll again", p.host.state.canFirstRoll)
+        p.host.forcedDice.add(6 to 6); p.host.roll(); p.pump()
+        p.host.forcedDice.add(1 to 1); p.client.roll(); p.pump()
+        assertEquals("ROLL", p.host.state.step)
+        assertTrue(p.host.state.canRoll)
+    }
+
+    @Test fun theGoRoundOnceHouseRuleStopsBuyingUntilYouPassGo() {
+        val p = pair(lap = true)
+        p.roll(1, 2) // square 3, unowned
+        assertEquals("END", p.s.step)
+        assertEquals(0, p.s.owner[3])
+        assertFalse(p.s.myPassedGo)
+        p.host.endTurn(); p.pump()
+        p.guestIdles(); 
+        p.host.debugSetPos(1, 38)
+        p.roll(1, 2) // passes GO and lands on Old Kent Road
+        assertTrue(p.s.myPassedGo)
+        assertEquals("BUY", p.s.step)
+        // rent is still due before you have passed GO
+    }
+
+    @Test fun withoutTheHouseRuleYouMayBuyFromTheFirstGo() {
+        val p = pair(lap = false)
+        p.roll(1, 2)
+        assertEquals("BUY", p.s.step)
+    }
+
+    @Test fun mortgagedPropertyInATradeCostsTheReceiverTenPercentInterest() {
+        val p = pair()
+        p.roll(1, 2); p.host.buy(); p.pump()
+        p.host.mortgage(3); p.pump()
+        val hostCash = p.host.state.myCash
+        val guestCash = p.client.state.myCash
+        p.host.offerTrade(listOf(3), 0, emptyList(), 0); p.pump()
+        p.client.acceptTrade(); p.pump()
+        assertEquals(2, p.host.state.owner[3].let { if (it == 2) 2 else it })
+        assertEquals(guestCash - 3, p.client.state.myCash)
+        assertEquals(hostCash, p.host.state.myCash)
+        assertTrue(p.client.state.mortgaged[3])
+    }
+
+    @Test fun anyAmountFromOnePoundCanBeBidAtAuction() {
+        val p = pair()
+        p.roll(1, 2)
+        p.host.declineToAuction(); p.pump()
+        p.client.bid(1); p.pump()
+        assertEquals(1, p.host.state.auctionBid)
+        p.host.bid(2); p.pump()
+        p.client.passBid(); p.pump()
+        assertTrue(p.host.state.owns(3))
+        assertEquals(1498 + 0, p.host.state.myCash.let { it })
     }
 
     @Test fun landingOnAnUnownedStreetOffersItAndBuyingChargesTheCash() {

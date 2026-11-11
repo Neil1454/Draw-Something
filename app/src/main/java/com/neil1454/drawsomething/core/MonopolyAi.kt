@@ -13,6 +13,10 @@ class MonopolyBrain(private val e: MonopolyEngine, skill: Skill, random: Random)
         val s = e.state
         if (s.phase != GPhase.PLAYING) return
 
+        if (s.step == "FIRST") {
+            if (s.canFirstRoll && ready(now, "first${s.seq}", 900, 1800)) e.roll()
+            return
+        }
         val t = s.trade
         if (t != null && t.from == 2) {
             if (ready(now, "trade${s.seq}", 1500, 3000)) {

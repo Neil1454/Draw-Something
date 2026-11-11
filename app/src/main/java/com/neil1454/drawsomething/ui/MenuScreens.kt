@@ -924,7 +924,8 @@ private fun MonopolyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySet
     val set = ui.settings
     SyncLobby(ui, connected, GameKind.MONOPOLY, { MonopolyHelp() }, {
         ChipRow("Game length", MonopolyLength.values().map { it.label }, set.monopolyLen) { onSettings(set.copy(monopolyLen = it)) }
-    }) { onStart(GameKind.MONOPOLY, JSONObject().put("len", set.monopolyLen)) }
+        ToggleChip("🏁 House rule: go round the board once before buying", set.monopolyLap) { onSettings(set.copy(monopolyLap = it)) }
+    }) { onStart(GameKind.MONOPOLY, JSONObject().put("len", set.monopolyLen).put("lap", set.monopolyLap)) }
 }
 
 @Composable
