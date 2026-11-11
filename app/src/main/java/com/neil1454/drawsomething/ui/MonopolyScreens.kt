@@ -1,5 +1,22 @@
 package com.neil1454.drawsomething.ui
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextMeasurer
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -89,12 +106,46 @@ private fun groupColour(g: Int): Color = Color(MonopolyBoard.GROUP_COLOURS[g.coe
 private fun money(n: Int) = "£" + java.text.NumberFormat.getIntegerInstance().format(n)
 private fun die(n: Int) = "⚀⚁⚂⚃⚄⚅".getOrElse(n - 1) { '·' }.toString()
 
-/** Grid cell (column, row) of square [i] on the 11x11 board; GO is at the bottom right, going clockwise. */
-private fun gridXY(i: Int): Pair<Int, Int> = when {
-    i <= 10 -> (10 - i) to 10
-    i <= 20 -> 0 to (20 - i)
-    i <= 30 -> (i - 20) to 0
-    else -> 10 to (i - 30)
+// ============================================================================ geometry
+//
+// The board is drawn in a fixed 1000 x 1000 space and scaled to fit. The corners are 1.5 times the size of the other
+// squares, like the real board. Every square is drawn in its own little frame in which "up" points at the middle of the
+// board, so the names read the right way for whichever side you are looking at.
+
+private const val BS = 1000f
+private const val UNIT = BS / 12f
+private const val CORNER = UNIT * 1.5f
+
+/** 0 bottom row, 1 left column, 2 top row, 3 right column, -1 corner. */
+private fun sideOf(i: Int): Int = when {
+    i % 10 == 0 -> -1
+    i < 10 -> 0
+    i < 20 -> 1
+    i < 30 -> 2
+    else -> 3
+}
+
+private fun cellRect(i: Int): Rect = when {
+    i == 0 -> Rect(BS - CORNER, BS - CORNER, BS, BS)
+    i < 10 -> Rect(BS - CORNER - i * UNIT, BS - CORNER, BS - CORNER - (i - 1) * UNIT, BS)
+    i == 10 -> Rect(0f, BS - CORNER, CORNER, BS)
+    i < 20 -> Rect(0f, BS - CORNER - (i - 10) * UNIT, CORNER, BS - CORNER - (i - 11) * UNIT)
+    i == 20 -> Rect(0f, 0f, CORNER, CORNER)
+    i < 30 -> Rect(CORNER + (i - 21) * UNIT, 0f, CORNER + (i - 20) * UNIT, CORNER)
+    i == 30 -> Rect(BS - CORNER, 0f, BS, CORNER)
+    else -> Rect(BS - CORNER, CORNER + (i - 31) * UNIT, BS, CORNER + (i - 30) * UNIT)
+}
+
+private fun cellCentre(i: Int): Offset = cellRect(i).center
+
+/** Where a token stands on square [i], nudged so two tokens on one square don't hide each other. */
+private fun tokenSpot(pos: Float, nudge: Float): Offset {
+    val a = pos.toInt() % MonopolyBoard.SIZE
+    val b = (a + 1) % MonopolyBoard.SIZE
+    val f = pos - pos.toInt()
+    val ca = cellCentre(a)
+    val cb = cellCentre(b)
+    return Offset(ca.x + (cb.x - ca.x) * f + nudge, ca.y + (cb.y - ca.y) * f + nudge * 0.6f)
 }
 
 @Composable
@@ -115,6 +166,13 @@ fun MonopolyScreen(
     var showTrade by remember { mutableStateOf(false) }
     var confirmBankrupt by remember { mutableStateOf(false) }
     var cardShown by remember { mutableIntStateOf(-1) }
+
+    // Monopoly is a landscape game: the board needs the width. Turn the phone and everything resizes to fit.
+    val activity = LocalContext.current as? Activity
+    DisposableEffect(activity) {
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        onDispose { activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+    }
 
     // sounds and the card pop-up
     LaunchedEffect(s.seq) {
@@ -140,42 +198,25 @@ fun MonopolyScreen(
     }
     LaunchedEffect(s.trade) { if (s.trade != null && s.trade.from == 2) showTrade = false }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val landscape = maxWidth > maxHeight
-        val boardSide = if (landscape) minOf(maxHeight - 16.dp, maxWidth * 0.55f) else minOf(maxWidth - 12.dp, maxHeight * 0.58f)
-
-        val board: @Composable () -> Unit = {
-            Box(Modifier.size(boardSide)) {
-                MonopolyBoardView(s, myCol, theirCol, myToken, theirToken) { deedSq = it }
-                // the middle of the board
-                Box(Modifier.align(Alignment.Center).size(boardSide * 0.8f), contentAlignment = Alignment.Center) {
-                    BoardCentre(s, over, boardSide * 0.8f)
-                }
+    BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0E2A1F), Color(0xFF071810))))) {
+        // the board takes the full height; the controls get the rest of the width
+        val boardSide = minOf(maxHeight - 12.dp, maxWidth * 0.62f)
+        Row(Modifier.fillMaxSize().padding(6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(boardSide).align(Alignment.CenterVertically)) {
+                MonopolyBoardView(s, over, myCol, theirCol, myToken, theirToken) { deedSq = it }
                 if (cardShown == s.seq && s.cardText.isNotBlank() && s.ev == "card") {
                     CardPopup(s, Modifier.align(Alignment.Center).clickable { cardShown = -1 })
                 }
             }
-        }
-        val panel: @Composable (Modifier) -> Unit = { m ->
-            Column(m, verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                Modifier.weight(1f).fillMaxSize().padding(top = 30.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 PlayerRow(s, myCol, theirCol, myToken, theirToken)
-                ActionBar(
-                    s, engine, over,
-                    onManage = { showManage = true }, onTrade = { showTrade = true }, onBankrupt = { confirmBankrupt = true },
-                )
+                ActionBar(s, engine, over, onManage = { showManage = true }, onTrade = { showTrade = true }, onBankrupt = { confirmBankrupt = true })
                 LogBox(s)
-            }
-        }
-        if (!landscape) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                board()
-                panel(Modifier.fillMaxWidth())
-                Spacer(Modifier.height(24.dp))
-            }
-        } else {
-            Row(Modifier.fillMaxSize().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.align(Alignment.CenterVertically)) { board() }
-                panel(Modifier.weight(1f).fillMaxSize().verticalScroll(rememberScrollState()))
+                Text("Pinch the board to zoom · drag to move · double-tap to zoom in or out · tap a square for its deed", fontSize = 10.sp, color = Color.White.copy(alpha = 0.55f), textAlign = TextAlign.Center)
+                Spacer(Modifier.height(16.dp))
             }
         }
 
@@ -213,222 +254,333 @@ fun MonopolyScreen(
 
 // ============================================================================ the board
 
-private fun cellBox(i: Int, c: Float): Pair<Offset, Size> {
-    val (gx, gy) = gridXY(i)
-    return Offset(gx * c, gy * c) to Size(c, c)
-}
-
+/** The board with pinch-to-zoom and drag. The board itself and the animated tokens are two layers sharing one transform. */
 @Composable
-private fun MonopolyBoardView(s: MonopolyState, myCol: Color, theirCol: Color, myToken: String, theirToken: String, onTapSquare: (Int) -> Unit) {
-    val measurer = rememberTextMeasurer()
-    Box(Modifier.fillMaxSize()) {
-        Canvas(
-            Modifier.fillMaxSize().pointerInput(Unit) {
-                detectTapGestures { tap ->
-                    val c = size.width / 11f
-                    val gx = (tap.x / c).toInt().coerceIn(0, 10)
-                    val gy = (tap.y / c).toInt().coerceIn(0, 10)
-                    val i = (0 until MonopolyBoard.SIZE).firstOrNull { gridXY(it) == (gx to gy) }
-                    if (i != null) onTapSquare(i)
+private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, theirCol: Color, myToken: String, theirToken: String, onTapSquare: (Int) -> Unit) {
+    val measurer = rememberTextMeasurer(cacheSize = 320)
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var pan by remember { mutableStateOf(Offset.Zero) }
+    var viewPx by remember { mutableFloatStateOf(1f) }
+    val shape = RoundedCornerShape(14.dp)
+
+    fun clamp(p: Offset, z: Float): Offset = Offset(p.x.coerceIn(viewPx * (1f - z), 0f), p.y.coerceIn(viewPx * (1f - z), 0f))
+
+    Box(
+        Modifier.fillMaxSize().clip(shape).border(3.dp, Color(0xFF3E2A14), shape)
+            .onSizeChanged { viewPx = it.width.toFloat().coerceAtLeast(1f) }
+            .pointerInput(Unit) {
+                detectTransformGestures { centroid, panChange, zoomChange, _ ->
+                    val z = (zoom * zoomChange).coerceIn(1f, 4f)
+                    val anchored = centroid - (centroid - pan) * (z / zoom)
+                    zoom = z
+                    pan = clamp(anchored + panChange, z)
                 }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = { tap ->
+                        val z = if (zoom > 1.2f) 1f else 2.4f
+                        val anchored = tap - (tap - pan) * (z / zoom)
+                        zoom = z
+                        pan = clamp(anchored, z)
+                    },
+                    onTap = { tap ->
+                        val k = viewPx / BS
+                        val bx = (tap.x - pan.x) / zoom / k
+                        val by = (tap.y - pan.y) / zoom / k
+                        val i = (0 until MonopolyBoard.SIZE).firstOrNull { cellRect(it).contains(Offset(bx, by)) }
+                        if (i != null) onTapSquare(i)
+                    },
+                )
             },
-        ) {
-            val c = size.width / 11f
-            drawRoundRect(Color(0xFF1B5E3A), Offset.Zero, size, CornerRadius(c * 0.3f))
-            drawRect(BoardGreen, Offset(c, c), Size(9 * c, 9 * c))
-            for (i in 0 until MonopolyBoard.SIZE) drawSquare(s, i, c, measurer, myCol, theirCol)
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val k = size.width / BS
+            withTransform({ translate(pan.x, pan.y); scale(zoom * k, zoom * k, Offset.Zero) }) {
+                drawBoardBase(measurer)
+                for (i in 0 until MonopolyBoard.SIZE) drawCell(s, i, measurer, myCol, theirCol)
+                drawCentre(s, over, measurer)
+            }
         }
-        // tokens live on their own layer so moving them doesn't redraw the board
-        TokensLayer(s, myToken, theirToken, myCol, theirCol)
+        TokensLayer(s, myToken, theirToken, myCol, theirCol, zoom, pan, viewPx, measurer)
+        if (zoom > 1.05f) {
+            Box(
+                Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xAA000000))
+                    .clickable { zoom = 1f; pan = Offset.Zero }.padding(horizontal = 10.dp, vertical = 5.dp),
+            ) { Text("⤢ fit", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+        }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSquare(
-    s: MonopolyState, i: Int, c: Float, m: TextMeasurer, myCol: Color, theirCol: Color,
-) {
+private val Felt1 = Color(0xFF1F6B45)
+private val Felt2 = Color(0xFF134A2F)
+private val CardCream = Color(0xFFF7F2E1)
+private val Ink = Color(0xFF1A1A1A)
+
+private fun DrawScope.drawBoardBase(m: TextMeasurer) {
+    drawRect(Color(0xFF2B1B0E))
+    drawRect(Color(0xFF3E2A14), Offset(4f, 4f), Size(BS - 8f, BS - 8f))
+    drawRect(Brush.radialGradient(listOf(Felt1, Felt2), Offset(BS / 2, BS / 2), BS * 0.6f), Offset(CORNER, CORNER), Size(BS - 2 * CORNER, BS - 2 * CORNER))
+}
+
+private fun DrawScope.text(m: TextMeasurer, s: String, centre: Offset, size: Float, colour: Color = Ink, weight: FontWeight = FontWeight.Bold, maxW: Float = 0f, maxLines: Int = 3, topAligned: Boolean = false) {
+    val c = if (maxW > 0f) Constraints(maxWidth = maxW.toInt().coerceAtLeast(4)) else Constraints()
+    val r = m.measure(s, TextStyle(fontSize = (size / density).sp, fontWeight = weight, color = colour, textAlign = TextAlign.Center, lineHeight = (size * 1.08f / density).sp), maxLines = maxLines, overflow = TextOverflow.Ellipsis, constraints = c)
+    drawText(r, topLeft = Offset(centre.x - r.size.width / 2f, if (topAligned) centre.y else centre.y - r.size.height / 2f))
+}
+
+/** One square, drawn in its own frame so the writing faces the right way. */
+private fun DrawScope.drawCell(s: MonopolyState, i: Int, m: TextMeasurer, myCol: Color, theirCol: Color) {
     val sq = MonopolyBoard.squares[i]
-    val (o, sz) = cellBox(i, c)
-    val corner = i % 10 == 0
-    drawRect(Color(0xFFF6F2E4), o, sz)
-    drawRect(Color(0xFF2F4F3F), o, sz, style = Stroke(1.2f))
-    val (gx, gy) = gridXY(i)
-    // which side faces the middle
-    val inward = when {
-        gy == 10 -> 0 // bottom row: inner side is up
-        gx == 0 -> 1  // left column: inner side is right
-        gy == 0 -> 2  // top row: inner side is down
-        else -> 3     // right column: inner side is left
-    }
-    if (sq.kind == SqKind.PROPERTY && !corner) {
-        val t = c * 0.24f
-        val band = groupColour(sq.group)
-        val (bo, bs) = when (inward) {
-            0 -> Offset(o.x, o.y) to Size(c, t)
-            1 -> Offset(o.x + c - t, o.y) to Size(t, c)
-            2 -> Offset(o.x, o.y + c - t) to Size(c, t)
-            else -> Offset(o.x, o.y) to Size(t, c)
-        }
-        drawRect(band, bo, bs)
-        drawRect(Color.Black.copy(alpha = 0.4f), bo, bs, style = Stroke(1f))
-        // buildings sit on the band
-        val h = s.houses[i]
-        if (h in 1..4) {
-            val w = t * 0.7f
-            for (k in 0 until h) {
-                val p = when (inward) {
-                    0 -> Offset(o.x + c * 0.1f + k * (c * 0.8f / 4f), o.y + (t - w) / 2f)
-                    2 -> Offset(o.x + c * 0.1f + k * (c * 0.8f / 4f), o.y + c - t + (t - w) / 2f)
-                    1 -> Offset(o.x + c - t + (t - w) / 2f, o.y + c * 0.1f + k * (c * 0.8f / 4f))
-                    else -> Offset(o.x + (t - w) / 2f, o.y + c * 0.1f + k * (c * 0.8f / 4f))
-                }
-                drawRect(Color(0xFF1B8A3A), p, Size(w, w))
+    val side = sideOf(i)
+    val r = cellRect(i)
+    val deg = when (side) { 1 -> 90f; 2 -> 180f; 3 -> 270f; else -> 0f }
+    val w = if (side == -1) CORNER else UNIT
+    val h = CORNER
+    withTransform({ translate(r.center.x, r.center.y); rotate(deg, Offset.Zero) }) {
+        val left = -w / 2f
+        val top = -h / 2f
+        drawRect(CardCream, Offset(left, top), Size(w, h))
+        if (side == -1) {
+            drawCorner(i, w, m)
+        } else {
+            // the colour band, with houses or a hotel sitting on it
+            if (sq.kind == SqKind.PROPERTY) {
+                val bh = h * 0.2f
+                drawRect(groupColour(sq.group), Offset(left, top), Size(w, bh))
+                drawRect(Color.Black.copy(alpha = 0.55f), Offset(left, top + bh - 1.5f), Size(w, 1.5f))
+                val hs = s.houses[i]
+                if (hs in 1..4) for (k in 0 until hs) drawHouse(Offset(left + w * (0.14f + 0.24f * k), top + bh * 0.52f), bh * 0.36f)
+                else if (hs == 5) drawHotel(Offset(0f, top + bh * 0.52f), bh * 0.4f)
             }
-        } else if (h == 5) {
-            val p = when (inward) {
-                0 -> Offset(o.x + c * 0.25f, o.y + t * 0.12f)
-                2 -> Offset(o.x + c * 0.25f, o.y + c - t + t * 0.12f)
-                1 -> Offset(o.x + c - t + t * 0.12f, o.y + c * 0.25f)
-                else -> Offset(o.x + t * 0.12f, o.y + c * 0.25f)
+            val areaTop = top + (if (sq.kind == SqKind.PROPERTY) h * 0.22f else h * 0.06f)
+            val icon = when (sq.kind) {
+                SqKind.STATION -> "🚂"
+                SqKind.UTILITY -> if (sq.name.startsWith("Electric")) "💡" else "🚰"
+                SqKind.TAX -> if (sq.name.startsWith("Income")) "💰" else "💎"
+                SqKind.CHANCE -> "❓"
+                SqKind.CHEST -> "🎁"
+                else -> ""
             }
-            val hs = if (inward == 0 || inward == 2) Size(c * 0.5f, t * 0.76f) else Size(t * 0.76f, c * 0.5f)
-            drawRect(Color(0xFFD62828), p, hs)
+            val name = when (sq.kind) {
+                SqKind.CHANCE -> "CHANCE"
+                SqKind.CHEST -> "COMMUNITY CHEST"
+                else -> sq.name.uppercase()
+            }
+            text(m, name, Offset(0f, areaTop), w * 0.155f, if (sq.kind == SqKind.CHANCE) Color(0xFFD97706) else Ink, maxW = w * 0.94f, maxLines = 4, topAligned = true)
+            if (icon.isNotEmpty()) text(m, icon, Offset(0f, top + h * 0.6f), w * 0.52f)
+            if (sq.kind == SqKind.TAX) text(m, "PAY £${sq.rents[0]}", Offset(0f, top + h * 0.84f), w * 0.15f)
+            if (sq.price > 0) text(m, "£${sq.price}", Offset(0f, top + h * 0.88f), w * 0.17f, Color(0xFF3A3A3A), FontWeight.SemiBold)
+            // owner: a stripe on the outer edge with a little flag
+            val o = s.owner[i]
+            if (o != 0) {
+                val col = if (o == 1) myCol else theirCol
+                drawRect(col, Offset(left, top + h - h * 0.07f), Size(w, h * 0.07f))
+                val flag = Path().apply { moveTo(left, top + h * 0.2f); lineTo(left + w * 0.2f, top + h * 0.2f); lineTo(left, top + h * 0.2f + w * 0.2f); close() }
+                if (sq.kind != SqKind.PROPERTY) drawPath(flag, col)
+            }
+            if (s.mortgaged[i]) {
+                drawRect(Color(0xCC4B5563), Offset(left, top), Size(w, h))
+                text(m, "MORTGAGED", Offset(0f, 0f), w * 0.15f, Color.White)
+            }
+        }
+        drawRect(Color(0xFF2F4F3F), Offset(left, top), Size(w, h), style = Stroke(1.6f))
+    }
+}
+
+private fun DrawScope.drawHouse(c: Offset, size: Float) {
+    drawRect(Color(0xFF1B8A3A), Offset(c.x - size * 0.45f, c.y - size * 0.1f), Size(size * 0.9f, size * 0.7f))
+    val roof = Path().apply { moveTo(c.x - size * 0.6f, c.y - size * 0.05f); lineTo(c.x, c.y - size * 0.65f); lineTo(c.x + size * 0.6f, c.y - size * 0.05f); close() }
+    drawPath(roof, Color(0xFF0F5C25))
+    drawRect(Color(0xFFFFF3B0), Offset(c.x - size * 0.1f, c.y + size * 0.1f), Size(size * 0.2f, size * 0.25f))
+}
+
+private fun DrawScope.drawHotel(c: Offset, size: Float) {
+    drawRoundRect(Color(0xFFD62828), Offset(c.x - size * 1.2f, c.y - size * 0.5f), Size(size * 2.4f, size * 1.1f), CornerRadius(size * 0.2f))
+    for (k in 0 until 4) drawRect(Color(0xFFFFF3B0), Offset(c.x - size * 0.95f + k * size * 0.5f, c.y - size * 0.25f), Size(size * 0.28f, size * 0.3f))
+}
+
+private fun DrawScope.drawCorner(i: Int, w: Float, m: TextMeasurer) {
+    val left = -w / 2f
+    val top = -w / 2f
+    when (i) {
+        0 -> {
+            drawRect(Brush.linearGradient(listOf(Color(0xFFFDF2F2), Color(0xFFF8D4D4)), Offset(left, top), Offset(left + w, top + w)), Offset(left, top), Size(w, w))
+            text(m, "COLLECT £200 SALARY AS YOU PASS", Offset(0f, top + w * 0.08f), w * 0.1f, Ink, maxW = w * 0.9f, topAligned = true)
+            text(m, "GO", Offset(0f, w * 0.02f), w * 0.42f, Color(0xFFD62828), FontWeight.Black)
+            val arrow = Path().apply {
+                moveTo(left + w * 0.12f, top + w * 0.82f); lineTo(left + w * 0.34f, top + w * 0.7f); lineTo(left + w * 0.34f, top + w * 0.78f)
+                lineTo(left + w * 0.88f, top + w * 0.78f); lineTo(left + w * 0.88f, top + w * 0.86f); lineTo(left + w * 0.34f, top + w * 0.86f)
+                lineTo(left + w * 0.34f, top + w * 0.94f); close()
+            }
+            drawPath(arrow, Color(0xFFD62828))
+        }
+        10 -> {
+            drawRect(Color(0xFFFFE0B2), Offset(left, top), Size(w, w))
+            drawRect(Color(0xFFF59E0B), Offset(left + w * 0.05f, top + w * 0.05f), Size(w * 0.58f, w * 0.58f))
+            for (k in 1..4) drawRect(Color(0xFF3B2A12), Offset(left + w * (0.05f + 0.115f * k), top + w * 0.05f), Size(w * 0.03f, w * 0.58f))
+            text(m, "IN JAIL", Offset(left + w * 0.34f, top + w * 0.33f), w * 0.11f, Color.White)
+            text(m, "JUST\nVISITING", Offset(left + w * 0.5f, top + w * 0.8f), w * 0.12f, Ink, maxW = w * 0.9f)
+        }
+        20 -> {
+            drawRect(Color(0xFFFFF1F1), Offset(left, top), Size(w, w))
+            text(m, "FREE", Offset(0f, top + w * 0.05f), w * 0.2f, Color(0xFFD62828), FontWeight.Black, topAligned = true)
+            text(m, "🚗", Offset(0f, 0f), w * 0.4f)
+            text(m, "PARKING", Offset(0f, top + w * 0.72f), w * 0.2f, Color(0xFFD62828), FontWeight.Black, topAligned = true)
+        }
+        else -> {
+            drawRect(Color(0xFFE3F0FF), Offset(left, top), Size(w, w))
+            text(m, "GO TO", Offset(0f, top + w * 0.05f), w * 0.18f, Color(0xFF1E4DB7), FontWeight.Black, topAligned = true)
+            text(m, "👮", Offset(0f, 0f), w * 0.4f)
+            text(m, "JAIL", Offset(0f, top + w * 0.72f), w * 0.22f, Color(0xFF1E4DB7), FontWeight.Black, topAligned = true)
         }
     }
-    val label = when (sq.kind) {
-        SqKind.GO -> "GO"
-        SqKind.JAIL -> "JAIL"
-        SqKind.PARKING -> "FREE\nPARKING"
-        SqKind.GOTOJAIL -> "GO TO\nJAIL"
-        SqKind.CHANCE -> "CHANCE"
-        SqKind.CHEST -> "CHEST"
-        else -> sq.short
+}
+
+/** The middle of the board: title banner, the two card piles and the latest news. The dice live here too. */
+private fun DrawScope.drawCentre(s: MonopolyState, over: Boolean, m: TextMeasurer) {
+    val c = Offset(BS / 2, BS / 2)
+    val inner = BS - 2 * CORNER
+    // card piles
+    withTransform({ translate(CORNER + inner * 0.2f, CORNER + inner * 0.2f); rotate(135f, Offset.Zero) }) {
+        for (k in 2 downTo 0) drawRoundRect(Color(0xFFB45309).copy(alpha = 0.5f + 0.25f * (2 - k)), Offset(-120f + k * 3f, -70f - k * 3f), Size(240f, 140f), CornerRadius(14f))
+        drawRoundRect(Color(0xFFFB923C), Offset(-120f, -70f), Size(240f, 140f), CornerRadius(14f))
+        drawRoundRect(Color(0xFF7C2D12), Offset(-120f, -70f), Size(240f, 140f), CornerRadius(14f), style = Stroke(4f))
+        text(m, "CHANCE", Offset(0f, -30f), 34f, Color(0xFF7C2D12), FontWeight.Black)
+        text(m, "?", Offset(0f, 22f), 70f, Color(0xFF7C2D12), FontWeight.Black)
     }
-    val icon = when (sq.kind) {
-        SqKind.GO -> "➡️"
-        SqKind.JAIL -> "🚔"
-        SqKind.PARKING -> "🅿️"
-        SqKind.GOTOJAIL -> "👮"
-        SqKind.CHANCE -> "❓"
-        SqKind.CHEST -> "📦"
-        SqKind.STATION -> "🚂"
-        SqKind.UTILITY -> if (sq.name.startsWith("Electric")) "💡" else "🚰"
-        SqKind.TAX -> "💰"
-        else -> ""
+    withTransform({ translate(CORNER + inner * 0.8f, CORNER + inner * 0.8f); rotate(-45f, Offset.Zero) }) {
+        for (k in 2 downTo 0) drawRoundRect(Color(0xFF0369A1).copy(alpha = 0.5f + 0.25f * (2 - k)), Offset(-120f + k * 3f, -70f - k * 3f), Size(240f, 140f), CornerRadius(14f))
+        drawRoundRect(Color(0xFF38BDF8), Offset(-120f, -70f), Size(240f, 140f), CornerRadius(14f))
+        drawRoundRect(Color(0xFF0C4A6E), Offset(-120f, -70f), Size(240f, 140f), CornerRadius(14f), style = Stroke(4f))
+        text(m, "COMMUNITY\nCHEST", Offset(0f, -22f), 28f, Color(0xFF0C4A6E), FontWeight.Black)
+        text(m, "🎁", Offset(0f, 38f), 44f)
     }
-    val bandT = if (sq.kind == SqKind.PROPERTY) c * 0.24f else 0f
-    // the free area of the square, away from the colour band
-    val areaX = when (inward) { 3 -> o.x + bandT; else -> o.x }
-    val areaW = if (inward == 1 || inward == 3) c - bandT else c
-    val areaTop = if (inward == 0) o.y + bandT else o.y
-    val areaH = if (inward == 0 || inward == 2) c - bandT else c
-    val cx = areaX + areaW / 2f
-    val fs = (c / 6.2f).coerceAtLeast(4.5f)
-    val style = TextStyle(fontSize = (fs / density).sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A), textAlign = TextAlign.Center)
-    val r = m.measure(label, style, overflow = TextOverflow.Ellipsis, maxLines = 3, constraints = Constraints(maxWidth = (areaW * 0.96f).toInt().coerceAtLeast(8)))
-    drawText(r, topLeft = Offset(cx - r.size.width / 2f, areaTop + c * 0.04f))
-    if (icon.isNotEmpty()) {
-        val ir = m.measure(icon, TextStyle(fontSize = (c / 3.4f / density).sp))
-        drawText(ir, topLeft = Offset(cx - ir.size.width / 2f, areaTop + areaH * 0.52f - ir.size.height / 2f + c * 0.06f))
+    // the banner
+    withTransform({ translate(c.x, c.y - inner * 0.1f); rotate(-35f, Offset.Zero) }) {
+        drawRoundRect(Color(0xFF7F1010), Offset(-300f, -62f), Size(600f, 132f), CornerRadius(14f))
+        drawRoundRect(Color(0xFFD62828), Offset(-296f, -66f), Size(600f, 132f), CornerRadius(14f))
+        drawRoundRect(Color.White, Offset(-282f, -52f), Size(572f, 104f), CornerRadius(10f), style = Stroke(5f))
+        text(m, "MONOPOLY", Offset(0f, 0f), 84f, Color.White, FontWeight.Black)
     }
-    if (sq.price > 0 && s.owner[i] == 0) {
-        val pr = m.measure("£${sq.price}", TextStyle(fontSize = (c / 6.0f / density).sp, color = Color(0xFF444444)))
-        drawText(pr, topLeft = Offset(cx - pr.size.width / 2f, areaTop + areaH - pr.size.height - c * 0.03f))
+    text(m, "LONDON EDITION", Offset(c.x, c.y + inner * 0.03f), 22f, Color.White.copy(alpha = 0.8f))
+    // the latest news
+    val line = s.log.lastOrNull().orEmpty()
+    if (line.isNotBlank()) {
+        drawRoundRect(Color(0x66000000), Offset(c.x - inner * 0.42f, c.y + inner * 0.34f), Size(inner * 0.84f, 70f), CornerRadius(14f))
+        text(m, line, Offset(c.x, c.y + inner * 0.34f + 35f), 24f, Color.White, FontWeight.SemiBold, maxW = inner * 0.8f, maxLines = 2)
     }
-    // owner stripe along the outer edge, and a grey wash if mortgaged
-    if (s.owner[i] != 0) {
-        val col = if (s.owner[i] == 1) myCol else theirCol
-        val t = c * 0.12f
-        val (eo, es) = when (inward) {
-            0 -> Offset(o.x, o.y + c - t) to Size(c, t)
-            1 -> Offset(o.x, o.y) to Size(t, c)
-            2 -> Offset(o.x, o.y) to Size(c, t)
-            else -> Offset(o.x + c - t, o.y) to Size(t, c)
+}
+
+private fun DrawScope.drawDice(c: Offset, size: Float, value: Int, angle: Float, lift: Float) {
+    withTransform({ translate(c.x, c.y - lift); rotate(angle, Offset.Zero) }) {
+        drawRoundRect(Color.Black.copy(alpha = 0.35f), Offset(-size / 2 + 4f, -size / 2 + 8f + lift * 0.6f), Size(size, size), CornerRadius(size * 0.2f))
+        drawRoundRect(Brush.linearGradient(listOf(Color.White, Color(0xFFD9DEEA)), Offset(-size / 2, -size / 2), Offset(size / 2, size / 2)), Offset(-size / 2, -size / 2), Size(size, size), CornerRadius(size * 0.2f))
+        drawRoundRect(Color(0xFF8B94AB), Offset(-size / 2, -size / 2), Size(size, size), CornerRadius(size * 0.2f), style = Stroke(3f))
+        val d = size * 0.25f
+        val pips = when (value) {
+            1 -> listOf(0 to 0)
+            2 -> listOf(-1 to -1, 1 to 1)
+            3 -> listOf(-1 to -1, 0 to 0, 1 to 1)
+            4 -> listOf(-1 to -1, 1 to -1, -1 to 1, 1 to 1)
+            5 -> listOf(-1 to -1, 1 to -1, 0 to 0, -1 to 1, 1 to 1)
+            else -> listOf(-1 to -1, 1 to -1, -1 to 0, 1 to 0, -1 to 1, 1 to 1)
         }
-        drawRect(col, eo, es)
-    }
-    if (s.mortgaged[i]) {
-        drawRect(Color(0xAA6B7280), o, sz)
-        val mr = m.measure("M", TextStyle(fontSize = (c / 2.2f / density).sp, fontWeight = FontWeight.Black, color = Color.White))
-        drawText(mr, topLeft = Offset(o.x + c / 2f - mr.size.width / 2f, o.y + c / 2f - mr.size.height / 2f))
+        for ((px, py) in pips) drawCircle(if (value == 1) Color(0xFFD62828) else Color(0xFF1B2440), size * 0.09f, Offset(px * d, py * d))
     }
 }
 
 @Composable
-private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, myCol: Color, theirCol: Color) {
-    val measurer = rememberTextMeasurer()
+private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, myCol: Color, theirCol: Color, zoom: Float, pan: Offset, viewPx: Float, m: TextMeasurer) {
     val mine = remember { Animatable(s.myPos.toFloat()) }
     val theirs = remember { Animatable(s.theirPos.toFloat()) }
-    LaunchedEffect(s.myPos) { hop(mine, s.myPos) }
-    LaunchedEffect(s.theirPos) { hop(theirs, s.theirPos) }
-    Canvas(Modifier.fillMaxSize()) {
-        val c = size.width / 11f
-        fun place(pos: Float, token: String, col: Color, dx: Float) {
-            val a = pos.toInt() % MonopolyBoard.SIZE
-            val b = (a + 1) % MonopolyBoard.SIZE
-            val f = pos - pos.toInt()
-            val (ga, gb) = gridXY(a) to gridXY(b)
-            val x = (ga.first + (gb.first - ga.first) * f + 0.5f) * c + dx * c
-            val y = (ga.second + (gb.second - ga.second) * f + 0.5f) * c + dx * c * 0.4f + c * 0.18f
-            drawCircle(col.copy(alpha = 0.9f), c * 0.3f, Offset(x, y))
-            drawCircle(Color.White, c * 0.3f, Offset(x, y), style = Stroke(2.5f))
-            val r = measurer.measure(token, TextStyle(fontSize = (c * 0.42f / density).sp))
-            drawText(r, topLeft = Offset(x - r.size.width / 2f, y - r.size.height / 2f))
+    var landed by remember { mutableIntStateOf(0) }
+    val ring = remember { Animatable(1f) }
+    LaunchedEffect(s.myPos) { hop(mine, s.myPos) { landed++ } }
+    LaunchedEffect(s.theirPos) { hop(theirs, s.theirPos) { landed++ } }
+    LaunchedEffect(landed) { if (landed > 0) { ring.snapTo(0f); ring.animateTo(1f, tween(700)) } }
+    // dice: tumble for a moment, then settle
+    val rollP = remember { Animatable(1f) }
+    var d1 by remember { mutableIntStateOf(s.d1) }
+    var d2 by remember { mutableIntStateOf(s.d2) }
+    LaunchedEffect(s.moves, s.d1, s.d2) {
+        if (s.d1 > 0 && s.ev == "roll") {
+            rollP.snapTo(0f)
+            val job = launch { rollP.animateTo(1f, tween(900, easing = LinearEasing)) }
+            repeat(9) { d1 = (1..6).random(); d2 = (1..6).random(); delay(80) }
+            job.join()
         }
-        place(theirs.value, theirToken, theirCol, 0.18f)
-        place(mine.value, myToken, myCol, -0.18f)
+        d1 = s.d1; d2 = s.d2
+    }
+    val bob = rememberInfiniteTransition(label = "bob").animateFloat(0f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "bobv")
+    Canvas(Modifier.fillMaxSize()) {
+        val k = size.width / BS
+        withTransform({ translate(pan.x, pan.y); scale(zoom * k, zoom * k, Offset.Zero) }) {
+            val c = Offset(BS / 2, BS / 2)
+            // dice in the middle of the board
+            if (d1 > 0) {
+                val t = rollP.value
+                val bounce = if (t < 1f) kotlin.math.abs(kotlin.math.sin(t * 3.1416f * 3f)) * (1f - t) * 90f else 0f
+                drawDice(Offset(c.x - 70f, c.y + 150f), 92f, d1, (1f - t) * 380f, bounce)
+                drawDice(Offset(c.x + 70f, c.y + 150f), 92f, d2, -(1f - t) * 300f, bounce)
+            }
+            // where the player to move is about to land / has landed
+            val lit = cellRect(if (s.myTurn) s.myPos else s.theirPos)
+            val pulse = 0.35f + 0.25f * bob.value
+            drawRect((if (s.myTurn) myCol else theirCol).copy(alpha = pulse), lit.topLeft, lit.size)
+            if (ring.value < 1f) {
+                val where = cellCentre(if (landed % 2 == 0) s.theirPos else s.myPos)
+                drawCircle(Color.White.copy(alpha = 1f - ring.value), 20f + ring.value * 70f, where, style = Stroke(6f))
+            }
+            fun token(pos: Float, emoji: String, col: Color, nudge: Float, active: Boolean, moving: Boolean) {
+                val spot = tokenSpot(pos, nudge)
+                val frac = pos - pos.toInt()
+                val hopY = if (moving) -kotlin.math.sin(frac * 3.1416f) * 34f else 0f
+                val p = Offset(spot.x, spot.y + hopY)
+                drawOval(Color.Black.copy(alpha = 0.35f), Offset(spot.x - 24f, spot.y + 18f), Size(48f, 16f))
+                drawCircle(col, 31f, p)
+                drawCircle(Color.White, 31f, p, style = Stroke(5f))
+                val r = m.measure(emoji, TextStyle(fontSize = (34f / density).sp))
+                drawText(r, topLeft = Offset(p.x - r.size.width / 2f, p.y - r.size.height / 2f))
+                if (active) {
+                    val a = Path().apply { moveTo(p.x, p.y - 44f - bob.value * 8f); lineTo(p.x - 12f, p.y - 62f - bob.value * 8f); lineTo(p.x + 12f, p.y - 62f - bob.value * 8f); close() }
+                    drawPath(a, Color.White)
+                }
+            }
+            token(theirs.value, theirToken, theirCol, 16f, !s.myTurn, theirs.isRunning)
+            token(mine.value, myToken, myCol, -16f, s.myTurn, mine.isRunning)
+        }
     }
 }
 
-private suspend fun hop(a: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>, target: Int) {
+private suspend fun hop(a: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>, target: Int, onLand: () -> Unit) {
     val cur = a.value % MonopolyBoard.SIZE
     val fwd = (target - cur + MonopolyBoard.SIZE) % MonopolyBoard.SIZE
     if (fwd == 0f) { a.snapTo(target.toFloat()); return }
     if (fwd > 12f) {
         a.snapTo(target.toFloat())
+        onLand()
         return
     }
     a.snapTo(cur)
-    a.animateTo(cur + fwd, tween((fwd * 110).toInt().coerceIn(150, 1300), easing = LinearEasing))
+    // each square is a hop: speed up a little for long moves
+    a.animateTo(cur + fwd, tween((fwd * 170).toInt().coerceIn(220, 1500), easing = LinearEasing))
     a.snapTo(target.toFloat())
-}
-
-@Composable
-private fun BoardCentre(s: MonopolyState, over: Boolean, side: androidx.compose.ui.unit.Dp) {
-    var shown1 by remember { mutableIntStateOf(s.d1) }
-    var shown2 by remember { mutableIntStateOf(s.d2) }
-    LaunchedEffect(s.moves, s.d1, s.d2) {
-        if (s.d1 > 0 && s.moves > 0 && s.ev == "roll") {
-            repeat(6) { shown1 = (1..6).random(); shown2 = (1..6).random(); delay(60) }
-        }
-        shown1 = s.d1; shown2 = s.d2
-    }
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(
-            Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFFD62828)).padding(horizontal = 14.dp, vertical = 3.dp),
-        ) { Text("MONOPOLY", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 3.sp) }
-        Text("London edition", fontSize = 9.sp, color = Color(0xFF2F4F3F))
-        if (shown1 > 0) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(die(shown1), fontSize = 40.sp, color = Color(0xFF1A1A1A))
-                Text(die(shown2), fontSize = 40.sp, color = Color(0xFF1A1A1A))
-            }
-            if (s.d1 == s.d2 && s.d1 > 0 && !over) Text("DOUBLE!", fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color(0xFFD62828))
-        }
-        val line = s.log.lastOrNull().orEmpty()
-        if (line.isNotBlank()) Text(line, fontSize = 11.sp, color = Color(0xFF1A1A1A), textAlign = TextAlign.Center, maxLines = 3, modifier = Modifier.width(side * 0.9f))
-    }
+    onLand()
 }
 
 @Composable
 private fun CardPopup(s: MonopolyState, modifier: Modifier) {
     val chance = s.cardDeck == 0
+    val grow = remember { Animatable(0.6f) }
+    LaunchedEffect(s.seq) { grow.snapTo(0.6f); grow.animateTo(1f, tween(350)) }
     Column(
-        modifier.width(210.dp).clip(RoundedCornerShape(14.dp))
+        modifier.graphicsLayer { scaleX = grow.value; scaleY = grow.value }.width(230.dp).clip(RoundedCornerShape(14.dp))
             .background(if (chance) Color(0xFFFFB74D) else Color(0xFF81D4FA))
             .border(3.dp, Color(0xFF1A1A1A), RoundedCornerShape(14.dp)).padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(if (chance) "❓ CHANCE" else "📦 COMMUNITY CHEST", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF1A1A1A))
+        Text(if (chance) "❓ CHANCE" else "🎁 COMMUNITY CHEST", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF1A1A1A))
         Text(s.cardText, fontSize = 14.sp, color = Color(0xFF1A1A1A), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -450,12 +602,33 @@ private fun PlayerRow(s: MonopolyState, myCol: Color, theirCol: Color, myToken: 
 @Composable
 private fun PlayerBox(name: String, cash: Int, props: Int, jail: Boolean, cards: Int, col: Color, active: Boolean, modifier: Modifier) {
     val shape = RoundedCornerShape(16.dp)
+    // a little "+£200" / "−£50" that floats up whenever the money changes
+    var last by remember { mutableIntStateOf(cash) }
+    var delta by remember { mutableIntStateOf(0) }
+    val fade = remember { Animatable(1f) }
+    LaunchedEffect(cash) {
+        if (cash != last) {
+            delta = cash - last
+            last = cash
+            fade.snapTo(0f)
+            fade.animateTo(1f, tween(1700))
+        }
+    }
     Column(
         modifier.clip(shape).background(Color(0x66000000)).border(if (active) 3.dp else 1.dp, if (active) col else col.copy(alpha = 0.4f), shape).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(name, fontWeight = FontWeight.Bold, color = col, maxLines = 1, fontSize = 14.sp)
-        Text(money(cash), fontWeight = FontWeight.Black, color = Color.White, fontSize = 22.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(money(cash), fontWeight = FontWeight.Black, color = Color.White, fontSize = 24.sp)
+            if (delta != 0 && fade.value < 1f) {
+                Text(
+                    (if (delta > 0) "+" else "−") + money(kotlin.math.abs(delta)), fontWeight = FontWeight.Black, fontSize = 16.sp,
+                    color = if (delta > 0) Color(0xFF4ADE80) else Color(0xFFF87171),
+                    modifier = Modifier.graphicsLayer { alpha = 1f - fade.value; translationY = -14f * fade.value * density },
+                )
+            }
+        }
         Text(
             "$props propert${if (props == 1) "y" else "ies"}" + (if (jail) " · 🚔 JAIL" else "") + (if (cards > 0) " · 🔓×$cards" else ""),
             fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f),

@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -129,11 +132,9 @@ fun HolidayScreen(
         if (revealed && s.myDelta > 0 && bannerP < 1f) {
             Box(Modifier.fillMaxSize().background(Color(0xFF22C55E).copy(alpha = 0.28f * (1f - bannerP))))
         }
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val landscape = maxWidth > maxHeight
+            val topPart: @Composable ColumnScope.() -> Unit = {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PlayerPill(
                     "You", raw.myScore, myCol, s.myChoice != -1 && !revealed, Modifier.weight(1f),
@@ -177,7 +178,7 @@ fun HolidayScreen(
             }
 
             val isMap = s.art.startsWith("map:")
-            if (!bonusWaiting && s.art.startsWith("pic:")) HolidayPicture(s.art)
+            if (!bonusWaiting && s.art.startsWith("pic:")) HolidayPicture(s.art, height = if (landscape) 110.dp else 150.dp)
             // the question
             if (!bonusWaiting) Box(
                 Modifier.fillMaxWidth()
@@ -190,6 +191,8 @@ fun HolidayScreen(
                 Text(s.question, fontSize = if (isMap || s.art.isNotEmpty()) 18.sp else 21.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, textAlign = TextAlign.Center)
             }
 
+            }
+            val answersPart: @Composable ColumnScope.() -> Unit = {
             // the answers
             if (!bonusWaiting) Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isMap) {
@@ -260,6 +263,23 @@ fun HolidayScreen(
                     RevealPanel(s)
                 }
                 Spacer(Modifier.height(6.dp))
+            }
+            }
+            if (landscape) {
+                // wide screen: the question on the left, the answers on the right
+                Row(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(if (bonusWaiting) Modifier.weight(1f).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) { topPart() }
+                    Column(Modifier.weight(1.05f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) { answersPart() }
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    topPart()
+                    answersPart()
+                }
             }
         }
         ConfettiBurst(party)

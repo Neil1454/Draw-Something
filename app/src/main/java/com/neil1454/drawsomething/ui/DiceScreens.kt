@@ -11,6 +11,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -103,44 +105,62 @@ fun DiceScreen(
 
     Box(Modifier.fillMaxSize().shaking(shake)) {
         if (flash < 1f) Box(Modifier.fillMaxSize().background(Funk.Red.copy(alpha = 0.35f * (1f - flash))))
-        Column(
-            Modifier.fillMaxSize().padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PlayerPill("You", s.myScore, Funk.Lime, s.myTurn && !over, Modifier.weight(1f))
-                PlayerPill(s.theirName, s.theirScore, Funk.Cyan, !s.myTurn && !over, Modifier.weight(1f))
-            }
-            TargetBar("You", s.myScore, s.target, Funk.Lime)
-            TargetBar(s.theirName, s.theirScore, s.target, Funk.Cyan)
-            TurnText(
-                when {
-                    over -> "GAME OVER"
-                    s.myTurn -> "👉  YOUR ROLL  👈"
-                    else -> "⏳ ${s.theirName} is rolling…"
-                },
-                s.myTurn && !over,
-            )
-            Spacer(Modifier.weight(1f))
-            Box(contentAlignment = Alignment.Center) {
-                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                    val faces = if (shown.size == (if (s.two) 2 else 1)) shown else List(if (s.two) 2 else 1) { 1 }
-                    faces.forEach { Die(it, rolling) }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val landscape = maxWidth > maxHeight
+            val header: @Composable ColumnScope.() -> Unit = {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PlayerPill("You", s.myScore, Funk.Lime, s.myTurn && !over, Modifier.weight(1f))
+                    PlayerPill(s.theirName, s.theirScore, Funk.Cyan, !s.myTurn && !over, Modifier.weight(1f))
                 }
-            }
-            Text("HOLDING", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
-            GradientText("${s.held}", fontSize = 56.sp, colors = listOf(Funk.Sun, Funk.Orange, Funk.Pink))
-            if (s.myTurn && !over) {
-                Text(
-                    "Bank it before you roll a 1!" + if (s.held + s.myScore >= s.target) "  You can WIN now!" else "",
-                    fontSize = 13.sp, color = Funk.Sun, textAlign = TextAlign.Center,
+                TargetBar("You", s.myScore, s.target, Funk.Lime)
+                TargetBar(s.theirName, s.theirScore, s.target, Funk.Cyan)
+                TurnText(
+                    when {
+                        over -> "GAME OVER"
+                        s.myTurn -> "👉  YOUR ROLL  👈"
+                        else -> "⏳ ${s.theirName} is rolling…"
+                    },
+                    s.myTurn && !over,
                 )
             }
-            Spacer(Modifier.weight(1f))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FunkyButton("🎲  ROLL", { engine.roll() }, Modifier.weight(1f), listOf(Funk.Lime, Funk.Mint), enabled = s.myTurn && !over && !rolling, fontSize = 22.sp)
-                FunkyButton("🏦  BANK", { engine.bank() }, Modifier.weight(1f), listOf(Funk.Sun, Funk.Orange), enabled = s.myTurn && !over && !rolling && s.held > 0, fontSize = 22.sp)
+            val dicePart: @Composable ColumnScope.() -> Unit = {
+                Box(contentAlignment = Alignment.Center) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        val faces = if (shown.size == (if (s.two) 2 else 1)) shown else List(if (s.two) 2 else 1) { 1 }
+                        faces.forEach { Die(it, rolling) }
+                    }
+                }
+                Text("HOLDING", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+                GradientText("${s.held}", fontSize = if (landscape) 44.sp else 56.sp, colors = listOf(Funk.Sun, Funk.Orange, Funk.Pink))
+                if (s.myTurn && !over) {
+                    Text(
+                        "Bank it before you roll a 1!" + if (s.held + s.myScore >= s.target) "  You can WIN now!" else "",
+                        fontSize = 13.sp, color = Funk.Sun, textAlign = TextAlign.Center,
+                    )
+                }
+            }
+            val buttons: @Composable () -> Unit = {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FunkyButton("🎲  ROLL", { engine.roll() }, Modifier.weight(1f), listOf(Funk.Lime, Funk.Mint), enabled = s.myTurn && !over && !rolling, fontSize = 22.sp)
+                    FunkyButton("🏦  BANK", { engine.bank() }, Modifier.weight(1f), listOf(Funk.Sun, Funk.Orange), enabled = s.myTurn && !over && !rolling && s.held > 0, fontSize = 22.sp)
+                }
+            }
+            if (landscape) {
+                Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) { header() }
+                    Column(Modifier.weight(1.2f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
+                        dicePart()
+                        buttons()
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    header()
+                    Spacer(Modifier.weight(1f))
+                    dicePart()
+                    Spacer(Modifier.weight(1f))
+                    buttons()
+                }
             }
         }
         PopupLayer(popups, { id -> popups.removeAll { it.id == id } })

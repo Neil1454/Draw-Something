@@ -287,14 +287,14 @@ private fun DrawScope.drawNorth() {
 
 /** A picture shown above a question. Unknown names draw nothing. */
 @Composable
-fun HolidayPicture(art: String, modifier: Modifier = Modifier) {
+fun HolidayPicture(art: String, modifier: Modifier = Modifier, height: androidx.compose.ui.unit.Dp = 150.dp) {
     val parts = art.removePrefix("pic:").split(":")
     val name = parts.firstOrNull().orEmpty()
     val extra = parts.drop(1).joinToString(":")
     val shape = RoundedCornerShape(18.dp)
     val measurer = rememberTextMeasurer()
-    Box(modifier.fillMaxWidth().height(150.dp).clip(shape).border(2.dp, Color.White.copy(alpha = 0.4f), shape), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxWidth().height(150.dp)) {
+    Box(modifier.fillMaxWidth().height(height).clip(shape).border(2.dp, Color.White.copy(alpha = 0.4f), shape), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxWidth().height(height)) {
             when (name) {
                 "flag" -> drawFlag()
                 "canflag" -> drawCanFlag()
