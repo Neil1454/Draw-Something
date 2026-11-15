@@ -20,6 +20,7 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     MONOPOLY("Monopoly", "🎩", "The UK property game on the London board: buy, build, trade and bankrupt your rival."),
     INVADERS("Space Invaders", "👾", "Two ships, one sky. Fly and fire together as the invaders march down. Five waves, shields, a mystery ship."),
     CENTIPEDE("Centipede", "🐛", "Blast the centipede as it winds down through the mushrooms. Watch out for the spider and the flea."),
+    BLACKJACK("Blackjack", "🂡", "Beat the dealer to 21. Double down, win 3 to 2 on blackjack, and switch on the coach for tips."),
     ARKANOID("Arkanoid", "🧱", "Bounce the ball and smash the bricks together. Catch power-ups: lasers, multi-ball, fireball."),
 }
 

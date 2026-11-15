@@ -301,6 +301,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.INVADERS -> InvadersHelp()
                     GameKind.CENTIPEDE -> CentipedeHelp()
                     GameKind.ARKANOID -> ArkanoidHelp()
+                    GameKind.BLACKJACK -> BlackjackHelp()
                 }
             }
         },
@@ -574,6 +575,7 @@ fun GameBrowser(
             GameKind.MONOPOLY -> MonopolyLobby(ui, connected, onSettings, onStartSync)
             GameKind.INVADERS -> ArcadeLobby(ui, connected, GameKind.INVADERS, { InvadersHelp() }, onSettings, onStartSync)
             GameKind.CENTIPEDE -> ArcadeLobby(ui, connected, GameKind.CENTIPEDE, { CentipedeHelp() }, onSettings, onStartSync)
+            GameKind.BLACKJACK -> BlackjackLobby(ui, connected, onSettings, onStartSync)
             GameKind.ARKANOID -> ArcadeLobby(ui, connected, GameKind.ARKANOID, { ArkanoidHelp() }, onSettings, onStartSync)
         }
     }
@@ -945,6 +947,23 @@ private fun MonopolyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySet
         ChipRow("Game length", MonopolyLength.values().map { it.label }, set.monopolyLen) { onSettings(set.copy(monopolyLen = it)) }
         ToggleChip("🏁 House rule: go round the board once before buying", set.monopolyLap) { onSettings(set.copy(monopolyLap = it)) }
     }) { onStart(GameKind.MONOPOLY, JSONObject().put("len", set.monopolyLen).put("lap", set.monopolyLap)) }
+}
+
+@Composable
+private fun BlackjackLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.BLACKJACK, { BlackjackHelp() }, {
+        ChipRow("Rounds", BlackjackEngine.ROUND_CHOICES.map { it.toString() }, set.bjRounds) { onSettings(set.copy(bjRounds = it)) }
+        ChipRow("💡 Coach tips each", listOf("Off", "3", "5", "Unlimited"), set.bjTips) { onSettings(set.copy(bjTips = it)) }
+        Text(
+            when (BlackjackEngine.TIP_CHOICES[set.bjTips.coerceIn(0, 3)]) {
+                0 -> "No help: you're on your own."
+                -1 -> "Coach mode: tips whenever you want, plus your bust chance on every hand."
+                else -> "Each player can ask the coach for ${BlackjackEngine.TIP_CHOICES[set.bjTips]} tips. Every tip says what to do and why. Your bust chance is shown too."
+            },
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+        )
+    }) { onStart(GameKind.BLACKJACK, JSONObject().put("rounds", set.bjRounds).put("tips", set.bjTips)) }
 }
 
 @Composable

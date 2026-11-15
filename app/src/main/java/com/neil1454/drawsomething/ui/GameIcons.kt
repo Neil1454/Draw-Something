@@ -56,6 +56,7 @@ private fun DrawScope.drawGameIcon(kind: GameKind) {
         GameKind.INVADERS -> invader()
         GameKind.CENTIPEDE -> centipede()
         GameKind.ARKANOID -> arkanoid()
+        GameKind.BLACKJACK -> blackjack()
     }
 }
 
@@ -328,4 +329,19 @@ private fun DrawScope.arkanoid() {
     drawCircle(Color(0xFFFFD23F).copy(alpha = 0.5f), 9f, Offset(58f, 62f), style = Stroke(2f))
     drawRoundRect(Color(0xFF7DD3FC), Offset(30f, 84f), Size(40f, 8f), CornerRadius(4f))
     drawRoundRect(Color.White.copy(alpha = 0.5f), Offset(30f, 84f), Size(40f, 3f), CornerRadius(4f))
+}
+
+private fun DrawScope.blackjack() {
+    // a heart card behind and a spade ace in front
+    drawRoundRect(Color(0xFFFFFDF5), Offset(14f, 16f), Size(40f, 56f), CornerRadius(5f))
+    drawRoundRect(Color(0xFF1F2937), Offset(14f, 16f), Size(40f, 56f), CornerRadius(5f), style = Stroke(2f))
+    val hx = 34f; val hy = 44f
+    drawCircle(Color(0xFFD32F2F), 6.5f, Offset(hx - 5f, hy - 3f)); drawCircle(Color(0xFFD32F2F), 6.5f, Offset(hx + 5f, hy - 3f))
+    drawPath(androidx.compose.ui.graphics.Path().apply { moveTo(hx - 11f, hy - 1f); lineTo(hx, hy + 13f); lineTo(hx + 11f, hy - 1f); close() }, Color(0xFFD32F2F))
+    drawRoundRect(Color(0xFFFFFDF5), Offset(40f, 30f), Size(42f, 58f), CornerRadius(5f))
+    drawRoundRect(Color(0xFF1F2937), Offset(40f, 30f), Size(42f, 58f), CornerRadius(5f), style = Stroke(2f))
+    val sx = 61f; val sy = 60f
+    drawCircle(Color(0xFF111827), 6.5f, Offset(sx - 5f, sy + 3f)); drawCircle(Color(0xFF111827), 6.5f, Offset(sx + 5f, sy + 3f))
+    drawPath(androidx.compose.ui.graphics.Path().apply { moveTo(sx, sy - 14f); lineTo(sx - 11f, sy + 3f); lineTo(sx + 11f, sy + 3f); close() }, Color(0xFF111827))
+    drawRect(Color(0xFF111827), Offset(sx - 1.6f, sy + 3f), Size(3.2f, 9f))
 }

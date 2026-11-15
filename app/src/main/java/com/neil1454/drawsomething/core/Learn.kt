@@ -101,6 +101,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.MONOPOLY -> h.monopoly.start(JSONObject().put("len", 2))
             GameKind.INVADERS -> h.invaders.start(JSONObject().put("waves", 3).put("lives", 3))
             GameKind.CENTIPEDE -> h.centipede.start(JSONObject().put("waves", 3).put("lives", 3))
+            GameKind.BLACKJACK -> h.blackjack.start(JSONObject().put("rounds", 0).put("tips", 1))
             GameKind.ARKANOID -> h.arkanoid.start(JSONObject().put("waves", 2).put("lives", 3))
         }
     }
@@ -341,6 +342,14 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
+            GameKind.BLACKJACK -> {
+                val s = duel.host.blackjack.state
+                if (s.seq != last) {
+                    last = s.seq
+                    s.log.lastOrNull()?.let { say(it + tip(BJ_TIPS, s.seq / 6)) }
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
             GameKind.ARKANOID -> {
                 val s = duel.host.arkanoid.state
                 val now = duel.now
@@ -559,6 +568,14 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "The fewer invaders are left, the faster they come. Take out the lowest ones first, they are the ones that bomb you.",
             "If one of you is knocked out, you come back when the wave is cleared. If the invaders reach the bottom, it is over for both of you.",
         )
+        private val BJ_TIPS = listOf(
+            "Aces count 1 or 11, whichever is better. Face cards count 10.",
+            "Blackjack, an ace and a ten-value card, pays 3 to 2.",
+            "Double down on 10 or 11 and you get just one more card for double the bet.",
+            "The dealer must hit up to 16 and stand on every 17.",
+            "If the dealer shows a 4, 5 or 6 they bust a lot, so don't risk your own hand.",
+        )
+
         private val ARK_TIPS = listOf(
             "Hit the ball with the edge of the paddle to send it off at an angle. The middle sends it straight up.",
             "Stay under the ball, not under the power-up: you can always catch a power-up on the next one.",
@@ -627,6 +644,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.LUDO -> "🏠 Ludo: roll a 6 to bring a piece out, race round the board, and get all four home with exact rolls. You are Player 1 (red)."
             GameKind.INVADERS -> "👾 Space Invaders: both players fly at the bottom of the same screen and shoot the invaders as they march down. You are Player 1 (the left ship)."
             GameKind.CENTIPEDE -> "🐛 Centipede: shoot the centipede as it winds down through the mushrooms. Every hit splits it. You are Player 1."
+            GameKind.BLACKJACK -> "🂡 Blackjack: you both play against the dealer. Get closer to 21 than the dealer without going over. You are Player 1."
             GameKind.ARKANOID -> "🧱 Arkanoid: both paddles guard the bottom. Bounce the ball up to smash the bricks. You are Player 1."
             GameKind.MONOPOLY -> "🎩 Monopoly (UK): buy streets, collect rent, build houses and hotels. You are Player 1. This is a quick 15-turn demo."
             GameKind.HOLIDAY -> "🏝️ Do you know your Holiday? A quiz about where you're going. You are Player 1; the quickest correct answer wins the most points."

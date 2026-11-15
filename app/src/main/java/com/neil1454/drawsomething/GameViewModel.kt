@@ -23,6 +23,7 @@ import com.neil1454.drawsomething.core.MonopolyEngine
 import com.neil1454.drawsomething.core.InvadersEngine
 import com.neil1454.drawsomething.core.CentipedeEngine
 import com.neil1454.drawsomething.core.ArkanoidEngine
+import com.neil1454.drawsomething.core.BlackjackEngine
 import com.neil1454.drawsomething.core.HiLoEngine
 import com.neil1454.drawsomething.core.HolidayEngine
 import com.neil1454.drawsomething.core.HolidayPack
@@ -110,6 +111,8 @@ data class LobbySettings(
     val flipSize: Int = 0,
     val hiloRows: Int = 1,
     val hiloOdds: Boolean = true,
+    val bjRounds: Int = 1,
+    val bjTips: Int = 0,
     val holidayPack: String = "",
     val holidayLen: Int = 1,
     val holidaySecs: Int = 1,
@@ -630,6 +633,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             InvadersEngine(me, partner, host, sendG, clock = clock),
             CentipedeEngine(me, partner, host, sendG, clock = clock),
             ArkanoidEngine(me, partner, host, sendG, clock = clock),
+            BlackjackEngine(me, partner, host, sendG, clock = clock),
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }

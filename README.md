@@ -26,6 +26,7 @@ and you can switch games without reconnecting.
 | 👾 **Space Invaders** | Two ships on one screen at the same time, shooting the invaders as they march down. Shields that crumble, a mystery ship that drops power-ups, five faster waves. You score separately: partners against the aliens, rivals for the top score. |
 | 🐛 **Centipede** | Blast the centipede as it winds down through the mushrooms; every hit splits it. Watch out for the spider and the flea. Both players share the bottom of the screen. |
 | 🧱 **Arkanoid** | Two paddles, one ball, a wall of bricks. Whoever touched the ball last scores. Catch power-ups: wide paddle, lasers, multi-ball, slow motion, fireball, extra life. Lives are shared. |
+| 🂡 **Blackjack** | Two players against the same dealer, each with their own chips and cards. Hit, stand, double down; blackjack pays 3 to 2. Optional coach tips with a tip allowance. |
 
 ### The new board games
 
@@ -56,6 +57,17 @@ Hit things in quick succession and your **combo** climbs (x2 at 4 hits, up to x5
 land hits within a moment of each other you get a **TEAM COMBO** bonus. Killed heads (and sometimes other segments) drop pick-ups:
 rapid fire, triple shot, an extra life, or a **blast** that blows up the six segments nearest you. When only three segments are left
 the centipede goes into a red **FRENZY** and speeds up. The play area flashes red when it gets close, and floating words pop up for every moment.
+
+### Blackjack
+
+You both play against the dealer at the same time with £500 each, for 5, 10 or 15 rounds. Pick your chips and press **Deal**; then **Hit**,
+**Stand** or **Double** (first two cards only). Blackjack pays 3 to 2, a tie gives your bet back, and the dealer stands on every 17.
+The most chips at the end wins; if someone is out of chips the game ends early. The dealer's face-down card is never sent to the
+guest's phone until it is turned over.
+
+**Coach mode** is chosen by the host before starting: **Off**, **3 tips each**, **5 tips each** or **Unlimited**. When on, every hand shows
+your bust chance, and **Ask for a tip** (one per use from your allowance) says what basic strategy would do and why, and makes that
+button glow. Tips are private: your partner's allowance and tips are their own.
 
 ### Arkanoid
 
