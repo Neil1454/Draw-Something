@@ -19,6 +19,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextMeasurer
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -207,6 +210,7 @@ fun MonopolyScreen(
         Row(Modifier.fillMaxSize().padding(6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.size(boardSide).align(Alignment.CenterVertically)) {
                 MonopolyBoardView(s, over, myCol, theirCol, myToken, theirToken) { deedSq = it }
+                EventBanner(s, Modifier.align(Alignment.TopCenter))
                 if (cardShown == s.seq && s.cardText.isNotBlank() && s.ev == "card") {
                     CardPopup(s, Modifier.align(Alignment.Center).clickable { cardShown = -1 })
                 }
@@ -218,6 +222,7 @@ fun MonopolyScreen(
                 PlayerRow(s, myCol, theirCol, myToken, theirToken)
                 ActionBar(s, engine, over, onManage = { showManage = true }, onTrade = { showTrade = true }, onBankrupt = { confirmBankrupt = true })
                 LogBox(s)
+                DeedTracker(s, myCol, theirCol, myToken, theirToken) { deedSq = it }
                 Text("Pinch the board to zoom · drag to move · double-tap to zoom in or out · tap a square for its deed", fontSize = 10.sp, color = Color.White.copy(alpha = 0.55f), textAlign = TextAlign.Center)
                 Spacer(Modifier.height(16.dp))
             }
@@ -301,7 +306,7 @@ private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, the
             val k = size.width / BS
             withTransform({ translate(pan.x, pan.y); scale(zoom * k, zoom * k, Offset.Zero) }) {
                 drawBoardBase(measurer)
-                for (i in 0 until MonopolyBoard.SIZE) drawCell(s, i, measurer, myCol, theirCol)
+                for (i in 0 until MonopolyBoard.SIZE) drawCell(s, i, measurer, myCol, theirCol, myToken, theirToken)
                 drawCentre(s, over, measurer)
             }
         }
@@ -333,7 +338,7 @@ private fun DrawScope.text(m: TextMeasurer, s: String, centre: Offset, size: Flo
 }
 
 /** One square, drawn in its own frame so the writing faces the right way. */
-private fun DrawScope.drawCell(s: MonopolyState, i: Int, m: TextMeasurer, myCol: Color, theirCol: Color) {
+private fun DrawScope.drawCell(s: MonopolyState, i: Int, m: TextMeasurer, myCol: Color, theirCol: Color, myTok: String, theirTok: String) {
     val sq = MonopolyBoard.squares[i]
     val side = sideOf(i)
     val r = cellRect(i)
@@ -371,16 +376,19 @@ private fun DrawScope.drawCell(s: MonopolyState, i: Int, m: TextMeasurer, myCol:
                 else -> sq.name.uppercase()
             }
             text(m, name, Offset(0f, areaTop), w * 0.155f, if (sq.kind == SqKind.CHANCE) Color(0xFFD97706) else Ink, maxW = w * 0.94f, maxLines = 4, topAligned = true)
-            if (icon.isNotEmpty()) text(m, icon, Offset(0f, top + h * 0.6f), w * 0.52f)
+            val owned = s.owner[i] != 0
+            if (icon.isNotEmpty()) text(m, icon, Offset(0f, top + h * (if (owned) 0.5f else 0.6f)), w * 0.52f)
             if (sq.kind == SqKind.TAX) text(m, "PAY £${sq.rents[0]}", Offset(0f, top + h * 0.84f), w * 0.15f)
-            if (sq.price > 0) text(m, "£${sq.price}", Offset(0f, top + h * 0.88f), w * 0.17f, Color(0xFF3A3A3A), FontWeight.SemiBold)
-            // owner: a stripe on the outer edge with a little flag
+            if (sq.price > 0) text(m, "£${sq.price}", Offset(0f, top + h * (if (owned) 0.7f else 0.88f)), w * 0.17f, Color(0xFF3A3A3A), FontWeight.SemiBold)
+            // owner: the whole square is washed in their colour, with a thick border and a badge showing their token
             val o = s.owner[i]
             if (o != 0) {
                 val col = if (o == 1) myCol else theirCol
-                drawRect(col, Offset(left, top + h - h * 0.07f), Size(w, h * 0.07f))
-                val flag = Path().apply { moveTo(left, top + h * 0.2f); lineTo(left + w * 0.2f, top + h * 0.2f); lineTo(left, top + h * 0.2f + w * 0.2f); close() }
-                if (sq.kind != SqKind.PROPERTY) drawPath(flag, col)
+                drawRect(col.copy(alpha = 0.2f), Offset(left, top), Size(w, h))
+                val bh = h * 0.2f
+                drawRect(col, Offset(left, top + h - bh), Size(w, bh))
+                text(m, if (o == 1) myTok else theirTok, Offset(0f, top + h - bh / 2f), bh * 0.78f)
+                drawRect(col, Offset(left + 2.5f, top + 2.5f), Size(w - 5f, h - 5f), style = Stroke(5f))
             }
             if (s.mortgaged[i]) {
                 drawRect(Color(0xCC4B5563), Offset(left, top), Size(w, h))
@@ -493,8 +501,62 @@ private fun DrawScope.drawDice(c: Offset, size: Float, value: Int, angle: Float,
     }
 }
 
+private class BoardFx(val kind: String, val start: Long, val from: Offset, val to: Offset, val col: Color, val text: String = "")
+private class Seen(var owner: List<Int>, var houses: List<Int>)
+
 @Composable
 private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, myCol: Color, theirCol: Color, zoom: Float, pan: Offset, viewPx: Float, m: TextMeasurer) {
+    val clock = remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) { while (true) androidx.compose.runtime.withFrameMillis { clock.longValue = it } }
+    val fx = remember { mutableStateListOf<BoardFx>() }
+    val seen = remember { Seen(s.owner, s.houses) }
+    LaunchedEffect(s.owner, s.houses) {
+        val t = clock.longValue
+        for (i in 0 until MonopolyBoard.SIZE) {
+            val c = cellCentre(i)
+            if (s.owner[i] != 0 && s.owner[i] != seen.owner[i]) fx.add(BoardFx("claim", t, c, c, if (s.owner[i] == 1) myCol else theirCol))
+            else if (s.houses[i] > seen.houses[i] && s.owner[i] != 0) fx.add(BoardFx("build", t, c, c, Color(0xFFFFD23F)))
+        }
+        seen.owner = s.owner; seen.houses = s.houses
+    }
+    LaunchedEffect(s.seq) {
+        if (s.seq == 0) return@LaunchedEffect
+        val t = clock.longValue
+        val me = cellCentre(s.myPos)
+        val them = cellCentre(s.theirPos)
+        val payer = if (s.evByMe) me else them
+        val payee = if (s.evByMe) them else me
+        val centre = Offset(BS / 2, BS / 2)
+        val red = Color(0xFFF87171)
+        val green = Color(0xFF4ADE80)
+        val amt = kotlin.math.abs(s.evAmount)
+        when (s.ev) {
+            "rent" -> {
+                fx.add(BoardFx("coins", t, payer, payee, Color.Unspecified))
+                fx.add(BoardFx("float", t, payer, payer, red, "−£$amt"))
+                fx.add(BoardFx("float", t + 500, payee, payee, green, "+£$amt"))
+            }
+            "tax" -> {
+                fx.add(BoardFx("coins", t, payer, centre, Color.Unspecified))
+                fx.add(BoardFx("float", t, payer, payer, red, "−£$amt"))
+            }
+            "go" -> {
+                fx.add(BoardFx("confetti", t, cellCentre(0), cellCentre(0), Color.Unspecified))
+                fx.add(BoardFx("float", t, payer, payer, green, "+£${if (amt > 0) amt else 200}"))
+            }
+            "buy" -> {
+                if (s.evSq >= 0) fx.add(BoardFx("coins", t, payer, cellCentre(s.evSq), Color.Unspecified))
+                if (amt > 0) fx.add(BoardFx("float", t, payer, payer, red, "−£$amt"))
+            }
+            "jail" -> fx.add(BoardFx("flash", t, cellCentre(10), cellCentre(10), Color(0xFF3B82F6)))
+            "bankrupt" -> fx.add(BoardFx("bang", t, payer, payer, Color.Unspecified))
+        }
+    }
+    LaunchedEffect(fx.size) {
+        delay(3000)
+        val t = clock.longValue
+        fx.removeAll { t - it.start > 2800 }
+    }
     val mine = remember { Animatable(s.myPos.toFloat()) }
     val theirs = remember { Animatable(s.theirPos.toFloat()) }
     var landed by remember { mutableIntStateOf(0) }
@@ -552,6 +614,67 @@ private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, m
             }
             token(theirs.value, theirToken, theirCol, 16f, !s.myTurn, theirs.isRunning)
             token(mine.value, myToken, myCol, -16f, s.myTurn, mine.isRunning)
+            val now = clock.longValue
+            // chasing bulbs round the MONOPOLY banner
+            val inner = BS - 2 * CORNER
+            withTransform({ translate(c.x, c.y - inner * 0.1f); rotate(-35f, Offset.Zero) }) {
+                for (k in 0..14) {
+                    val on = (k + (now / 220L).toInt()) % 2 == 0
+                    val colour = if (on) Color(0xFFFFE066) else Color(0xFF7A5B00)
+                    drawCircle(colour, 6f, Offset(-282f + k * 40f, -66f))
+                    drawCircle(colour, 6f, Offset(-282f + k * 40f, 66f))
+                }
+            }
+            // one-off effects: coins in flight, floating money, claim bursts, confetti
+            for (f in fx) {
+                val age = (now - f.start) / 1000f
+                if (age < 0f) continue
+                when (f.kind) {
+                    "coins" -> for (k in 0 until 7) {
+                        val t = ((age - k * 0.09f) / 0.8f)
+                        if (t <= 0f || t >= 1f) continue
+                        val e = t * t * (3f - 2f * t)
+                        val p = Offset(f.from.x + (f.to.x - f.from.x) * e, f.from.y + (f.to.y - f.from.y) * e - kotlin.math.sin(t * 3.1416f) * 70f)
+                        drawCircle(Color(0x55000000), 16f, Offset(p.x + 3f, p.y + 6f))
+                        drawCircle(Color(0xFFFFD23F), 16f, p)
+                        drawCircle(Color(0xFFFFF3B0), 8f, Offset(p.x - 3f, p.y - 3f))
+                        drawCircle(Color(0xFFB8860B), 16f, p, style = Stroke(3f))
+                    }
+                    "float" -> {
+                        val a = (1f - age / 1.7f).coerceIn(0f, 1f)
+                        if (a > 0f) text(m, f.text, Offset(f.from.x, f.from.y - 50f - age * 80f), 50f, f.col.copy(alpha = a), FontWeight.Black)
+                    }
+                    "claim", "build" -> {
+                        val dur = if (f.kind == "claim") 1.0f else 0.7f
+                        val t = age / dur
+                        if (t in 0f..1f) {
+                            drawCircle(f.col.copy(alpha = 1f - t), 25f + t * 150f, f.from, style = Stroke(9f * (1f - t) + 1f))
+                            for (k in 0 until 8) {
+                                val ang = k * 0.785f + t
+                                drawCircle(Color.White.copy(alpha = 1f - t), 7f * (1f - t) + 1f, Offset(f.from.x + kotlin.math.cos(ang) * (20f + t * 130f), f.from.y + kotlin.math.sin(ang) * (20f + t * 130f)))
+                            }
+                        }
+                    }
+                    "confetti" -> {
+                        val t = age / 1.8f
+                        if (t in 0f..1f) {
+                            val palette = listOf(Color(0xFFFFD23F), Color(0xFFFF4D4D), Color(0xFF4ADE80), Color(0xFF38BDF8), Color(0xFFF472B6))
+                            for (k in 0 until 40) {
+                                val ang = k * 2.399f
+                                val v = 160f + (k % 6) * 45f
+                                val pos = Offset(f.from.x - 60f + kotlin.math.cos(ang) * v * age, f.from.y - 60f + kotlin.math.sin(ang) * v * age + 260f * age * age)
+                                drawRect(palette[k % palette.size].copy(alpha = 1f - t), pos, Size(12f, 8f))
+                            }
+                        }
+                    }
+                    "flash" -> {
+                        val a = (1f - age / 1.3f).coerceIn(0f, 1f) * kotlin.math.abs(kotlin.math.sin(age * 12f)) * 0.8f
+                        val r = cellRect(10)
+                        drawRect(f.col.copy(alpha = a), r.topLeft, r.size)
+                    }
+                    "bang" -> if (age < 1.1f) drawExplosion(f.from, 190f, (age / 1.1f).coerceAtMost(0.999f))
+                }
+            }
         }
     }
 }
@@ -613,6 +736,7 @@ private fun PlayerRow(s: MonopolyState, myCol: Color, theirCol: Color, myToken: 
 private fun PlayerBox(name: String, cash: Int, props: Int, jail: Boolean, cards: Int, col: Color, active: Boolean, modifier: Modifier) {
     val shape = RoundedCornerShape(16.dp)
     // a little "+£200" / "−£50" that floats up whenever the money changes
+    val shown by animateIntAsState(cash, tween(900), label = "cash")
     var last by remember { mutableIntStateOf(cash) }
     var delta by remember { mutableIntStateOf(0) }
     val fade = remember { Animatable(1f) }
@@ -630,7 +754,7 @@ private fun PlayerBox(name: String, cash: Int, props: Int, jail: Boolean, cards:
     ) {
         Text(name, fontWeight = FontWeight.Bold, color = col, maxLines = 1, fontSize = 14.sp)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(money(cash), fontWeight = FontWeight.Black, color = Color.White, fontSize = 24.sp)
+            Text(money(shown), fontWeight = FontWeight.Black, color = Color.White, fontSize = 24.sp)
             if (delta != 0 && fade.value < 1f) {
                 Text(
                     (if (delta > 0) "+" else "−") + money(kotlin.math.abs(delta)), fontWeight = FontWeight.Black, fontSize = 16.sp,
@@ -968,4 +1092,96 @@ private fun AuctionDialog(s: MonopolyState, engine: MonopolyEngine) {
             }
         },
     )
+}
+
+// ============================================================================ banner and ownership tracker
+
+/** A big pop-up headline for whatever just happened (a purchase, rent, passing GO...). */
+@Composable
+private fun EventBanner(s: MonopolyState, modifier: Modifier) {
+    var text by remember { mutableStateOf("") }
+    var col by remember { mutableStateOf(Color.White) }
+    val a = remember { Animatable(1f) }
+    LaunchedEffect(s.seq) {
+        if (s.seq == 0) return@LaunchedEffect
+        val who = if (s.evByMe) "You" else s.theirName
+        val name = if (s.evSq in 0 until MonopolyBoard.SIZE) MonopolyBoard.squares[s.evSq].name else ""
+        val amt = kotlin.math.abs(s.evAmount)
+        val t: String? = when (s.ev) {
+            "buy" -> "🏠 $who bought $name${if (amt > 0) " for ${money(amt)}" else ""}!"
+            "rent" -> "💸 $who paid ${money(amt)} rent${if (name.isNotEmpty()) " at $name" else ""}"
+            "tax" -> "🧾 $who paid ${money(amt)} tax"
+            "go" -> "🏁 $who passed GO: collect ${money(if (amt > 0) amt else 200)}!"
+            "jail" -> "🚔 $who went to jail!"
+            "build" -> "🔨 $who built on $name"
+            "auction" -> "🔔 Auction time!"
+            "trade" -> "🤝 A deal was done!"
+            "bankrupt" -> "💥 $who went BANKRUPT!"
+            "roll" -> if (s.d1 > 0 && s.d1 == s.d2) "🎲 DOUBLES! $who rolled ${s.d1}+${s.d2}" else null
+            else -> null
+        }
+        if (t == null) return@LaunchedEffect
+        text = t
+        col = when (s.ev) {
+            "buy", "build", "trade" -> Color(0xFF4ADE80)
+            "rent", "tax", "bankrupt" -> Color(0xFFF87171)
+            "jail" -> Color(0xFF60A5FA)
+            else -> Color(0xFFFFD23F)
+        }
+        a.snapTo(0f)
+        a.animateTo(1f, tween(2600, easing = LinearEasing))
+    }
+    if (text.isNotEmpty() && a.value < 1f) {
+        val p = a.value
+        val pop = if (p < 0.1f) 0.6f + p / 0.1f * 0.5f else if (p < 0.18f) 1.1f - (p - 0.1f) / 0.08f * 0.1f else 1f
+        val fade = if (p > 0.8f) (1f - p) / 0.2f else 1f
+        val shape = RoundedCornerShape(18.dp)
+        Box(
+            modifier.padding(top = 12.dp).graphicsLayer { scaleX = pop; scaleY = pop; alpha = fade }
+                .clip(shape).background(Color(0xE6000000)).border(2.dp, col, shape).padding(horizontal = 16.dp, vertical = 8.dp),
+        ) { Text(text, color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp, textAlign = TextAlign.Center) }
+    }
+}
+
+/** Every property at a glance, grouped by colour, with a ring and token showing who owns it. Tap one for its deed. */
+@Composable
+private fun DeedTracker(s: MonopolyState, myCol: Color, theirCol: Color, myToken: String, theirToken: String, onTap: (Int) -> Unit) {
+    val rows = buildList {
+        for (g in 0..7) add(Triple(MonopolyBoard.GROUP_NAMES[g], groupColour(g), MonopolyBoard.GROUPS[g]))
+        add(Triple("Stations", Color(0xFF475569), (0 until MonopolyBoard.SIZE).filter { MonopolyBoard.squares[it].kind == SqKind.STATION }))
+        add(Triple("Utilities", Color(0xFF94A3B8), (0 until MonopolyBoard.SIZE).filter { MonopolyBoard.squares[it].kind == SqKind.UTILITY }))
+    }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0x55000000)).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text("Who owns what", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.7f))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("$myToken You", fontSize = 11.sp, color = myCol, fontWeight = FontWeight.Bold)
+            Text("$theirToken ${s.theirName}", fontSize = 11.sp, color = theirCol, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+        rows.forEach { (label, colour, squares) ->
+            val mineAll = squares.all { s.owner[it] == 1 }
+            val theirsAll = squares.all { s.owner[it] == 2 }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(label, fontSize = 10.sp, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.width(62.dp), maxLines = 1)
+                squares.forEach { sq ->
+                    val o = s.owner[sq]
+                    val ring = when (o) { 1 -> myCol; 2 -> theirCol; else -> Color.White.copy(alpha = 0.25f) }
+                    val shape = RoundedCornerShape(6.dp)
+                    Box(
+                        Modifier.size(30.dp).clip(shape).background(colour.copy(alpha = if (o == 0) 0.35f else if (s.mortgaged[sq]) 0.45f else 1f))
+                            .border(if (o == 0) 1.dp else 3.dp, ring, shape).clickable { onTap(sq) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (o != 0) Text(if (o == 1) myToken else theirToken, fontSize = 13.sp)
+                        val h = s.houses[sq]
+                        if (h > 0) Text(if (h == 5) "🏨" else "🏠$h", fontSize = 8.sp, modifier = Modifier.align(Alignment.BottomEnd))
+                        if (s.mortgaged[sq]) Text("M", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
+                    }
+                }
+                if (mineAll || theirsAll) Text("★ SET", fontSize = 10.sp, fontWeight = FontWeight.Black, color = if (mineAll) myCol else theirCol)
+            }
+        }
+    }
 }

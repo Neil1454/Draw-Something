@@ -37,6 +37,8 @@ in a row lose the turn). Landing on a lone enemy piece sends it back to base unl
 need the exact number, so a roll that is too big can't be used by that piece.
 
 **Monopoly** uses the UK London board (Old Kent Road to Mayfair, four stations, two utilities), £1500 each, £200 for GO, £50 jail fine.
+
+Ownership is easy to see: an owned square is washed in its owner's colour with a thick border and a badge showing their token (🎩 or 🚗), and a **Who owns what** panel lists every property by colour set (★ SET when someone has the lot). Events are lively: coins fly between players on rent, tax and purchases, money floats up, a claim burst appears when a square is bought, confetti on passing GO, flashing jail, a headline banner for each event, and chasing lights on the MONOPOLY sign.
 Rent doubles on a complete unbuilt set, houses must be built evenly, hotels need four houses first, and the bank has 32 houses and 12 hotels.
 The game opens with a roll to see who goes first (highest total, ties re-rolled). **House rule (on by default, switch off in the lobby):** you
 must go round the board once, collecting from GO, before you can buy; the official rulebook lets you buy from your first go. Unwanted
