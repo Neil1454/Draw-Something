@@ -209,8 +209,10 @@ fun MonopolyScreen(
         val boardSide = minOf(maxHeight - 12.dp, maxWidth * 0.62f)
         Row(Modifier.fillMaxSize().padding(6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.size(boardSide).align(Alignment.CenterVertically)) {
-                MonopolyBoardView(s, over, myCol, theirCol, myToken, theirToken) { deedSq = it }
-                EventBanner(s, Modifier.align(Alignment.TopCenter))
+                MonopolyBoardView(s, over, myCol, theirCol, myToken, theirToken, onRoll = { Sfx.play(Sound.TAP); engine.roll() }) { deedSq = it }
+                EventStage(s, Modifier.align(Alignment.TopCenter))
+                DeedOffer(s, engine, Modifier.align(Alignment.Center))
+                RentReceipt(s, myCol, theirCol, myToken, theirToken, Modifier.fillMaxSize())
                 if (cardShown == s.seq && s.cardText.isNotBlank() && s.ev == "card") {
                     CardPopup(s, Modifier.align(Alignment.Center).clickable { cardShown = -1 })
                 }
@@ -264,7 +266,7 @@ fun MonopolyScreen(
 
 /** The board with pinch-to-zoom and drag. The board itself and the animated tokens are two layers sharing one transform. */
 @Composable
-private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, theirCol: Color, myToken: String, theirToken: String, onTapSquare: (Int) -> Unit) {
+private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, theirCol: Color, myToken: String, theirToken: String, onRoll: () -> Unit, onTapSquare: (Int) -> Unit) {
     val measurer = rememberTextMeasurer(cacheSize = 320)
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
@@ -284,7 +286,7 @@ private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, the
                     pan = clamp(anchored + panChange, z)
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(s.canRoll || s.canFirstRoll) {
                 detectTapGestures(
                     onDoubleTap = { tap ->
                         val z = if (zoom > 1.2f) 1f else 2.4f
@@ -296,8 +298,14 @@ private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, the
                         val k = viewPx / BS
                         val bx = (tap.x - pan.x) / zoom / k
                         val by = (tap.y - pan.y) / zoom / k
-                        val i = (0 until MonopolyBoard.SIZE).firstOrNull { cellRect(it).contains(Offset(bx, by)) }
-                        if (i != null) onTapSquare(i)
+                        val dx = bx - BS / 2f
+                        val dy = by - (BS / 2f + 150f)
+                        if ((s.canRoll || s.canFirstRoll) && dx * dx + dy * dy < 160f * 160f) {
+                            onRoll()
+                        } else {
+                            val i = (0 until MonopolyBoard.SIZE).firstOrNull { cellRect(it).contains(Offset(bx, by)) }
+                            if (i != null) onTapSquare(i)
+                        }
                     },
                 )
             },
@@ -583,11 +591,14 @@ private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, m
         withTransform({ translate(pan.x, pan.y); scale(zoom * k, zoom * k, Offset.Zero) }) {
             val c = Offset(BS / 2, BS / 2)
             // dice in the middle of the board
-            if (d1 > 0) {
+            val rollable = s.canRoll || s.canFirstRoll
+            if (d1 > 0 || rollable) {
                 val t = rollP.value
                 val bounce = if (t < 1f) kotlin.math.abs(kotlin.math.sin(t * 3.1416f * 3f)) * (1f - t) * 90f else 0f
-                drawDice(Offset(c.x - 70f, c.y + 150f), 92f, d1, (1f - t) * 380f, bounce)
-                drawDice(Offset(c.x + 70f, c.y + 150f), 92f, d2, -(1f - t) * 300f, bounce)
+                val idle = if (rollable && t >= 1f) bob.value else 0f
+                drawDice(Offset(c.x - 70f, c.y + 150f), 92f, if (d1 > 0) d1 else 5, (1f - t) * 380f + (idle - 0.5f) * 12f, bounce + idle * 16f)
+                drawDice(Offset(c.x + 70f, c.y + 150f), 92f, if (d2 > 0) d2 else 2, -(1f - t) * 300f - (idle - 0.5f) * 12f, bounce + (1f - idle) * 16f)
+                if (rollable) text(m, "👆 TAP THE DICE TO ROLL", Offset(c.x, c.y + 245f), 26f, Color.White.copy(alpha = 0.6f + 0.4f * bob.value), FontWeight.Black)
             }
             // where the player to move is about to land / has landed
             val lit = cellRect(if (s.myTurn) s.myPos else s.theirPos)
@@ -1096,53 +1107,240 @@ private fun AuctionDialog(s: MonopolyState, engine: MonopolyEngine) {
 
 // ============================================================================ banner and ownership tracker
 
-/** A big pop-up headline for whatever just happened (a purchase, rent, passing GO...). */
+
+// ---- the big on-board moments: rent receipt, deed offer and event stage
+
+private fun ease(t: Float) = t * t * (3f - 2f * t)
+
+/** Lands on somebody's property: a rent receipt slides in, the amount counts up and a PAID stamp slams down. Tap to dismiss. */
 @Composable
-private fun EventBanner(s: MonopolyState, modifier: Modifier) {
-    var text by remember { mutableStateOf("") }
-    var col by remember { mutableStateOf(Color.White) }
+private fun RentReceipt(s: MonopolyState, myCol: Color, theirCol: Color, myToken: String, theirToken: String, modifier: Modifier) {
+    class Receipt(val sq: Int, val amount: Int, val payerMe: Boolean, val reason: String, val ownerName: String, val ownerTok: String, val ownerCol: Color)
+    var rec by remember { mutableStateOf<Receipt?>(null) }
+    val p = remember { Animatable(1f) }
+    LaunchedEffect(s.seq) {
+        if (s.seq == 0 || s.ev != "rent" || s.evSq < 0) return@LaunchedEffect
+        val q = MonopolyBoard.squares[s.evSq]
+        val ownerIdx = if (s.evByMe) 2 else 1
+        val h = s.houses[s.evSq]
+        val reason = when (q.kind) {
+            SqKind.PROPERTY -> when {
+                h == 5 -> "🏨 A hotel stands here!"
+                h > 0 -> "🏠 × $h house${if (h == 1) "" else "s"}"
+                MonopolyBoard.ownsGroup(s.ownerArr, ownerIdx, q.group) -> "⭐ Full set owned: rent doubled!"
+                else -> "Standard rent"
+            }
+            SqKind.STATION -> {
+                val n = (0 until MonopolyBoard.SIZE).count { MonopolyBoard.squares[it].kind == SqKind.STATION && s.owner[it] == ownerIdx }
+                "🚂 $n station${if (n == 1) "" else "s"} owned"
+            }
+            SqKind.UTILITY -> {
+                val n = (0 until MonopolyBoard.SIZE).count { MonopolyBoard.squares[it].kind == SqKind.UTILITY && s.owner[it] == ownerIdx }
+                "🎲 Dice ${s.d1}+${s.d2} = ${s.total} × ${if (n == 2) 10 else 4}"
+            }
+            else -> ""
+        }
+        rec = Receipt(
+            s.evSq, kotlin.math.abs(s.evAmount), s.evByMe, reason,
+            if (s.evByMe) s.theirName else "You", if (s.evByMe) theirToken else myToken, if (s.evByMe) theirCol else myCol,
+        )
+        p.snapTo(0f)
+        p.animateTo(1f, tween(4200, easing = LinearEasing))
+    }
+    val stamped = rec != null && p.value > 0.3f
+    LaunchedEffect(rec) { if (rec != null) { delay(1300); Sfx.play(Sound.THUD) } }
+    val r = rec
+    if (r != null && p.value < 1f) {
+        val t = p.value
+        val tint = if (r.payerMe) Color(0xFFEF4444) else Color(0xFF22C55E)
+        val q = MonopolyBoard.squares[r.sq]
+        Box(modifier.clickable { rec = null }, contentAlignment = Alignment.Center) {
+            // the edges of the board flash red when you pay, green when you are paid
+            val flash = (1f - t * 6f).coerceAtLeast(0f)
+            if (flash > 0f) Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.Transparent, tint.copy(alpha = 0.55f * flash)))))
+            val enter = ease((t / 0.12f).coerceIn(0f, 1f))
+            val exit = ((1f - t) / 0.12f).coerceIn(0f, 1f)
+            val shape = RoundedCornerShape(14.dp)
+            Box(
+                Modifier.width(250.dp).graphicsLayer {
+                    translationY = (1f - enter) * -260f * density
+                    rotationZ = (1f - enter) * -8f + kotlin.math.sin(t * 40f) * (1f - enter) * 3f
+                    alpha = exit
+                    val sc = 0.85f + 0.15f * enter
+                    scaleX = sc; scaleY = sc
+                }.clip(shape).background(CardCream).border(3.dp, Color(0xFF1A1A1A), shape),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        Modifier.fillMaxWidth().background(if (q.kind == SqKind.PROPERTY) groupColour(q.group) else Color(0xFF475569)).padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("🧾 RENT DUE", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 2.sp) }
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(q.name.uppercase(), color = Ink, fontWeight = FontWeight.Black, fontSize = 17.sp, textAlign = TextAlign.Center)
+                        Text("Owned by ${r.ownerTok} ${r.ownerName}", color = r.ownerCol, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        if (r.reason.isNotEmpty()) Text(r.reason, color = Color(0xFF444444), fontSize = 12.sp, textAlign = TextAlign.Center)
+                        // coins slide from the payer to the owner
+                        val slide = (t / 0.5f).coerceIn(0f, 1f)
+                        Box(Modifier.fillMaxWidth().height(26.dp)) {
+                            Text(if (r.payerMe) "You" else "Them", fontSize = 11.sp, color = Color(0xFF555555), modifier = Modifier.align(Alignment.CenterStart))
+                            Text(r.ownerName.take(8), fontSize = 11.sp, color = Color(0xFF555555), modifier = Modifier.align(Alignment.CenterEnd))
+                            for (k in 0 until 3) {
+                                val tk = ((slide * 1.5f) - k * 0.2f).coerceIn(0f, 1f)
+                                Text("🪙", fontSize = 16.sp, modifier = Modifier.align(Alignment.CenterStart).graphicsLayer { translationX = tk * 190f * density; alpha = if (tk in 0.01f..0.99f) 1f else 0f })
+                            }
+                        }
+                        val shown = (r.amount * ease((t / 0.22f).coerceIn(0f, 1f))).toInt()
+                        Text((if (r.payerMe) "−" else "+") + money(shown), color = tint, fontWeight = FontWeight.Black, fontSize = 38.sp)
+                        Text(
+                            if (r.payerMe) "You have ${money(s.myCash)} left" else "You now have ${money(s.myCash)}",
+                            color = Color(0xFF555555), fontSize = 11.sp,
+                        )
+                    }
+                }
+                if (stamped) {
+                    val st = ((t - 0.3f) / 0.07f).coerceIn(0f, 1f)
+                    Box(
+                        Modifier.align(Alignment.Center).graphicsLayer {
+                            val sc = 2.8f - 1.8f * ease(st)
+                            scaleX = sc; scaleY = sc; rotationZ = -14f; alpha = 0.25f + 0.75f * st
+                        }.border(4.dp, tint, RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.6f * st)).padding(horizontal = 12.dp, vertical = 2.dp),
+                    ) { Text(if (r.payerMe) "PAID" else "RECEIVED", color = tint, fontWeight = FontWeight.Black, fontSize = 30.sp) }
+                }
+            }
+        }
+    }
+}
+
+/** You landed on an unowned property: its title deed flips up on the board with Buy and Auction buttons. */
+@Composable
+private fun DeedOffer(s: MonopolyState, engine: MonopolyEngine, modifier: Modifier) {
+    if (s.step != "BUY" || s.phase != GPhase.PLAYING) return
+    val pos = if (s.myTurn) s.myPos else s.theirPos
+    val q = MonopolyBoard.squares[pos]
+    if (!q.ownable) return
+    val key = "${s.myTurn}$pos${s.moves}"
+    val flip = remember(key) { Animatable(0f) }
+    LaunchedEffect(key) { flip.animateTo(1f, tween(650)) }
+    val pulse = rememberInfiniteTransition(label = "offer").animateFloat(0.96f, 1.04f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "offerPulse")
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier.width(220.dp).graphicsLayer {
+            rotationY = (1f - flip.value) * 90f
+            cameraDistance = 14f * density
+            alpha = flip.value.coerceIn(0f, 1f)
+        }.clip(shape).background(CardCream).border(3.dp, Ink, shape),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.fillMaxWidth().background(if (q.kind == SqKind.PROPERTY) groupColour(q.group) else Color(0xFF475569)).padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) { Text("TITLE DEED", color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp, letterSpacing = 2.sp) }
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(q.name.uppercase(), color = Ink, fontWeight = FontWeight.Black, fontSize = 17.sp, textAlign = TextAlign.Center)
+            when (q.kind) {
+                SqKind.PROPERTY -> {
+                    Text("Rent ${money(q.rents[0])} · with a hotel ${money(q.rents[5])}", color = Color(0xFF444444), fontSize = 11.sp)
+                    Text("Houses ${money(q.houseCost)} each", color = Color(0xFF444444), fontSize = 11.sp)
+                }
+                SqKind.STATION -> Text("Rent £25 for one station, up to £200 for all four", color = Color(0xFF444444), fontSize = 11.sp, textAlign = TextAlign.Center)
+                else -> Text("Rent is 4× the dice (10× with both utilities)", color = Color(0xFF444444), fontSize = 11.sp, textAlign = TextAlign.Center)
+            }
+            Text(money(q.price), color = Color(0xFF166534), fontWeight = FontWeight.Black, fontSize = 30.sp, modifier = Modifier.graphicsLayer { if (s.myTurn) { scaleX = pulse.value; scaleY = pulse.value } })
+            if (s.myTurn) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    val can = s.myCash >= q.price
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (can) Color(0xFF2E7D32) else Color(0xFF9CA3AF))
+                            .clickable(enabled = can) { engine.buy() }.padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("BUY", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp) }
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Color(0xFFC62828))
+                            .clickable { engine.declineToAuction() }.padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("AUCTION", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp) }
+                }
+                if (s.myCash < q.price) Text("Not enough cash: it goes to auction", color = Color(0xFF9A3412), fontSize = 10.sp)
+            } else {
+                Text("🤔 ${s.theirName} is deciding…", color = Color(0xFF555555), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+private class Stage(val emoji: String, val title: String, val sub: String, val stamp: String, val tint: Color)
+
+/** A little show for everything else that happens: a bouncing emoji, a headline, and a stamp that slams down. Tap to dismiss. */
+@Composable
+private fun EventStage(s: MonopolyState, modifier: Modifier) {
+    var stage by remember { mutableStateOf<Stage?>(null) }
     val a = remember { Animatable(1f) }
     LaunchedEffect(s.seq) {
         if (s.seq == 0) return@LaunchedEffect
         val who = if (s.evByMe) "You" else s.theirName
         val name = if (s.evSq in 0 until MonopolyBoard.SIZE) MonopolyBoard.squares[s.evSq].name else ""
         val amt = kotlin.math.abs(s.evAmount)
-        val t: String? = when (s.ev) {
-            "buy" -> "🏠 $who bought $name${if (amt > 0) " for ${money(amt)}" else ""}!"
-            "rent" -> "💸 $who paid ${money(amt)} rent${if (name.isNotEmpty()) " at $name" else ""}"
-            "tax" -> "🧾 $who paid ${money(amt)} tax"
-            "go" -> "🏁 $who passed GO: collect ${money(if (amt > 0) amt else 200)}!"
-            "jail" -> "🚔 $who went to jail!"
-            "build" -> "🔨 $who built on $name"
-            "auction" -> "🔔 Auction time!"
-            "trade" -> "🤝 A deal was done!"
-            "bankrupt" -> "💥 $who went BANKRUPT!"
-            "roll" -> if (s.d1 > 0 && s.d1 == s.d2) "🎲 DOUBLES! $who rolled ${s.d1}+${s.d2}" else null
+        val green = Color(0xFF4ADE80)
+        val red = Color(0xFFF87171)
+        val gold = Color(0xFFFFD23F)
+        val st: Stage? = when (s.ev) {
+            "buy" -> Stage("🏠", "SOLD!", "$who bought $name${if (amt > 0) " for ${money(amt)}" else ""}", "SOLD", green)
+            "build" -> {
+                val h = if (s.evSq >= 0) s.houses[s.evSq] else 0
+                Stage("🔨", if (h == 5) "HOTEL!" else "BUILT!", "$who built on $name · ${if (h == 5) "now a hotel" else "$h house${if (h == 1) "" else "s"}"}", "", Color(0xFFFB923C))
+            }
+            "tax" -> Stage("🧾", "TAXMAN!", "$who paid ${money(amt)} to the bank", "PAID", red)
+            "go" -> Stage("🏁", "PASSED GO!", "$who collected ${money(if (amt > 0) amt else 200)}", "", gold)
+            "jail" -> Stage("🚔", "BUSTED!", "$who went straight to jail", "JAILED", Color(0xFF60A5FA))
+            "auction" -> Stage("🔨", "AUCTION!", "Bidding starts for $name", "", gold)
+            "trade" -> Stage("🤝", "DEAL DONE!", "Properties and cash changed hands", "", green)
+            "mortgage" -> Stage("🏦", "MORTGAGED", "$who mortgaged $name", "MORTGAGED", Color(0xFF9CA3AF))
+            "sell" -> Stage("💷", "SOLD A HOUSE", "$who sold a house on $name", "", Color(0xFFFB923C))
+            "bankrupt" -> Stage("💥", "BANKRUPT!", "$who couldn't pay what was owed", "GAME OVER", red)
+            "roll" -> if (s.d1 > 0 && s.d1 == s.d2) Stage("🎲", "DOUBLES!", "$who rolled ${s.d1} and ${s.d2}: roll again!", "", gold) else null
             else -> null
         }
-        if (t == null) return@LaunchedEffect
-        text = t
-        col = when (s.ev) {
-            "buy", "build", "trade" -> Color(0xFF4ADE80)
-            "rent", "tax", "bankrupt" -> Color(0xFFF87171)
-            "jail" -> Color(0xFF60A5FA)
-            else -> Color(0xFFFFD23F)
-        }
+        if (st == null) return@LaunchedEffect
+        stage = st
         a.snapTo(0f)
-        a.animateTo(1f, tween(2600, easing = LinearEasing))
+        a.animateTo(1f, tween(3000, easing = LinearEasing))
     }
-    if (text.isNotEmpty() && a.value < 1f) {
+    val st = stage
+    if (st != null && a.value < 1f) {
         val p = a.value
-        val pop = if (p < 0.1f) 0.6f + p / 0.1f * 0.5f else if (p < 0.18f) 1.1f - (p - 0.1f) / 0.08f * 0.1f else 1f
-        val fade = if (p > 0.8f) (1f - p) / 0.2f else 1f
+        LaunchedEffect(st) { if (st.stamp.isNotEmpty()) { delay(600); Sfx.play(Sound.THUD) } }
+        val enter = ease((p / 0.1f).coerceIn(0f, 1f))
+        val exit = ((1f - p) / 0.15f).coerceIn(0f, 1f)
         val shape = RoundedCornerShape(18.dp)
         Box(
-            modifier.padding(top = 12.dp).graphicsLayer { scaleX = pop; scaleY = pop; alpha = fade }
-                .clip(shape).background(Color(0xE6000000)).border(2.dp, col, shape).padding(horizontal = 16.dp, vertical = 8.dp),
-        ) { Text(text, color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp, textAlign = TextAlign.Center) }
+            modifier.padding(top = 10.dp).graphicsLayer {
+                scaleX = 0.5f + 0.5f * enter; scaleY = 0.5f + 0.5f * enter; alpha = exit
+                translationY = (1f - enter) * -60f * density
+            }.clip(shape).background(Color(0xEE0B1220)).border(2.5.dp, st.tint, shape).clickable { stage = null },
+        ) {
+            Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    st.emoji, fontSize = 38.sp,
+                    modifier = Modifier.graphicsLayer {
+                        val b = 1f + kotlin.math.abs(kotlin.math.sin(p * 18f)) * 0.25f * (1f - p)
+                        scaleX = b; scaleY = b; rotationZ = kotlin.math.sin(p * 14f) * 12f * (1f - p)
+                    },
+                )
+                Text(st.title, color = st.tint, fontWeight = FontWeight.Black, fontSize = 22.sp, letterSpacing = 1.sp)
+                Text(st.sub, color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+            if (st.stamp.isNotEmpty() && p > 0.2f) {
+                val sp = ((p - 0.2f) / 0.06f).coerceIn(0f, 1f)
+                Box(
+                    Modifier.align(Alignment.CenterEnd).padding(end = 6.dp).graphicsLayer {
+                        val sc = 2.6f - 1.6f * ease(sp)
+                        scaleX = sc; scaleY = sc; rotationZ = -16f; alpha = sp
+                    }.border(3.dp, st.tint, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 1.dp),
+                ) { Text(st.stamp, color = st.tint, fontWeight = FontWeight.Black, fontSize = 14.sp) }
+            }
+        }
     }
 }
-
 /** Every property at a glance, grouped by colour, with a ring and token showing who owns it. Tap one for its deed. */
 @Composable
 private fun DeedTracker(s: MonopolyState, myCol: Color, theirCol: Color, myToken: String, theirToken: String, onTap: (Int) -> Unit) {
