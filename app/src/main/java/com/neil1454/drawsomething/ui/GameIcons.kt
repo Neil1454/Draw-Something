@@ -57,6 +57,7 @@ private fun DrawScope.drawGameIcon(kind: GameKind) {
         GameKind.CENTIPEDE -> centipede()
         GameKind.ARKANOID -> arkanoid()
         GameKind.BLACKJACK -> blackjack()
+        GameKind.SHOWDOWN -> showdown()
     }
 }
 
@@ -344,4 +345,20 @@ private fun DrawScope.blackjack() {
     drawCircle(Color(0xFF111827), 6.5f, Offset(sx - 5f, sy + 3f)); drawCircle(Color(0xFF111827), 6.5f, Offset(sx + 5f, sy + 3f))
     drawPath(androidx.compose.ui.graphics.Path().apply { moveTo(sx, sy - 14f); lineTo(sx - 11f, sy + 3f); lineTo(sx + 11f, sy + 3f); close() }, Color(0xFF111827))
     drawRect(Color(0xFF111827), Offset(sx - 1.6f, sy + 3f), Size(3.2f, 9f))
+}
+
+private fun DrawScope.showdown() {
+    // a trophy on a gold coin stack
+    for (k in 0 until 3) {
+        drawOval(Color(0xFFB8860B), Offset(22f, 80f - k * 7f), Size(56f, 14f))
+        drawOval(Color(0xFFFFD23F), Offset(22f, 76f - k * 7f), Size(56f, 14f))
+        drawOval(Color(0xFFFFF3B0), Offset(28f, 78f - k * 7f), Size(30f, 5f))
+    }
+    val cup = androidx.compose.ui.graphics.Path().apply { moveTo(34f, 18f); lineTo(66f, 18f); lineTo(62f, 44f); quadraticBezierTo(50f, 54f, 38f, 44f); close() }
+    drawPath(cup, Color(0xFFFFD23F))
+    drawPath(cup, Color(0xFFB8860B), style = Stroke(2f))
+    drawArc(Color(0xFFFFD23F), 90f, 180f, false, Offset(22f, 22f), Size(16f, 18f), style = Stroke(3f))
+    drawArc(Color(0xFFFFD23F), 270f, 180f, false, Offset(62f, 22f), Size(16f, 18f), style = Stroke(3f))
+    drawRect(Color(0xFFFFD23F), Offset(46f, 50f), Size(8f, 8f))
+    drawRoundRect(Color(0xFFB8860B), Offset(38f, 58f), Size(24f, 6f), CornerRadius(2f))
 }

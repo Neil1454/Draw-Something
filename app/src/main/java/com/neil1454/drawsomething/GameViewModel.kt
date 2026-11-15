@@ -47,6 +47,11 @@ import com.neil1454.drawsomething.core.GameState
 import com.neil1454.drawsomething.core.LobbyMsg
 import com.neil1454.drawsomething.core.MineMsg
 import com.neil1454.drawsomething.core.MineSize
+import com.neil1454.drawsomething.core.ShowdownEngine
+import com.neil1454.drawsomething.core.ShowdownRules
+import com.neil1454.drawsomething.core.Stake
+import com.neil1454.drawsomething.core.StakeWire
+import com.neil1454.drawsomething.core.TheirStake
 import com.neil1454.drawsomething.core.MinesEngine
 import com.neil1454.drawsomething.core.MinesPhase
 import com.neil1454.drawsomething.core.MinesState
@@ -152,11 +157,16 @@ data class UiState(
     val board: StrokeBoard? = null,
     val boardVersion: Int = 0,
     val notice: String? = null,
+    /** What I am putting up for the winner, and what the other player has told me they are putting up. */
+    val myStakes: List<Stake> = emptyList(),
+    val theirStakes: List<TheirStake> = emptyList(),
+    /** My mystery stakes have been revealed to the other player (the game they were for is over). */
+    val stakesRevealed: Boolean = false,
 )
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("draw_something", Context.MODE_PRIVATE)
-    private val _ui = MutableStateFlow(UiState(name = prefs.getString("name", "").orEmpty()))
+    private val _ui = MutableStateFlow(UiState(name = prefs.getString("name", "").orEmpty(), myStakes = loadStakes()))
     val ui: StateFlow<UiState> = _ui
 
     /** Wins, losses and the leaderboards, kept on this phone. */
@@ -352,6 +362,38 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private var computer: PlayerSide? = null // the pretend second phone in solo play
 
     /** Everything the engines say goes to the real partner, or to the computer in solo play. */
+    // ---------------------------------------------------------------- stakes
+
+    private fun loadStakes(): List<Stake> = try {
+        val a = org.json.JSONArray(prefs.getString("stakes", "[]"))
+        StakeWire.cleanList(List(a.length()) { i -> val e = a.getJSONArray(i); Stake(e.getString(0), e.optInt(1, 1) == 1) })
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    private fun saveStakes(list: List<Stake>) {
+        val a = org.json.JSONArray()
+        list.forEach { a.put(org.json.JSONArray().put(it.text).put(if (it.shown) 1 else 0)) }
+        prefs.edit().putString("stakes", a.toString()).apply()
+    }
+
+    /** What I am putting up. The other player sees the shown ones now; hidden ones stay a mystery until the game ends. */
+    fun setMyStakes(list: List<Stake>) {
+        val clean = StakeWire.cleanList(list)
+        saveStakes(clean)
+        _ui.update { it.copy(myStakes = clean, stakesRevealed = false) }
+        (syncEngines[GameKind.SHOWDOWN] as? ShowdownEngine)?.localStakes = clean
+        if (_ui.value.stage == Stage.LOBBY && !_ui.value.solo) sendBytes(StakeWire.encode(clean, false))
+    }
+
+    /** A game has ended: tell the other phone what my mystery stakes were. */
+    private fun revealMyStakes() {
+        val s = _ui.value
+        if (s.solo || s.stakesRevealed || s.myStakes.none { !it.shown }) return
+        _ui.update { it.copy(stakesRevealed = true) }
+        sendBytes(StakeWire.encode(s.myStakes, true))
+    }
+
     private fun sendBytes(bytes: ByteArray) {
         val c = computer
         if (c != null) c.receive(bytes) else transport.send(bytes)
@@ -445,7 +487,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** Back to the menu from anywhere (also disconnects). */
     fun leave() {
         teardown()
-        _ui.update { UiState(name = it.name) }
+        _ui.update { UiState(name = it.name, myStakes = it.myStakes) }
     }
 
     /** Run something on the Draw Something engine (draw, guess, judge...). */
@@ -465,11 +507,31 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // Starting one game sends the others back to the lobby, so only one is ever on screen.
 
-    private fun resetOthers(keep: GameKind) {
+    private fun resetOthers(keep: GameKind, includeShowdown: Boolean = true) {
         if (keep != GameKind.DRAW) engine?.backToLobby()
         if (keep != GameKind.MINES) minesEngine?.backToLobby()
         if (keep != GameKind.SEA) seaEngine?.backToLobby()
-        syncEngines.forEach { (k, e) -> if (k != keep) e.backToLobby() }
+        syncEngines.forEach { (k, e) -> if (k != keep && (includeShowdown || k != GameKind.SHOWDOWN)) e.backToLobby() }
+    }
+
+    private fun showdownPlaying() = syncEngines[GameKind.SHOWDOWN]?.phase == GPhase.PLAYING
+
+    /** Showdown (host): start the contest somebody picked. The showdown itself stays open underneath. */
+    private fun launchContest(kind: GameKind) {
+        when (kind) {
+            GameKind.MINES -> { resetOthers(GameKind.MINES, includeShowdown = false); minesEngine?.start(MineSize.SMALL) }
+            GameKind.SEA -> { resetOthers(GameKind.SEA, includeShowdown = false); seaEngine?.start(SeaSize.QUICK, true) }
+            else -> { resetOthers(kind, includeShowdown = false); syncEngines[kind]?.start(ShowdownRules.options(kind).put("sd", true)) }
+        }
+    }
+
+    /** Showdown: leave the contest's results screen and go back to the stakes. */
+    fun showdownContinue() {
+        engine?.backToLobby()
+        minesEngine?.backToLobby()
+        seaEngine?.backToLobby()
+        syncEngines.forEach { (k, e) -> if (k != GameKind.SHOWDOWN) e.backToLobby() }
+        publishAll()
     }
 
     fun startDraw(rounds: Int, seconds: Int, minDifficulty: Difficulty) {
@@ -504,6 +566,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** After any game: back to the lobby (still connected) to pick again. */
     fun backToGames() {
+        (syncEngines[GameKind.SHOWDOWN] as? ShowdownEngine)?.abort()
         engine?.backToLobby()
         minesEngine?.backToLobby()
         seaEngine?.backToLobby()
@@ -562,7 +625,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 if (s.stage == Stage.LOBBY || s.stage == Stage.PLAYING) {
                     val who = s.partnerName.ifBlank { "Your partner" }
                     teardown()
-                    _ui.update { UiState(name = it.name, notice = "$who disconnected.") }
+                    _ui.update { UiState(name = it.name, notice = "$who disconnected.", myStakes = it.myStakes) }
                 } else if (s.connectingTo != null) {
                     _ui.update { it.copy(connectingTo = null, notice = "The host said no, or the connection dropped.") }
                 }
@@ -572,22 +635,23 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
             is TransportEvent.Received -> when (val p = Packet.decode(e.bytes)) {
                 is Packet.Lobby -> _ui.update { it.copy(lobbyGame = p.game) }
+                is Packet.Stakes -> _ui.update { it.copy(theirStakes = p.list) }
                 is Packet.Draw -> {
                     if (p.msg is Msg.Setup) resetOthers(GameKind.DRAW)
                     engine?.onMessage(p.msg)
                 }
                 is Packet.Mines -> {
-                    if (p.msg is MineMsg.Setup) resetOthers(GameKind.MINES)
+                    if (p.msg is MineMsg.Setup) resetOthers(GameKind.MINES, includeShowdown = !showdownPlaying())
                     minesEngine?.onMessage(p.msg)
                 }
                 is Packet.Sea -> {
-                    if (p.msg is SeaMsg.Setup) resetOthers(GameKind.SEA)
+                    if (p.msg is SeaMsg.Setup) resetOthers(GameKind.SEA, includeShowdown = !showdownPlaying())
                     seaEngine?.onMessage(p.msg)
                 }
                 is Packet.Sync -> {
                     val kind = GameKind.values().firstOrNull { it.name == p.msg.game }
                     if (kind != null) {
-                        if (p.msg is GMsg.Setup) resetOthers(kind)
+                        if (p.msg is GMsg.Setup) resetOthers(kind, includeShowdown = !(p.msg as GMsg.Setup).opts.optBoolean("sd", false))
                         syncEngines[kind]?.onMessage(p.msg)
                     }
                 }
@@ -634,6 +698,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             CentipedeEngine(me, partner, host, sendG, clock = clock),
             ArkanoidEngine(me, partner, host, sendG, clock = clock),
             BlackjackEngine(me, partner, host, sendG, clock = clock),
+            ShowdownEngine(me, partner, host, sendG, clock = clock).also { sd -> sd.launch = { k -> launchContest(k) }; sd.localStakes = _ui.value.myStakes },
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }
@@ -650,13 +715,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 stage = Stage.LOBBY, partnerName = partner, joinRequests = emptyList(), connectingTo = null,
                 pairing = null, pairingConfirmed = false, hostAccepted = null,
-                hosts = emptyList(), notice = null,
+                hosts = emptyList(), notice = null, theirStakes = emptyList(), stakesRevealed = false,
                 game = e.state, mines = m.state, sea = sb.state, board = e.board, boardVersion = e.board.version,
                 syncEngines = syncEngines, sync = syncEngines.mapValues { it.value.stateAny },
             )
         }
         // The host may already have picked a game while waiting: let the partner's lobby show it.
         if (s.isHost) sendBytes(LobbyMsg.encodePick(_ui.value.lobbyGame))
+        if (!s.solo && _ui.value.myStakes.isNotEmpty()) sendBytes(StakeWire.encode(_ui.value.myStakes, false))
     }
 
     private val recorded = HashSet<GameKind>()
@@ -678,6 +744,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             if (o == null) {
                 recorded.remove(kind)
             } else if (recorded.add(kind)) {
+                if (kind != GameKind.SHOWDOWN) {
+                    revealMyStakes()
+                    // a showdown is waiting to hear who won this contest
+                    if (s.isHost) (syncEngines[GameKind.SHOWDOWN] as? ShowdownEngine)?.contestFinished(kind, o.result)
+                }
                 if (s.solo) {
                     // Practice rounds against an easy computer, and drawing practice, don't count.
                     if (s.soloSkill == Skill.EASY || kind == GameKind.DRAW) continue

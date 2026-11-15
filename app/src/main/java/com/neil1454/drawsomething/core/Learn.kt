@@ -101,6 +101,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.MONOPOLY -> h.monopoly.start(JSONObject().put("len", 2))
             GameKind.INVADERS -> h.invaders.start(JSONObject().put("waves", 3).put("lives", 3))
             GameKind.CENTIPEDE -> h.centipede.start(JSONObject().put("waves", 3).put("lives", 3))
+            GameKind.SHOWDOWN -> Unit
             GameKind.BLACKJACK -> h.blackjack.start(JSONObject().put("rounds", 0).put("tips", 1))
             GameKind.ARKANOID -> h.arkanoid.start(JSONObject().put("waves", 2).put("lives", 3))
         }
@@ -342,6 +343,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
+            GameKind.SHOWDOWN -> finish(outro(kind))
             GameKind.BLACKJACK -> {
                 val s = duel.host.blackjack.state
                 if (s.seq != last) {
@@ -644,6 +646,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.LUDO -> "🏠 Ludo: roll a 6 to bring a piece out, race round the board, and get all four home with exact rolls. You are Player 1 (red)."
             GameKind.INVADERS -> "👾 Space Invaders: both players fly at the bottom of the same screen and shoot the invaders as they march down. You are Player 1 (the left ship)."
             GameKind.CENTIPEDE -> "🐛 Centipede: shoot the centipede as it winds down through the mushrooms. Every hit splits it. You are Player 1."
+            GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
             GameKind.BLACKJACK -> "🂡 Blackjack: you both play against the dealer. Get closer to 21 than the dealer without going over. You are Player 1."
             GameKind.ARKANOID -> "🧱 Arkanoid: both paddles guard the bottom. Bounce the ball up to smash the bricks. You are Player 1."
             GameKind.MONOPOLY -> "🎩 Monopoly (UK): buy streets, collect rent, build houses and hotels. You are Player 1. This is a quick 15-turn demo."

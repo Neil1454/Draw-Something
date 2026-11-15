@@ -58,6 +58,22 @@ land hits within a moment of each other you get a **TEAM COMBO** bonus. Killed h
 rapid fire, triple shot, an extra life, or a **blast** that blows up the six segments nearest you. When only three segments are left
 the centipede goes into a red **FRENZY** and speeds up. The play area flashes red when it gets close, and floating words pop up for every moment.
 
+### Stakes (play for something)
+
+In the lobby, before any game, each of you can set **stakes**: money (just type it, £5), a treat, a chore, anything. You can add up to five,
+and each one is either **shown** to the other player right away or kept a **mystery** (its words are never sent until the game ends).
+The 🏆 button in every game shows what's at stake, and when the game ends a banner says who claims what (mystery stakes get revealed).
+The app never handles money: a stake is just a promise between the two of you.
+
+### Stakes Showdown
+
+A game made for stakes. Every stake you each put up is its own contest. The next stake is turned over (mystery ones flip face-up), and
+the player who did **not** put it up is the challenger and picks the contest from four options. Each option says what you need to do to
+win (for example "Connect four discs in a row before your rival does"). The contest is a real game from the app: Connect 4, Pairs, Quick
+Draw, Pig, Othello, Higher or Lower, Blackjack, Minesweeper, Battleships, Space Invaders, Centipede or Arkanoid. Win it and you claim the
+stake. A tie **rolls the stake over** into the next round and the winner takes both. At the end, whoever claimed the most wins (money
+amounts break a tie). You each need at least one stake, and it needs two real players (no computer opponent).
+
 ### Blackjack
 
 You both play against the dealer at the same time with £500 each, for 5, 10 or 15 rounds. Pick your chips and press **Deal**; then **Hit**,

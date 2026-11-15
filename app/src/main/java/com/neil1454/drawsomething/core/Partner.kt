@@ -104,7 +104,7 @@ class PlayerSide(
 
     private fun route(bytes: ByteArray) {
         when (val p = Packet.decode(bytes) ?: return) {
-            is Packet.Lobby -> Unit
+            is Packet.Lobby, is Packet.Stakes -> Unit
             is Packet.Draw -> {
                 if (p.msg is Msg.Setup) resetOthers(GameKind.DRAW)
                 draw.onMessage(p.msg)

@@ -23,7 +23,7 @@ class LearnTest {
     }
 
     @Test fun everyGameHasAnIntroAndAFinishedDemoWithManyCaptions() {
-        for (kind in GameKind.values()) {
+        for (kind in GameKind.values().filter { !it.needsPartner }) {
             val (s, captions) = watch(kind)
             assertTrue("$kind did not finish", s.finished)
             assertTrue("$kind captions: ${captions.size}", captions.size >= 4)

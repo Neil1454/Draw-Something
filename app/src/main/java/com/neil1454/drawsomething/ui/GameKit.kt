@@ -173,6 +173,12 @@ fun EndOverlay(
                 )
             }
             FunkyButton("👀  See the board", { peek = true }, Modifier.fillMaxWidth(), listOf(Funk.Cyan, Funk.Blue))
+            val backToShowdown = LocalShowdownContinue.current
+            if (backToShowdown != null) {
+                FunkyButton("🎰  Back to the showdown", backToShowdown, Modifier.fillMaxWidth(), listOf(Color(0xFF7C3AED), Color(0xFFF59E0B)))
+                TextButton(onClick = onLeave) { Text("Leave") }
+                return@Column
+            }
             if (isHost) {
                 FunkyButton("🔁  $playAgainLabel", onPlayAgain, Modifier.fillMaxWidth(), colors)
             } else {

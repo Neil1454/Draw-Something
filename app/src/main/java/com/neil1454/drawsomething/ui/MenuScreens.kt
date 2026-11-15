@@ -52,6 +52,10 @@ import org.json.JSONObject
 import com.neil1454.drawsomething.LobbySettings
 import com.neil1454.drawsomething.NearbyHost
 import com.neil1454.drawsomething.UiState
+import com.neil1454.drawsomething.core.BlackjackEngine
+import com.neil1454.drawsomething.core.Stake
+import com.neil1454.drawsomething.core.lobbyGames
+import com.neil1454.drawsomething.core.needsPartner
 import com.neil1454.drawsomething.core.Difficulty
 import com.neil1454.drawsomething.core.DiceTarget
 import com.neil1454.drawsomething.core.DropSize
@@ -302,6 +306,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.CENTIPEDE -> CentipedeHelp()
                     GameKind.ARKANOID -> ArkanoidHelp()
                     GameKind.BLACKJACK -> BlackjackHelp()
+                    GameKind.SHOWDOWN -> ShowdownHelp()
                 }
             }
         },
@@ -557,7 +562,7 @@ fun GameBrowser(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        GameGrid(availableGames(), selected = selected, enabled = canPick) { onSelect(it) }
+        GameGrid(lobbyGames().filter { !(ui.solo && it.needsPartner) }, selected = selected, enabled = canPick) { onSelect(it) }
         when (selected) {
             GameKind.DRAW -> DrawLobby(ui, game, act, onSettings, onStartDraw)
             GameKind.MINES -> MinesLobby(ui, connected, onSettings, onStartMines)
@@ -576,6 +581,7 @@ fun GameBrowser(
             GameKind.INVADERS -> ArcadeLobby(ui, connected, GameKind.INVADERS, { InvadersHelp() }, onSettings, onStartSync)
             GameKind.CENTIPEDE -> ArcadeLobby(ui, connected, GameKind.CENTIPEDE, { CentipedeHelp() }, onSettings, onStartSync)
             GameKind.BLACKJACK -> BlackjackLobby(ui, connected, onSettings, onStartSync)
+            GameKind.SHOWDOWN -> ShowdownLobby(ui, connected, onStartSync)
             GameKind.ARKANOID -> ArcadeLobby(ui, connected, GameKind.ARKANOID, { ArkanoidHelp() }, onSettings, onStartSync)
         }
     }
@@ -615,8 +621,11 @@ fun LobbyScreen(
     onStartMines: (MineSize) -> Unit,
     onStartSea: (SeaSize, Boolean) -> Unit,
     onStartSync: (GameKind, JSONObject) -> Unit,
+    onStakes: (List<Stake>) -> Unit,
     onLeave: () -> Unit,
 ) {
+    var editStakes by remember { mutableStateOf(false) }
+    if (editStakes) StakesEditor(ui.myStakes, onSave = { onStakes(it); editStakes = false }, onClose = { editStakes = false })
     Page {
         Column(
             Modifier.fillMaxWidth(),
@@ -635,6 +644,7 @@ fun LobbyScreen(
                 else "Connected! Your link is private and encrypted.",
                 color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
             )
+            if (!ui.solo) StakesCard(ui, onEdit = { editStakes = true })
             Text(
                 if (ui.isHost) "Choose a game" else "${ui.partnerName} is choosing the game…",
                 style = MaterialTheme.typography.titleMedium,
@@ -947,6 +957,19 @@ private fun MonopolyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySet
         ChipRow("Game length", MonopolyLength.values().map { it.label }, set.monopolyLen) { onSettings(set.copy(monopolyLen = it)) }
         ToggleChip("🏁 House rule: go round the board once before buying", set.monopolyLap) { onSettings(set.copy(monopolyLap = it)) }
     }) { onStart(GameKind.MONOPOLY, JSONObject().put("len", set.monopolyLen).put("lap", set.monopolyLap)) }
+}
+
+@Composable
+private fun ShowdownLobby(ui: UiState, connected: Boolean, onStart: (GameKind, JSONObject) -> Unit) {
+    val ready = ui.myStakes.isNotEmpty() && ui.theirStakes.isNotEmpty()
+    SyncLobby(ui, connected, GameKind.SHOWDOWN, { ShowdownHelp() }, {
+        Text(
+            if (ready) "${ui.myStakes.size + ui.theirStakes.size} stakes are up for grabs: ${ui.myStakes.size} yours and ${ui.theirStakes.size} from ${ui.partnerName}."
+            else "You each need at least one stake. Set yours in the Stakes card above and ask ${ui.partnerName} to set theirs.",
+            fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+            color = if (ready) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+        )
+    }) { if (ready) onStart(GameKind.SHOWDOWN, showdownOptions(ui)) }
 }
 
 @Composable

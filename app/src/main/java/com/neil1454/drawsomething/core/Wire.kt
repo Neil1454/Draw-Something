@@ -20,6 +20,7 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     MONOPOLY("Monopoly", "🎩", "The UK property game on the London board: buy, build, trade and bankrupt your rival."),
     INVADERS("Space Invaders", "👾", "Two ships, one sky. Fly and fire together as the invaders march down. Five waves, shields, a mystery ship."),
     CENTIPEDE("Centipede", "🐛", "Blast the centipede as it winds down through the mushrooms. Watch out for the spider and the flea."),
+    SHOWDOWN("Stakes Showdown", "🎰", "Play for the stakes you each put up. Every stake is its own contest, picked on turn, and the winner claims it."),
     BLACKJACK("Blackjack", "🂡", "Beat the dealer to 21. Double down, win 3 to 2 on blackjack, and switch on the coach for tips."),
     ARKANOID("Arkanoid", "🧱", "Bounce the ball and smash the bricks together. Catch power-ups: lasers, multi-ball, fireball."),
 }
@@ -27,8 +28,14 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
 /** Games that are switched on. The holiday quiz can be switched off in one place: see [Features]. */
 fun GameKind.isAvailable(): Boolean = this != GameKind.HOLIDAY || Features.HOLIDAY
 
+/** Needs a real partner (it wraps the other games), so it isn't offered in solo practice, Learn mode or the leaderboards. */
+val GameKind.needsPartner: Boolean get() = this == GameKind.SHOWDOWN
+
 /** Every game that should appear in menus. */
-fun availableGames(): List<GameKind> = GameKind.values().filter { it.isAvailable() }
+fun availableGames(): List<GameKind> = GameKind.values().filter { it.isAvailable() && !it.needsPartner }
+
+/** The games the host can pick in the lobby (everything, including the ones that need a partner). */
+fun lobbyGames(): List<GameKind> = GameKind.values().filter { it.isAvailable() }
 
 /** Host -> partner: "I've picked this game" (so both lobbies show the same thing). */
 object LobbyMsg {
@@ -48,6 +55,9 @@ sealed class Packet {
     data class Sea(val msg: SeaMsg) : Packet()
     data class Sync(val msg: GMsg) : Packet()
 
+    /** The other player's stakes (a hidden stake's words are blank until [reveal] is true). */
+    data class Stakes(val list: List<TheirStake>, val reveal: Boolean) : Packet()
+
     companion object {
         fun decode(bytes: ByteArray): Packet? = try {
             if (bytes.size > Msg.MAX_BYTES) {
@@ -56,6 +66,7 @@ sealed class Packet {
                 val o = JSONObject(String(bytes, Charsets.UTF_8))
                 val t = o.getString("t")
                 when {
+                    t == "l_stakes" || t == "l_reveal" -> StakeWire.decode(o, t == "l_reveal")
                     t == "l_pick" -> GameKind.values().firstOrNull { it.name == o.getString("g") }?.let { Lobby(it) }
                     t.startsWith("m_") -> MineMsg.decode(o)?.let { Mines(it) }
                     t.startsWith("s_") -> SeaMsg.decode(o)?.let { Sea(it) }

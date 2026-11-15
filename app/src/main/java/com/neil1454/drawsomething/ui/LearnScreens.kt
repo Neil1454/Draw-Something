@@ -207,6 +207,7 @@ private fun LearnGameView(kind: GameKind, session: LearnSession, tick: Int, rest
         GameKind.MONOPOLY -> MonopolyScreen(host.monopoly.state, host.monopoly, restart, onBack, onBack)
         GameKind.INVADERS -> InvadersScreen(host.invaders.state, host.invaders, restart, onBack, onBack)
         GameKind.CENTIPEDE -> CentipedeScreen(host.centipede.state, host.centipede, restart, onBack, onBack)
+        GameKind.SHOWDOWN -> Unit
         GameKind.BLACKJACK -> BlackjackScreen(host.blackjack.state, host.blackjack, restart, onBack, onBack)
         GameKind.ARKANOID -> ArkanoidScreen(host.arkanoid.state, host.arkanoid, restart, onBack, onBack)
     }
