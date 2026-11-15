@@ -25,6 +25,7 @@ and you can switch games without reconnecting.
 | 🎩 **Monopoly** | The UK (London) board: buy, auction, build houses and hotels, mortgage, trade, Chance and Community Chest, Jail, bankruptcy. Full, 30-turn or 15-turn games. |
 | 👾 **Space Invaders** | Two ships on one screen at the same time, shooting the invaders as they march down. Shields that crumble, a mystery ship that drops power-ups, five faster waves. You score separately: partners against the aliens, rivals for the top score. |
 | 🐛 **Centipede** | Blast the centipede as it winds down through the mushrooms; every hit splits it. Watch out for the spider and the flea. Both players share the bottom of the screen. |
+| 🧱 **Arkanoid** | Two paddles, one ball, a wall of bricks. Whoever touched the ball last scores. Catch power-ups: wide paddle, lasers, multi-ball, slow motion, fireball, extra life. Lives are shared. |
 
 ### The new board games
 
@@ -48,6 +49,17 @@ properties go to a two-player auction (either player can bid, from £1). You can
 price, and trade properties and cash (whoever receives a mortgaged property pays the bank 10% interest straight away, as in the official rules). If you can't cover a bill you must raise the money or go bankrupt. The 16 Chance and 16 Community
 Chest cards follow the UK edition (the wording is paraphrased). Choose a short game and the richest player wins after 15 or 30 turns each.
 The computer plays all three, including bidding at auctions and judging trade offers.
+
+### Arkanoid
+
+Slide your finger left and right to move your paddle. Bricks come in colours (one hit), grey (two or three hits), gold (unbreakable)
+and red (explodes its neighbours). Power-ups fall from broken bricks: **W** wide paddle, **L** lasers (keep your finger down),
+**M** three balls, **S** slow motion, **F** fireball, **♥** extra life. Lives are shared by the team; the higher score wins.
+
+### Vibration
+
+Every game now buzzes with the action: each sound effect has a matching feel (a tick for a tap, a rumble for an explosion,
+a rising buzz for a win). Switch it off with **Vibration (all games)** in Settings. It uses Android's "vibrate" permission, which needs no prompt.
 
 ### Space Invaders and Centipede
 

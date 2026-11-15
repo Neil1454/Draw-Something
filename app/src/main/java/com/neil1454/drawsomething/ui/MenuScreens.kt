@@ -300,6 +300,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.MONOPOLY -> MonopolyHelp()
                     GameKind.INVADERS -> InvadersHelp()
                     GameKind.CENTIPEDE -> CentipedeHelp()
+                    GameKind.ARKANOID -> ArkanoidHelp()
                 }
             }
         },
@@ -573,6 +574,7 @@ fun GameBrowser(
             GameKind.MONOPOLY -> MonopolyLobby(ui, connected, onSettings, onStartSync)
             GameKind.INVADERS -> ArcadeLobby(ui, connected, GameKind.INVADERS, { InvadersHelp() }, onSettings, onStartSync)
             GameKind.CENTIPEDE -> ArcadeLobby(ui, connected, GameKind.CENTIPEDE, { CentipedeHelp() }, onSettings, onStartSync)
+            GameKind.ARKANOID -> ArcadeLobby(ui, connected, GameKind.ARKANOID, { ArkanoidHelp() }, onSettings, onStartSync)
         }
     }
 }

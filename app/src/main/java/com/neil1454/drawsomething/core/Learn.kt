@@ -101,6 +101,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.MONOPOLY -> h.monopoly.start(JSONObject().put("len", 2))
             GameKind.INVADERS -> h.invaders.start(JSONObject().put("waves", 3).put("lives", 3))
             GameKind.CENTIPEDE -> h.centipede.start(JSONObject().put("waves", 3).put("lives", 3))
+            GameKind.ARKANOID -> h.arkanoid.start(JSONObject().put("waves", 2).put("lives", 3))
         }
     }
 
@@ -340,6 +341,28 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                 }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
+            GameKind.ARKANOID -> {
+                val s = duel.host.arkanoid.state
+                val now = duel.now
+                if (s.phase == GPhase.PLAYING) {
+                    val me = s.c.mine
+                    when {
+                        s.c.level != lastSeq -> {
+                            lastSeq = s.c.level; lastNoteAt = now
+                            say("🧱 Level ${s.c.level} of ${s.c.levels}! Keep the ball in play with your paddle and smash every brick. Grey bricks take more hits, gold ones can't be broken, and red ones explode their neighbours.")
+                        }
+                        s.c.stage == "WAVE" && !waveSaid -> { waveSaid = true; say("✅ Level cleared! Both players get a bonus. Next level has a new wall of bricks and a faster ball.") }
+                        s.myScore > 0 && !segSaid -> { segSaid = true; lastNoteAt = now; say("💥 A brick broke! Whoever touched the ball last gets the points, so it pays to be the one who hits it back up.") }
+                        s.drops.isNotEmpty() && !spiderSaid -> { spiderSaid = true; lastNoteAt = now; say("🎁 A power-up is falling! Catch it with your paddle. W wide paddle, L lasers, M three balls, S slow motion, F fireball, H extra life for the team.") }
+                        s.balls.size > 1 && !headSaid -> { headSaid = true; lastNoteAt = now; say("🔱 Multi-ball! Keep every ball up, because you only lose a life when the last one drops.") }
+                        me.lives < lastMyLives -> { say("💔 The last ball dropped, so the team loses a life. Lives are shared between both players."); lastNoteAt = now }
+                        now >= tipAt -> { tipAt = now + 40_000L; say(ARK_TIPS[(tipN++) % ARK_TIPS.size] + "\n(You ${s.myScore} · Player 2 ${s.theirScore})") }
+                    }
+                    lastMyLives = me.lives; lastTheirLives = s.c.theirs.lives; lastMyScore = s.myScore; lastTheirScore = s.theirScore
+                    if (s.c.stage != "WAVE") waveSaid = false
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
             GameKind.MONOPOLY -> {
                 val s = duel.host.monopoly.state
                 if (s.seq != last) {
@@ -536,6 +559,13 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "The fewer invaders are left, the faster they come. Take out the lowest ones first, they are the ones that bomb you.",
             "If one of you is knocked out, you come back when the wave is cleared. If the invaders reach the bottom, it is over for both of you.",
         )
+        private val ARK_TIPS = listOf(
+            "Hit the ball with the edge of the paddle to send it off at an angle. The middle sends it straight up.",
+            "Stay under the ball, not under the power-up: you can always catch a power-up on the next one.",
+            "Gold bricks can't be broken. Go round them and clear the rest.",
+            "Red bricks explode, and take the bricks around them with them.",
+        )
+
         private val CENTI_TIPS = listOf(
             "Hold your finger down to fire and slide it to fly. Mushrooms stop the centipede and make it drop a row.",
             "Shoot the head for 100 points. Body segments are 10, and each one you hit turns into a mushroom.",
@@ -576,7 +606,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
 
         /** How fast the demo starts (1 = real time): the quick games begin in slow motion so the captions can keep up. */
         fun defaultSpeed(kind: GameKind): Float = when (kind) {
-            GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.TETRIS -> 0.25f
+            GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.ARKANOID, GameKind.TETRIS -> 0.25f
             GameKind.QUICK, GameKind.HOLIDAY -> 0.5f
             GameKind.DICE, GameKind.MEMORY, GameKind.HILO, GameKind.MINES, GameKind.SEA, GameKind.DRAW, GameKind.DROP -> 0.75f
             else -> 1f
@@ -597,6 +627,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.LUDO -> "🏠 Ludo: roll a 6 to bring a piece out, race round the board, and get all four home with exact rolls. You are Player 1 (red)."
             GameKind.INVADERS -> "👾 Space Invaders: both players fly at the bottom of the same screen and shoot the invaders as they march down. You are Player 1 (the left ship)."
             GameKind.CENTIPEDE -> "🐛 Centipede: shoot the centipede as it winds down through the mushrooms. Every hit splits it. You are Player 1."
+            GameKind.ARKANOID -> "🧱 Arkanoid: both paddles guard the bottom. Bounce the ball up to smash the bricks. You are Player 1."
             GameKind.MONOPOLY -> "🎩 Monopoly (UK): buy streets, collect rent, build houses and hotels. You are Player 1. This is a quick 15-turn demo."
             GameKind.HOLIDAY -> "🏝️ Do you know your Holiday? A quiz about where you're going. You are Player 1; the quickest correct answer wins the most points."
         }

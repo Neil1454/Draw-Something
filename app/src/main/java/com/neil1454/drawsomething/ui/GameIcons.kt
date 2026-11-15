@@ -55,6 +55,7 @@ private fun DrawScope.drawGameIcon(kind: GameKind) {
         GameKind.MONOPOLY -> hat()
         GameKind.INVADERS -> invader()
         GameKind.CENTIPEDE -> centipede()
+        GameKind.ARKANOID -> arkanoid()
     }
 }
 
@@ -315,4 +316,16 @@ private fun DrawScope.centipede() {
     drawRect(Color(0xFFE7E5E4), Offset(26f, 28f), Size(9f, 16f))
     drawArc(Color(0xFFEF4444), 180f, 180f, true, Offset(14f, 12f), Size(33f, 30f))
     drawCircle(Color.White, 3.2f, Offset(24f, 24f)); drawCircle(Color.White, 2.6f, Offset(37f, 27f))
+}
+
+private fun DrawScope.arkanoid() {
+    val colours = listOf(Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFF22C55E), Color(0xFF38BDF8))
+    for (r in 0 until 3) for (c in 0 until 4) {
+        drawRoundRect(colours[(c + r) % 4], Offset(10f + c * 21f, 14f + r * 14f), Size(19f, 11f), CornerRadius(2f))
+        drawRoundRect(Color.White.copy(alpha = 0.35f), Offset(10f + c * 21f, 14f + r * 14f), Size(19f, 4f), CornerRadius(2f))
+    }
+    drawCircle(Color.White, 5.5f, Offset(58f, 62f))
+    drawCircle(Color(0xFFFFD23F).copy(alpha = 0.5f), 9f, Offset(58f, 62f), style = Stroke(2f))
+    drawRoundRect(Color(0xFF7DD3FC), Offset(30f, 84f), Size(40f, 8f), CornerRadius(4f))
+    drawRoundRect(Color.White.copy(alpha = 0.5f), Offset(30f, 84f), Size(40f, 3f), CornerRadius(4f))
 }

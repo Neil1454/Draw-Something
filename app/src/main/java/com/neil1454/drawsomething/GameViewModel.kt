@@ -22,6 +22,7 @@ import com.neil1454.drawsomething.core.LudoEngine
 import com.neil1454.drawsomething.core.MonopolyEngine
 import com.neil1454.drawsomething.core.InvadersEngine
 import com.neil1454.drawsomething.core.CentipedeEngine
+import com.neil1454.drawsomething.core.ArkanoidEngine
 import com.neil1454.drawsomething.core.HiLoEngine
 import com.neil1454.drawsomething.core.HolidayEngine
 import com.neil1454.drawsomething.core.HolidayPack
@@ -167,6 +168,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         Sfx.init(app)
+        com.neil1454.drawsomething.sound.Haptics.init(app)
         com.neil1454.drawsomething.ui.TetrisPrefs.init(app)
         if (Features.HOLIDAY) loadHolidayPacks(app)
     }
@@ -627,6 +629,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             MonopolyEngine(me, partner, host, sendG, clock = clock),
             InvadersEngine(me, partner, host, sendG, clock = clock),
             CentipedeEngine(me, partner, host, sendG, clock = clock),
+            ArkanoidEngine(me, partner, host, sendG, clock = clock),
         )
         syncList.forEach { it.onChange = { publishAll() } }
         syncEngines = syncList.associateBy { it.kind }

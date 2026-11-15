@@ -447,12 +447,5 @@ private fun MinesOverlay(s: MinesState, win: Int, onPlayAgain: () -> Unit, onBac
 /** A short, sharp buzz-buzz-rumble when a mine goes off. Quietly does nothing if the phone can't vibrate. */
 @Suppress("DEPRECATION")
 private fun buzzBoom(ctx: android.content.Context) {
-    try {
-        val v: android.os.Vibrator? = if (android.os.Build.VERSION.SDK_INT >= 31) {
-            (ctx.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
-        } else ctx.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
-        if (v == null || !v.hasVibrator()) return
-        v.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 90, 50, 70, 40, 260), -1))
-    } catch (_: Exception) {
-    }
+    com.neil1454.drawsomething.sound.Haptics.boom()
 }

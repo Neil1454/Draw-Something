@@ -174,3 +174,97 @@ class CentipedeTest {
         }
     }
 }
+
+class ArkanoidTest {
+    private fun pair(seed: Int = 1, waves: Int = 2, lives: Int = 3): SyncPair<ArkanoidEngine> {
+        val p = SyncPair({ n, o, h, s, r, c -> ArkanoidEngine(n, o, h, s, r, c) }, seed)
+        p.host.start(JSONObject().put("waves", waves).put("lives", lives))
+        p.pump()
+        return p
+    }
+
+    /** Steer both paddles under the lowest falling ball, like a decent player. */
+    private fun playFor(p: SyncPair<ArkanoidEngine>, ms: Long) {
+        var left = ms
+        while (left > 0 && p.host.state.phase == GPhase.PLAYING) {
+            val s = p.host.state
+            val b = s.balls.filter { it.vy > 0 }.maxByOrNull { it.y }
+            val x = b?.x ?: 50f
+            p.host.input(x, false)
+            p.client.input(x, false)
+            p.advance(33)
+            left -= 33
+        }
+    }
+
+    @Test fun bothPhonesStartWithTheSameWallOfBricksAndSharedLives() {
+        val p = pair()
+        for (e in listOf(p.host, p.client)) {
+            assertEquals(GPhase.PLAYING, e.state.phase)
+            assertEquals(ArkanoidRules.COLS * ArkanoidRules.ROWS, e.state.bricks.length)
+            assertEquals(50, e.state.remaining)
+            assertEquals(3, e.state.c.mine.lives)
+            assertEquals(3, e.state.c.theirs.lives)
+        }
+        assertTrue(p.host.state.c.mine.x < p.host.state.c.theirs.x)
+        assertTrue(p.client.state.c.mine.x > p.client.state.c.theirs.x)
+    }
+
+    @Test fun paddlesFollowTheirFingerAndStayOnScreen() {
+        val p = pair()
+        p.advance(2500)
+        p.host.input(5f, false)
+        p.client.input(97f, false)
+        repeat(60) { p.advance(33) }
+        assertTrue(p.host.state.c.mine.x < 12f)
+        assertTrue(p.host.state.c.mine.x >= 8f - 0.01f)
+        assertTrue(p.client.state.c.mine.x > 88f)
+        assertTrue(p.client.state.c.mine.x <= 92f + 0.01f)
+    }
+
+    @Test fun ballBreaksBricksAndScoresForTheLastPlayerToTouchIt() {
+        val p = pair()
+        playFor(p, 25_000)
+        val s = p.host.state
+        assertTrue("bricks were broken", s.remaining < 50)
+        assertTrue(s.myScore + s.theirScore > 0)
+        assertEquals("both screens agree on the bricks", p.host.state.bricks, p.client.state.bricks)
+        assertEquals(p.host.state.myScore, p.client.state.theirScore)
+    }
+
+    @Test fun missingTheBallCostsTheTeamLivesUntilGameOver() {
+        val p = pair(lives = 2)
+        var guard = 0
+        while (p.host.state.phase == GPhase.PLAYING && guard++ < 4000) {
+            p.host.input(2f, false); p.client.input(98f, false) // hide in the corners
+            p.advance(100)
+        }
+        assertEquals(GPhase.OVER, p.host.state.phase)
+        assertEquals("lives", p.host.state.c.why)
+        assertEquals(0, p.host.state.c.mine.lives)
+        assertEquals(GPhase.OVER, p.client.state.phase)
+    }
+
+    @Test fun twoComputerPlayersClearTheLevelsAndWin() {
+        val p = pair(seed = 3, waves = 2)
+        val a = ArkanoidBrain(p.host, Skill.HARD, kotlin.random.Random(1))
+        val b = ArkanoidBrain(p.client, Skill.HARD, kotlin.random.Random(2))
+        var guard = 0
+        while (p.host.state.phase == GPhase.PLAYING && guard++ < 30_000) {
+            a.think(p.now); b.think(p.now)
+            p.advance(33)
+        }
+        assertEquals(GPhase.OVER, p.host.state.phase)
+        assertEquals("victory", p.host.state.c.why)
+        assertTrue(p.host.state.myScore > 0 && p.host.state.theirScore > 0)
+    }
+
+    @Test fun layoutsAreWellFormedForEveryLevel() {
+        for (level in 1..9) {
+            val l = ArkanoidRules.layout(level)
+            assertEquals(ArkanoidRules.COLS * ArkanoidRules.ROWS, l.length)
+            assertTrue(l.all { it in ".1239E" })
+            assertTrue("level $level has breakable bricks", ArkanoidRules.remaining(l.toCharArray()) > 0)
+        }
+    }
+}

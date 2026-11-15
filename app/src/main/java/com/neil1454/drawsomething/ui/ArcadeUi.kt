@@ -138,6 +138,9 @@ class Smooth {
  * The shared screen. [onInput] is told where my ship should go and whether I am firing. [world] draws the game's own
  * things (enemies, shields...) in field units.
  */
+/** The words an arcade screen uses, so a game that isn't about waves and rapid fire can say its own thing. */
+class ArcadeWords(val level: String = "WAVE", val rapid: String = "⚡ RAPID", val triple: String = "🔱 TRIPLE")
+
 @Composable
 fun ArcadeScreen(
     c: ArcadeCommon,
@@ -155,6 +158,8 @@ fun ArcadeScreen(
     onBurst: (kind: String, x: Float, y: Float, fx: Fx, now: Long, mineCol: Color) -> Unit,
     background: DrawScope.(ArcadeFrame) -> Unit,
     world: DrawScope.(ArcadeFrame, Smooth) -> Unit,
+    drawShips: Boolean = true,
+    words: ArcadeWords = ArcadeWords(),
 ) {
     val over = c.phase == GPhase.OVER
     val frameMs = remember { mutableLongStateOf(0L) }
@@ -213,25 +218,25 @@ fun ArcadeScreen(
             val fieldH = if (landscape) maxHeight - 10.dp else (maxHeight - 64.dp)
             val fieldW = minOf(fieldH * (100f / 140f), maxWidth - 8.dp)
             val fieldHeight = fieldW * (140f / 100f)
-            val hud: @Composable (Modifier) -> Unit = { m -> Hud(c, theirName, isHost, title, m) }
+            val hud: @Composable (Modifier) -> Unit = { m -> Hud(c, theirName, isHost, title, m, words) }
             if (landscape) {
                 Row(Modifier.fillMaxSize().padding(4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f).fillMaxHeight().padding(8.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                         SidePill("You", c.mine, mineCol, true)
-                        PowerChips(c.mine)
+                        PowerChips(c.mine, words)
                     }
-                    Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint)
+                    Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint, drawShips, words)
                     Column(Modifier.weight(1f).fillMaxHeight().padding(8.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                         SidePill(theirName, c.theirs, theirCol, false)
                         Text(title, fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f), modifier = Modifier.padding(top = 10.dp))
-                        Text("WAVE ${c.level}/${c.levels}", fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        Text("${words.level} ${c.level}/${c.levels}", fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color.White)
                     }
                 }
             } else {
                 Column(Modifier.fillMaxSize().padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     hud(Modifier.fillMaxWidth().padding(top = 2.dp))
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint)
+                        Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint, drawShips, words)
                     }
                 }
             }
@@ -253,6 +258,7 @@ fun ArcadeScreen(
 private fun Field(
     c: ArcadeCommon, isHost: Boolean, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, ctl: Offset, fx: Fx, smooth: Smooth,
     frameMs: androidx.compose.runtime.MutableLongState, background: DrawScope.(ArcadeFrame) -> Unit, world: DrawScope.(ArcadeFrame, Smooth) -> Unit, hint: String,
+    drawShips: Boolean, words: ArcadeWords,
 ) {
     val shape = RoundedCornerShape(10.dp)
     val lastRef = remember { LongArray(1) }
@@ -268,8 +274,10 @@ private fun Field(
                 clipRect(0f, 0f, Arcade.W, Arcade.H) {
                     background(frame)
                     world(frame, smooth)
-                    drawShip(c.theirs, smooth, "theirs", frame.theirCol, now, dt, false)
-                    drawShip(c.mine, smooth, "mine", frame.mineCol, now, dt, true)
+                    if (drawShips) {
+                        drawShip(c.theirs, smooth, "theirs", frame.theirCol, now, dt, false)
+                        drawShip(c.mine, smooth, "mine", frame.mineCol, now, dt, true)
+                    }
                     drawBullets(c.bullets, frame)
                     fx.draw(this, now)
                 }
@@ -281,8 +289,8 @@ private fun Field(
         }
         // get ready / wave cleared / hint
         val banner = when (c.stage) {
-            "READY" -> "WAVE ${c.level}\nGET READY"
-            "WAVE" -> "WAVE CLEARED!"
+            "READY" -> "${words.level} ${c.level}\nGET READY"
+            "WAVE" -> "${words.level} CLEARED!"
             else -> ""
         }
         if (banner.isNotEmpty() && c.phase == GPhase.PLAYING) {
@@ -298,15 +306,15 @@ private fun Field(
 }
 
 @Composable
-private fun Hud(c: ArcadeCommon, theirName: String, isHost: Boolean, title: String, modifier: Modifier) {
+private fun Hud(c: ArcadeCommon, theirName: String, isHost: Boolean, title: String, modifier: Modifier, words: ArcadeWords) {
     val mine = if (isHost) HostShip else GuestShip
     val theirs = if (isHost) GuestShip else HostShip
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) { SidePill("You", c.mine, mine, true) }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(title.uppercase(), fontSize = 9.sp, color = Color.White.copy(alpha = 0.6f), letterSpacing = 1.sp)
-            Text("WAVE ${c.level}/${c.levels}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White)
-            PowerChips(c.mine)
+            Text("${words.level} ${c.level}/${c.levels}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White)
+            PowerChips(c.mine, words)
         }
         Box(Modifier.weight(1f).padding(end = 38.dp), contentAlignment = Alignment.CenterEnd) { SidePill(theirName, c.theirs, theirs, false) }
     }
@@ -326,11 +334,11 @@ private fun SidePill(name: String, s: ShipView, col: Color, mineSide: Boolean) {
 }
 
 @Composable
-private fun PowerChips(s: ShipView) {
+private fun PowerChips(s: ShipView, words: ArcadeWords) {
     if (s.rapid || s.triple) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (s.rapid) Text("⚡ RAPID", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDE047))
-            if (s.triple) Text("🔱 TRIPLE", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFF86EFAC))
+            if (s.rapid) Text(words.rapid, fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDE047))
+            if (s.triple) Text(words.triple, fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFF86EFAC))
         }
     }
 }

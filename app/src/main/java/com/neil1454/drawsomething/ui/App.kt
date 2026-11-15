@@ -45,6 +45,8 @@ import com.neil1454.drawsomething.core.MonopolyEngine
 import com.neil1454.drawsomething.core.InvadersEngine
 import com.neil1454.drawsomething.core.InvadersState
 import com.neil1454.drawsomething.core.CentipedeEngine
+import com.neil1454.drawsomething.core.ArkanoidEngine
+import com.neil1454.drawsomething.core.ArkanoidState
 import com.neil1454.drawsomething.core.CentipedeState
 import com.neil1454.drawsomething.core.MonopolyState
 import com.neil1454.drawsomething.core.FlipState
@@ -216,7 +218,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.DICE -> JSONObject().put("target", set.diceTarget).put("two", set.diceTwo)
             GameKind.HILO -> JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)
             GameKind.DRAUGHTS, GameKind.LUDO -> JSONObject()
-            GameKind.INVADERS, GameKind.CENTIPEDE -> JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives)
+            GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.ARKANOID -> JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives)
             GameKind.MONOPOLY -> JSONObject().put("len", set.monopolyLen).put("lap", set.monopolyLap)
             GameKind.TETRIS -> JSONObject().put("mode", set.tetrisMode).put("lvl", set.tetrisLevel)
                 .put("mins", set.tetrisMins).put("gifts", set.tetrisGifts).put("tl", set.tetrisLines)
@@ -240,6 +242,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is MonopolyEngine && state is MonopolyState -> MonopolyScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is InvadersEngine && state is InvadersState -> InvadersScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is CentipedeEngine && state is CentipedeState -> CentipedeScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is ArkanoidEngine && state is ArkanoidState -> ArkanoidScreen(state, engine, again, vm::backToGames, vm::leave)
     }
 }
 

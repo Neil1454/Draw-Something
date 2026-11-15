@@ -39,12 +39,13 @@ class PlayerSide(
     val monopoly = MonopolyEngine(myName, theirName, isHost, send, random, clock)
     val invaders = InvadersEngine(myName, theirName, isHost, send, random, clock)
     val centipede = CentipedeEngine(myName, theirName, isHost, send, random, clock)
+    val arkanoid = ArkanoidEngine(myName, theirName, isHost, send, random, clock)
 
     private val syncByKind: Map<GameKind, SyncEngine> = mapOf(
         GameKind.DROP to drop, GameKind.MEMORY to memory, GameKind.QUICK to quick,
         GameKind.DICE to dice, GameKind.FLIP to flip, GameKind.HILO to hilo, GameKind.HOLIDAY to holiday, GameKind.TETRIS to tetris,
         GameKind.DRAUGHTS to draughts, GameKind.LUDO to ludo, GameKind.MONOPOLY to monopoly,
-        GameKind.INVADERS to invaders, GameKind.CENTIPEDE to centipede,
+        GameKind.INVADERS to invaders, GameKind.CENTIPEDE to centipede, GameKind.ARKANOID to arkanoid,
     )
 
     /** The Draw Something guesser only makes sense on the guest side (the host is the drawer). */
@@ -65,6 +66,7 @@ class PlayerSide(
         MonopolyBrain(monopoly, skill, random),
         InvadersBrain(invaders, skill, random),
         CentipedeBrain(centipede, skill, random),
+        ArkanoidBrain(arkanoid, skill, random),
     )
 
     /** The computer agrees to the Draw Something rules straight away. */

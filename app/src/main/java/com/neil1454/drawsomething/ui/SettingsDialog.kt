@@ -13,6 +13,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -40,7 +44,9 @@ fun SettingsDialog(soundOn: Boolean, onSound: (Boolean) -> Unit, onClose: () -> 
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 SettingSwitch("Sound effects", "Taps, clears, explosions and fanfares.", soundOn, onSound)
                 SettingSwitch("Tetris music", "A looping tune while you play Tetris. Off by default.", TetrisPrefs.music) { TetrisPrefs.music = it }
-                SettingSwitch("Vibration", "A light buzz when you turn or drop a piece.", TetrisPrefs.haptics) { TetrisPrefs.haptics = it }
+                var vib by remember { mutableStateOf(com.neil1454.drawsomething.sound.Haptics.enabled) }
+                SettingSwitch("Vibration (all games)", "Your phone buzzes with the action: taps, hits, explosions, wins.", vib) { vib = it; com.neil1454.drawsomething.sound.Haptics.setEnabled(it) }
+                SettingSwitch("Tetris piece buzz", "An extra light buzz when you turn or drop a piece.", TetrisPrefs.haptics) { TetrisPrefs.haptics = it }
 
                 Text("Tetris touch feel", fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -48,6 +48,7 @@ object Sfx {
     }
 
     fun play(sound: Sound) {
+        Haptics.play(sound)
         if (!enabled || active.get() >= 8) return
         active.incrementAndGet()
         worker.execute {
