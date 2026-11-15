@@ -6,7 +6,13 @@ import org.json.JSONObject
 /** Everything the two phones say to each other. Small JSON messages. */
 sealed class Msg {
     /** Host starts (or restarts) a game. */
-    data class Setup(val rounds: Int, val seconds: Int, val hostDrawsFirst: Boolean, val minDifficulty: Int = 0, val solo: Boolean = false) : Msg()
+    data class Setup(val rounds: Int, val seconds: Int, val hostDrawsFirst: Boolean, val minDifficulty: Int = 0, val solo: Boolean = false, val hints: Boolean = false) : Msg()
+
+    /** Guesser -> drawer: "please give me a hint" (only when the host switched hints on). */
+    data object HintRequest : Msg()
+
+    /** Drawer -> guesser: the pattern with some letters shown, e.g. "c _ t". The guesser shows it only briefly. */
+    data class HintReply(val pattern: String) : Msg()
 
     /** "I agree to the rules." */
     data object RulesAgreed : Msg()
@@ -57,7 +63,9 @@ sealed class Msg {
         val o = JSONObject()
         when (this) {
             is Setup -> o.put("t", "setup").put("rounds", rounds).put("secs", seconds).put("hostFirst", hostDrawsFirst)
-                .put("minDiff", minDifficulty).put("solo", solo)
+                .put("minDiff", minDifficulty).put("solo", solo).put("hints", hints)
+            HintRequest -> o.put("t", "hintReq")
+            is HintReply -> o.put("t", "hintRep").put("p", pattern)
             RulesAgreed -> o.put("t", "agree")
             is RuleReport -> o.put("t", "report").put("rule", rule)
             is ReportResponse -> o.put("t", "reportReply").put("ok", accepted)
@@ -103,8 +111,10 @@ sealed class Msg {
         internal fun decodeJson(o: JSONObject): Msg? = when (o.getString("t")) {
             "setup" -> Setup(
                 o.getInt("rounds").coerceIn(2, 20), o.getInt("secs").coerceIn(30, 300),
-                o.getBoolean("hostFirst"), o.optInt("minDiff", 0).coerceIn(0, 3), o.optBoolean("solo", false),
+                o.getBoolean("hostFirst"), o.optInt("minDiff", 0).coerceIn(0, 3), o.optBoolean("solo", false), o.optBoolean("hints", false),
             )
+            "hintReq" -> HintRequest
+            "hintRep" -> HintReply(o.getString("p").filter { it == '_' || it == ' ' || it in 'a'..'z' }.take(MAX_TEXT))
             "agree" -> RulesAgreed
             "report" -> RuleReport(clean(o.getString("rule"), 20))
             "reportReply" -> ReportResponse(o.getBoolean("ok"))

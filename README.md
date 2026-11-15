@@ -244,6 +244,9 @@ Both players agree to these before the game starts (they're always one tap away 
 4. Guessers: no peeking at the drawer's screen.
 5. Be fair: accept right guesses, decline wrong ones, only report a genuine rule break.
 
+**Hints (optional):** the host can switch hints on or off in the lobby before starting. When on, the guesser gets
+3 hints per game. A hint shows some letters of the word (more each time) for 6 seconds, then hides again. Not in solo practice.
+
 **Reporting a rule break:** if the drawer breaks a rule, the guesser taps **⚑ Rule break** and picks
 what happened (text, label/caption, spelling it out, or hints). The drawer sees the report and
 chooses **They're right** or **I disagree**.

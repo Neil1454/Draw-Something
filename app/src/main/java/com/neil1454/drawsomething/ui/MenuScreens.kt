@@ -723,6 +723,14 @@ private fun DrawLobby(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            ToggleChip("💡 Hints (${com.neil1454.drawsomething.core.Hints.PER_GAME} per game)", set.drawHints) { onSettings(set.copy(drawHints = it)) }
+            Text(
+                if (set.drawHints) "The guesser can ask for a hint: some letters show for ${com.neil1454.drawsomething.core.Hints.SHOW_MS / 1000} seconds. Not in solo practice."
+                else "No hints: guess it the hard way.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
             Button(
                 onClick = { onStart(set.rounds, set.seconds, DifficultyChoices[set.difficulty].first) },
                 enabled = bothAgreed,

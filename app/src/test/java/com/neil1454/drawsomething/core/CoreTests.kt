@@ -241,6 +241,51 @@ class GameFlowTest {
         assertEquals(4, p.guesser.state.totalRounds)
     }
 
+    private fun startHints(on: Boolean): Pair2 {
+        val p = Pair2()
+        p.host.agreeRules(); p.guest.agreeRules(); p.pump()
+        p.host.hostStart(4, 90, Difficulty.EASY, hints = on)
+        p.pump()
+        return p
+    }
+
+    @Test fun hintsRevealLettersWithinTheLimit() {
+        assertEquals("c__", Hints.reveal("cat", 1))
+        assertEquals("c_t", Hints.reveal("cat", 2))
+        assertEquals("i__ c____", Hints.reveal("ice cream", 1))
+        assertEquals("i_e c___m", Hints.reveal("ice cream", 2))
+        val h3 = Hints.reveal("ice cream", 3)
+        assertEquals("ice cream".length, h3.length)
+        assertTrue(h3.count { it != '_' && it != ' ' } >= Hints.reveal("ice cream", 2).count { it != '_' && it != ' ' })
+    }
+
+    @Test fun hintsAreLimitedAndOffByDefault() {
+        val off = startHints(false)
+        off.drawer.chooseWord(off.drawer.state.options.first()); off.pump()
+        off.guesser.requestHint(); off.pump()
+        assertNull(off.guesser.state.hintText)
+
+        val p = startHints(true)
+        assertEquals(Hints.PER_GAME, p.guesser.state.hintsLeft)
+        p.drawer.chooseWord(p.drawer.state.options.first()); p.pump()
+        val word = p.drawer.state.word!!.text
+        p.guesser.requestHint(); p.pump()
+        val hint = p.guesser.state.hintText!!
+        assertEquals(word.length, hint.length)
+        assertEquals(Hints.PER_GAME - 1, p.guesser.state.hintsLeft)
+        hint.forEachIndexed { i, c -> if (c != '_') assertEquals(word[i], c) }
+        p.guesser.requestHint(); p.pump() // one is already showing
+        assertEquals(Hints.PER_GAME - 1, p.guesser.state.hintsLeft)
+        p.guesser.dismissHint()
+        assertNull(p.guesser.state.hintText)
+        repeat(5) { p.guesser.requestHint(); p.pump(); p.guesser.dismissHint() }
+        assertEquals(0, p.guesser.state.hintsLeft)
+    }
+
+    @Test fun hintMessagesRoundTrip() {
+        for (m in listOf(Msg.HintRequest, Msg.HintReply("c_t d_g"), Msg.Setup(4, 90, true, 0, false, true))) assertEquals(m, Msg.decode(m.encode()))
+    }
+
     @Test fun guesserNeverReceivesTheWord() {
         val p = start()
         val word = p.drawer.state.options.first()

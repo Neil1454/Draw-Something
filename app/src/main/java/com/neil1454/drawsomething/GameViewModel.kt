@@ -95,6 +95,7 @@ data class LobbySettings(
     val difficulty: Int = 0, // index into the lobby's difficulty choices
     val minesSize: Int = 1,  // index into MineSize.values()
     val seaSize: Int = 1,    // index into SeaSize.values()
+    val drawHints: Boolean = true, // Draw Something: the guesser may ask for a few short hints
     val seaAuto: Boolean = false, // fleets placed at random instead of by each player
     val dropSize: Int = 0,
     val dropPower: Boolean = false,
@@ -468,7 +469,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startDraw(rounds: Int, seconds: Int, minDifficulty: Difficulty) {
         resetOthers(GameKind.DRAW)
-        engine?.hostStart(rounds, seconds, minDifficulty, solo = _ui.value.solo)
+        engine?.hostStart(rounds, seconds, minDifficulty, solo = _ui.value.solo, hints = _ui.value.settings.drawHints)
     }
 
     fun startMines(size: MineSize) {

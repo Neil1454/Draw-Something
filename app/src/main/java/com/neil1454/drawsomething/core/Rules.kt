@@ -22,3 +22,29 @@ object Rules {
     /** Each player can report this many times per round, so reports can't be spammed. */
     const val MAX_REPORTS_PER_ROUND = 3
 }
+
+/** The "hint" helper: a few per game, shown for a few seconds. Pure so it can be tested. */
+object Hints {
+    const val PER_GAME = 3
+    const val SHOW_MS = 6000
+
+    /**
+     * The word as underscores with some letters shown. Hint 1 shows the first letter of each word, hint 2 adds the last
+     * letters, hint 3 adds roughly every third letter in between. Spaces stay spaces.
+     */
+    fun reveal(word: String, hintNumber: Int): String {
+        val n = hintNumber.coerceIn(1, PER_GAME)
+        val out = StringBuilder()
+        var start = 0
+        val parts = word.split(' ')
+        parts.forEachIndexed { pi, part ->
+            if (pi > 0) out.append(' ')
+            part.forEachIndexed { i, ch ->
+                val show = (i == 0) || (n >= 2 && i == part.length - 1) || (n >= 3 && i % 3 == 0)
+                out.append(if (show && ch in 'a'..'z') ch else '_')
+            }
+            start += part.length + 1
+        }
+        return out.toString()
+    }
+}

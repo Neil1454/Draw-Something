@@ -477,6 +477,17 @@ fun GuessScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
                 "${g.theirName} is drawing · ${g.category}",
                 style = MaterialTheme.typography.labelLarge,
             )
+            val hint = g.hintText
+            LaunchedEffect(hint) {
+                if (hint != null) { kotlinx.coroutines.delay(com.neil1454.drawsomething.core.Hints.SHOW_MS.toLong()); act { dismissHint() } }
+            }
+            if (hint != null) {
+                Text(
+                    "💡 " + hint.map { if (it == ' ') "   " else "$it " }.joinToString("").trim().uppercase(),
+                    style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = Funk.Sun,
+                )
+                Text("Hint: this disappears in a moment!", style = MaterialTheme.typography.bodySmall, color = Funk.Sun)
+            }
             Text(
                 g.pattern.map { if (it == ' ') "   " else "$it " }.joinToString("").trim(),
                 style = MaterialTheme.typography.headlineMedium,
@@ -486,6 +497,12 @@ fun GuessScreen(g: GameState, board: StrokeBoard, version: Int, act: Act) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { showRules = true }) { Text("📜 Rules") }
                 Spacer(Modifier.weight(1f))
+                if (g.hintsEnabled) {
+                    OutlinedButton(onClick = { act { requestHint() } }, enabled = g.hintsLeft > 0 && g.hintText == null) {
+                        Text("💡 Hint (${g.hintsLeft} left)")
+                    }
+                    Spacer(Modifier.width(6.dp))
+                }
                 val left = Rules.MAX_REPORTS_PER_ROUND - g.reportsUsed
                 OutlinedButton(onClick = { showReport = true }, enabled = !g.awaitingReport && left > 0) {
                     Text(if (g.awaitingReport) "Report sent…" else "⚑ Rule break ($left left)")

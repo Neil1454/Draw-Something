@@ -64,6 +64,14 @@ data class GameState(
     val partnerReady: Boolean = false,
     /** Solo practice: the host draws every round and the computer plays the guesser. */
     val solo: Boolean = false,
+    /** The host switched hints on for this game. */
+    val hintsEnabled: Boolean = false,
+    /** Hints I (as guesser) can still ask for in this game. */
+    val hintsLeft: Int = 0,
+    /** A hint I am looking at right now (letters shown); the screen clears it after a few seconds. */
+    val hintText: String? = null,
+    /** Hints already given this round (drawer side), so each one shows more letters. */
+    val hintsGivenThisRound: Int = 0,
 )
 
 /**
@@ -130,19 +138,20 @@ class GameEngine(
         state.iAgreed && state.partnerAgreed
 
     /** Host only: begin a fresh game. Can be called again for a rematch. */
-    fun hostStart(rounds: Int, seconds: Int, minDifficulty: Difficulty = Difficulty.EASY, solo: Boolean = false) {
+    fun hostStart(rounds: Int, seconds: Int, minDifficulty: Difficulty = Difficulty.EASY, solo: Boolean = false, hints: Boolean = false) {
         if (!canStart) return
         hostDrawsFirst = random.nextBoolean()
-        send(Msg.Setup(rounds, seconds, hostDrawsFirst, minDifficulty.ordinal, solo))
-        newGame(rounds, seconds, minDifficulty, solo)
+        val useHints = hints && !solo
+        send(Msg.Setup(rounds, seconds, hostDrawsFirst, minDifficulty.ordinal, solo, useHints))
+        newGame(rounds, seconds, minDifficulty, solo, useHints)
     }
 
-    private fun newGame(rounds: Int, seconds: Int, minDifficulty: Difficulty, solo: Boolean = false) {
+    private fun newGame(rounds: Int, seconds: Int, minDifficulty: Difficulty, solo: Boolean = false, hints: Boolean = false) {
         usedWords.clear()
         iReadyRound = -1
         theyReadyRound = -1
         state = state.copy(
-            solo = solo,
+            solo = solo, hintsEnabled = hints, hintsLeft = if (hints) Hints.PER_GAME else 0, hintText = null,
             totalRounds = rounds, roundSeconds = seconds, minDifficulty = minDifficulty,
             myScore = 0, theirScore = 0, history = emptyList(), outcome = null,
         )
@@ -160,7 +169,7 @@ class GameEngine(
                 round = round, iAmDrawer = iDraw,
                 options = if (iDraw) Words.pickOptions(random, usedWords, minDifficulty) else emptyList(),
                 word = null, category = "", pattern = "", remainingSec = 0,
-                skips = 0, wrongGuesses = 0, ruleBreaks = 0, reportsUsed = 0,
+                skips = 0, wrongGuesses = 0, ruleBreaks = 0, reportsUsed = 0, hintText = null, hintsGivenThisRound = 0,
                 pendingGuess = null, pendingReport = null,
                 awaitingVerdict = false, awaitingReport = false, declined = emptyList(),
                 note = null, outcome = null, partnerReady = false,
@@ -325,6 +334,19 @@ class GameEngine(
         }
     }
 
+    /** Guesser: ask for a hint (only if hints are on, some are left, and one isn't already showing). */
+    fun requestHint() {
+        val s = state
+        if (!s.hintsEnabled || s.hintsLeft <= 0 || s.phase != Phase.GUESSING || s.iAmDrawer || s.hintText != null) return
+        send(Msg.HintRequest)
+        update { copy(hintsLeft = hintsLeft - 1) }
+    }
+
+    /** Guesser: the hint has been on screen long enough. */
+    fun dismissHint() {
+        if (state.hintText != null) update { copy(hintText = null) }
+    }
+
     fun dismissNote() {
         if (state.note != null) update { copy(note = null) }
     }
@@ -412,10 +434,23 @@ class GameEngine(
             is Msg.Setup -> if (!isHost) {
                 hostDrawsFirst = msg.hostDrawsFirst
                 val min = Difficulty.values().getOrElse(msg.minDifficulty) { Difficulty.EASY }
-                newGame(msg.rounds, msg.seconds, min, msg.solo)
+                newGame(msg.rounds, msg.seconds, min, msg.solo, msg.hints)
             }
 
             Msg.RulesAgreed -> update { copy(partnerAgreed = true) }
+
+            Msg.HintRequest -> {
+                val w = state.word
+                if (state.hintsEnabled && state.phase == Phase.DRAWING && state.iAmDrawer && w != null && state.hintsGivenThisRound < Hints.PER_GAME) {
+                    val n = state.hintsGivenThisRound + 1
+                    update { copy(hintsGivenThisRound = n) }
+                    send(Msg.HintReply(Hints.reveal(w.text, n)))
+                }
+            }
+
+            is Msg.HintReply -> if (state.hintsEnabled && state.phase == Phase.GUESSING && !state.iAmDrawer) {
+                update { copy(hintText = msg.pattern) }
+            }
 
             is Msg.Choosing -> {
                 val already = state.phase == Phase.WAITING_FOR_WORD && state.round == msg.round
