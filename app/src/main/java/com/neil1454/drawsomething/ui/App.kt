@@ -159,7 +159,7 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
                 sea != null && sea.phase != SeaPhase.LOBBY ->
                     SeaRoot(
                         sea, { vm.sea(it) },
-                        onPlayAgain = { vm.startSea(sea.size) },
+                        onPlayAgain = { vm.startSea(sea.size, ui.settings.seaAuto) },
                         onBackToGames = vm::backToGames,
                         onLeave = vm::leave,
                     )

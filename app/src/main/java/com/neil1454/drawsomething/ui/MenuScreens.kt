@@ -546,7 +546,7 @@ fun GameBrowser(
     onSettings: (LobbySettings) -> Unit,
     onStartDraw: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
     onStartMines: (MineSize) -> Unit,
-    onStartSea: (SeaSize) -> Unit,
+    onStartSea: (SeaSize, Boolean) -> Unit,
     onStartSync: (GameKind, JSONObject) -> Unit,
 ) {
     val connected = game != null
@@ -595,7 +595,7 @@ fun BrowseGames(
         onSettings = onSettings,
         onStartDraw = { _, _, _ -> },
         onStartMines = {},
-        onStartSea = {},
+        onStartSea = { _, _ -> },
         onStartSync = { _, _ -> },
     )
 }
@@ -609,7 +609,7 @@ fun LobbyScreen(
     onSettings: (LobbySettings) -> Unit,
     onStartDraw: (rounds: Int, seconds: Int, minDifficulty: Difficulty) -> Unit,
     onStartMines: (MineSize) -> Unit,
-    onStartSea: (SeaSize) -> Unit,
+    onStartSea: (SeaSize, Boolean) -> Unit,
     onStartSync: (GameKind, JSONObject) -> Unit,
     onLeave: () -> Unit,
 ) {
@@ -780,7 +780,7 @@ private fun MinesLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettin
 }
 
 @Composable
-private fun SeaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (SeaSize) -> Unit) {
+private fun SeaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (SeaSize, Boolean) -> Unit) {
     val set = ui.settings
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Card(Modifier.fillMaxWidth()) {
@@ -799,7 +799,12 @@ private fun SeaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = { onStart(size) }, enabled = connected, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            ToggleChip("🎲 Random fleets (skip placing your ships)", set.seaAuto) { onSettings(set.copy(seaAuto = it)) }
+            Text(
+                if (set.seaAuto) "Both fleets are placed for you." else "Each player places their own ships: drag them onto the sea, tap to turn.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = { onStart(size, set.seaAuto) }, enabled = connected, modifier = Modifier.fillMaxWidth().height(56.dp)) {
                 Text(if (connected) "Start Battleships" else "Start (waiting for your partner…)", fontSize = 18.sp)
             }
         } else if (connected) {

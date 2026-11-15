@@ -95,6 +95,7 @@ data class LobbySettings(
     val difficulty: Int = 0, // index into the lobby's difficulty choices
     val minesSize: Int = 1,  // index into MineSize.values()
     val seaSize: Int = 1,    // index into SeaSize.values()
+    val seaAuto: Boolean = false, // fleets placed at random instead of by each player
     val dropSize: Int = 0,
     val dropPower: Boolean = false,
     val dropTheme: Int = 0,
@@ -475,9 +476,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         minesEngine?.start(size)
     }
 
-    fun startSea(size: SeaSize) {
+    fun startSea(size: SeaSize, auto: Boolean = false) {
         resetOthers(GameKind.SEA)
-        seaEngine?.start(size)
+        seaEngine?.start(size, auto)
     }
 
     /** Start one of the turn-based games (Connect 4, Pairs, Quick Draw, Pig, Othello). */

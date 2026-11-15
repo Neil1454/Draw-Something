@@ -15,10 +15,13 @@ import kotlin.random.Random
 // Each phone keeps its OWN fleet secret and answers the other's shots, so fleets never travel.
 // ====================================================================================
 
-enum class SeaSize(val label: String, val w: Int, val h: Int, val fleet: List<Int>) {
-    QUICK("Quick 8×8", 8, 8, listOf(4, 3, 3, 2)),
-    CLASSIC("Classic 10×10", 10, 10, listOf(5, 4, 3, 3, 2)),
+enum class SeaSize(val label: String, val w: Int, val h: Int, val fleet: List<Int>, val names: List<String>) {
+    QUICK("Quick 8×8", 8, 8, listOf(4, 3, 3, 2), listOf("Battleship", "Cruiser", "Submarine", "Destroyer")),
+    CLASSIC("Classic 10×10", 10, 10, listOf(5, 4, 3, 3, 2), listOf("Aircraft carrier", "Battleship", "Cruiser", "Submarine", "Destroyer")),
 }
+
+/** A ship as the screens draw it: which squares, which way, whether it is lost. Empty [cells] = not placed yet. */
+data class SeaShip(val len: Int, val name: String, val cells: List<Int>, val horizontal: Boolean, val sunk: Boolean)
 
 enum class SeaWeapon(val label: String, val emoji: String, val blurb: String) {
     SHOT("Shot", "🎯", "one square. A hit means fire again"),
@@ -27,7 +30,8 @@ enum class SeaWeapon(val label: String, val emoji: String, val blurb: String) {
 }
 
 sealed class SeaMsg {
-    data class Setup(val size: Int, val hostFirst: Boolean) : SeaMsg()
+    /** [auto] = fleets are placed at random for both players; otherwise each player places their own ships. */
+    data class Setup(val size: Int, val hostFirst: Boolean, val auto: Boolean = true) : SeaMsg()
     data object Ready : SeaMsg()
     data class Shoot(val weapon: String, val x: Int, val y: Int) : SeaMsg()
 
@@ -41,17 +45,19 @@ sealed class SeaMsg {
         val sunkCount: Int,
         val radar: Int,
         val over: Boolean,
+        /** For each ship just sunk: its length, its first square and 1 if it lies across (so the other screen can show the ship). */
+        val sunkShips: List<Int> = emptyList(),
     ) : SeaMsg()
 
     fun encode(): ByteArray = toJson().toString().toByteArray(Charsets.UTF_8)
 
     private fun toJson(): JSONObject = when (this) {
-        is Setup -> JSONObject().put("t", "s_setup").put("size", size).put("hf", hostFirst)
+        is Setup -> JSONObject().put("t", "s_setup").put("size", size).put("hf", hostFirst).put("auto", auto)
         Ready -> JSONObject().put("t", "s_ready")
         is Shoot -> JSONObject().put("t", "s_shoot").put("w", weapon).put("x", x).put("y", y)
         is Result -> JSONObject().put("t", "s_result").put("w", weapon).put("x", x).put("y", y)
             .put("cells", JSONArray(cells)).put("sunk", JSONArray(sunk)).put("sc", sunkCount)
-            .put("radar", radar).put("over", over)
+            .put("radar", radar).put("over", over).put("ss", JSONArray(sunkShips))
     }
 
     companion object {
@@ -59,7 +65,7 @@ sealed class SeaMsg {
 
         fun decode(o: JSONObject): SeaMsg? = try {
             when (o.getString("t")) {
-                "s_setup" -> Setup(o.getInt("size").coerceIn(0, SeaSize.values().size - 1), o.getBoolean("hf"))
+                "s_setup" -> Setup(o.getInt("size").coerceIn(0, SeaSize.values().size - 1), o.getBoolean("hf"), o.optBoolean("auto", true))
                 "s_ready" -> Ready
                 "s_shoot" -> Shoot(weaponName(o.getString("w")), o.getInt("x").coerceIn(0, 99), o.getInt("y").coerceIn(0, 99))
                 "s_result" -> {
@@ -70,6 +76,7 @@ sealed class SeaMsg {
                         List((minOf(cells.length(), 30) / 3) * 3) { cells.getInt(it).coerceIn(0, 99) },
                         List(minOf(sunk.length(), 200)) { sunk.getInt(it).coerceIn(0, 399) },
                         o.getInt("sc").coerceIn(0, 10), o.getInt("radar").coerceIn(0, 9), o.getBoolean("over"),
+                        o.optJSONArray("ss").let { a -> if (a == null) emptyList() else List((minOf(a.length(), 15) / 3) * 3) { a.optInt(it, 0).coerceIn(0, 399) } },
                     )
                 }
                 else -> null
@@ -114,6 +121,13 @@ data class SeaState(
     /** Counts up with every shot (either direction); animate when it changes. */
     val moves: Int = 0,
     val fx: List<SeaFx> = emptyList(),
+    /** My ships, with where they are (placed ones only have squares). */
+    val myShips: List<SeaShip> = emptyList(),
+    /** Enemy ships I have sunk, so they can be shown on their board. */
+    val enemySunk: List<SeaShip> = emptyList(),
+    val allPlaced: Boolean = false,
+    /** True when the fleets are placed at random for both players. */
+    val auto: Boolean = true,
 )
 
 class SeaEngine(
@@ -135,24 +149,27 @@ class SeaEngine(
 
     private var hostFirst = true
     private var shipOf = IntArray(0)            // per square: ship index or -1
-    private var fleet: List<List<Int>> = emptyList()
+    private var fleet: MutableList<List<Int>> = ArrayList()   // per ship: its squares (empty until placed)
     private var incoming = BooleanArray(0)      // squares already shot at on MY board
     private var sunk = BooleanArray(0)          // per ship: sunk?
 
     // ------------------------------------------------------------------ setup
 
     /** Host only: start (or restart) a game. */
-    fun start(size: SeaSize) {
+    fun start(size: SeaSize, auto: Boolean = true) {
         if (!isHost) return
         val first = random.nextBoolean()
-        send(SeaMsg.Setup(size.ordinal, first))
-        beginPlacing(size, first)
+        send(SeaMsg.Setup(size.ordinal, first, auto))
+        beginPlacing(size, first, auto)
     }
 
-    private fun beginPlacing(size: SeaSize, first: Boolean) {
+    private fun beginPlacing(size: SeaSize, first: Boolean, auto: Boolean) {
         hostFirst = first
         val n = size.w * size.h
         incoming = BooleanArray(n)
+        fleet = size.fleet.map { emptyList<Int>() }.toMutableList()
+        shipOf = IntArray(n) { -1 }
+        sunk = BooleanArray(fleet.size)
         update {
             copy(
                 phase = SeaPhase.PLACING, size = size, enemyGrid = ".".repeat(n),
@@ -160,9 +177,10 @@ class SeaEngine(
                 radarLeft = true, bombLeft = true, weapon = SeaWeapon.SHOT, awaiting = false,
                 shots = 0, hits = 0, theirShipsLeft = size.fleet.size, note = null,
                 radarX = -1, radarY = -1, radarCount = -1, iWon = null, moves = 0, fx = emptyList(),
+                enemySunk = emptyList(), auto = auto,
             )
         }
-        placeFleet()
+        if (auto) placeFleet() else rebuild()
     }
 
     private fun placeFleet() {
@@ -194,11 +212,54 @@ class SeaEngine(
             }
             placed = if (ok) ships else emptyList()
         } while (!ok)
-        fleet = placed
-        shipOf = IntArray(w * h) { -1 }
-        placed.forEachIndexed { s, cells -> cells.forEach { shipOf[it] = s } }
+        fleet = placed.toMutableList()
         sunk = BooleanArray(placed.size)
-        update { copy(myGrid = buildMyGrid(), myShipsLeft = placed.size) }
+        rebuild()
+    }
+
+    /** Work out everything the screens need from the current ship positions. */
+    private fun rebuild() {
+        val size = state.size
+        shipOf = IntArray(size.w * size.h) { -1 }
+        fleet.forEachIndexed { i, cells -> cells.forEach { shipOf[it] = i } }
+        if (sunk.size != fleet.size) sunk = BooleanArray(fleet.size)
+        update {
+            copy(
+                myGrid = buildMyGrid(), myShips = buildShips(), allPlaced = fleet.all { it.isNotEmpty() },
+                myShipsLeft = fleet.indices.count { fleet[it].isNotEmpty() && !sunk[it] },
+            )
+        }
+    }
+
+    private fun buildShips(): List<SeaShip> = fleet.mapIndexed { i, cells ->
+        SeaShip(state.size.fleet[i], state.size.names[i], cells, cells.size < 2 || cells[1] - cells[0] == 1, sunk.getOrElse(i) { false })
+    }
+
+    /** Placing: put ship [i] with its first square at (x, y), lying across or down. False if it doesn't fit. */
+    fun placeShip(i: Int, x: Int, y: Int, horizontal: Boolean): Boolean {
+        val s = state
+        if (s.phase != SeaPhase.PLACING || s.iAmReady || i !in fleet.indices) return false
+        val len = s.size.fleet[i]
+        if (x < 0 || y < 0 || (if (horizontal) x + len > s.size.w || y >= s.size.h else y + len > s.size.h || x >= s.size.w)) return false
+        val cells = List(len) { k -> if (horizontal) y * s.size.w + x + k else (y + k) * s.size.w + x }
+        if (cells.any { shipOf[it] >= 0 && shipOf[it] != i }) return false
+        fleet[i] = cells
+        rebuild()
+        return true
+    }
+
+    /** Placing: pick a ship back up. */
+    fun removeShip(i: Int) {
+        if (state.phase != SeaPhase.PLACING || state.iAmReady || i !in fleet.indices) return
+        fleet[i] = emptyList()
+        rebuild()
+    }
+
+    /** Placing: pick every ship up. */
+    fun clearFleet() {
+        if (state.phase != SeaPhase.PLACING || state.iAmReady) return
+        for (i in fleet.indices) fleet[i] = emptyList()
+        rebuild()
     }
 
     private fun buildMyGrid(): String {
@@ -223,7 +284,7 @@ class SeaEngine(
 
     /** Placing: "my fleet is ready". Battle starts when both are. */
     fun ready() {
-        if (state.phase != SeaPhase.PLACING || state.iAmReady) return
+        if (state.phase != SeaPhase.PLACING || state.iAmReady || !state.allPlaced) return
         send(SeaMsg.Ready)
         update { copy(iAmReady = true) }
         maybeBegin()
@@ -286,7 +347,7 @@ class SeaEngine(
 
     fun onMessage(msg: SeaMsg) {
         when (msg) {
-            is SeaMsg.Setup -> if (!isHost) beginPlacing(SeaSize.values()[msg.size], msg.hostFirst)
+            is SeaMsg.Setup -> if (!isHost) beginPlacing(SeaSize.values()[msg.size], msg.hostFirst, msg.auto)
             SeaMsg.Ready -> {
                 update { copy(theyAreReady = true) }
                 maybeBegin()
@@ -312,12 +373,14 @@ class SeaEngine(
             out += t % s.size.w; out += t / s.size.w; out += if (hit) 1 else 0
         }
         val sunkCells = ArrayList<Int>()
+        val sunkInfo = ArrayList<Int>()
         var sunkNow = 0
         fleet.forEachIndexed { i, cells ->
-            if (!sunk[i] && cells.all { incoming[it] }) {
+            if (cells.isNotEmpty() && !sunk[i] && cells.all { incoming[it] }) {
                 sunk[i] = true
                 sunkNow++
                 sunkCells += cells
+                sunkInfo += cells.size; sunkInfo += cells.min(); sunkInfo += if (cells.size < 2 || cells[1] - cells[0] == 1) 1 else 0
             }
         }
         var radar = 0
@@ -331,9 +394,9 @@ class SeaEngine(
                 }
             }
         }
-        val shipsLeft = sunk.count { !it }
+        val shipsLeft = fleet.indices.count { fleet[it].isNotEmpty() && !sunk[it] }
         val over = shipsLeft == 0
-        send(SeaMsg.Result(weapon.name, m.x, m.y, out, sunkCells, sunkNow, radar, over))
+        send(SeaMsg.Result(weapon.name, m.x, m.y, out, sunkCells, sunkNow, radar, over, sunkInfo))
         val shooterAgain = weapon == SeaWeapon.SHOT && anyHit && !over
         val effects = ArrayList<SeaFx>()
         var k = 0
@@ -346,7 +409,7 @@ class SeaEngine(
         update {
             copy(
                 moves = moves + 1, fx = effects,
-                myGrid = buildMyGrid(), myShipsLeft = shipsLeft,
+                myGrid = buildMyGrid(), myShips = buildShips(), myShipsLeft = shipsLeft,
                 myTurn = !shooterAgain && !over,
                 phase = if (over) SeaPhase.OVER else phase,
                 iWon = if (over) false else iWon,
@@ -388,6 +451,24 @@ class SeaEngine(
             i += 3
         }
         m.sunk.forEach { if (it in 0 until n) grid[it] = '#' }
+        val revealed = ArrayList<SeaShip>(s.enemySunk)
+        var q = 0
+        while (q + 2 < m.sunkShips.size) {
+            val len = m.sunkShips[q]
+            val start = m.sunkShips[q + 1]
+            val across = m.sunkShips[q + 2] == 1
+            val step = if (across) 1 else s.size.w
+            val last = start + (len - 1) * step
+            val fits = len in 1..5 && start in 0 until n && last in 0 until n &&
+                (if (across) start % s.size.w + len <= s.size.w else true)
+            if (fits) {
+                val used = revealed.map { it.name }
+                val name = s.size.names.filterIndexed { idx, _ -> s.size.fleet[idx] == len }.firstOrNull { it !in used }
+                    ?: s.size.names.firstOrNull { s.size.fleet[s.size.names.indexOf(it)] == len } ?: "Ship"
+                revealed += SeaShip(len, name, List(len) { start + it * step }, across, true)
+            }
+            q += 3
+        }
         val weapon = SeaWeapon.valueOf(m.weapon)
         val again = weapon == SeaWeapon.SHOT && anyHit && !m.over
         val left = (s.theirShipsLeft - m.sunkCount).coerceAtLeast(0)
@@ -408,7 +489,7 @@ class SeaEngine(
         update {
             copy(
                 moves = moves + 1, fx = effects,
-                enemyGrid = String(grid), awaiting = false,
+                enemyGrid = String(grid), awaiting = false, enemySunk = revealed,
                 shots = shots + m.cells.size / 3, hits = hits + hitCount, theirShipsLeft = left,
                 myTurn = again,
                 phase = if (m.over) SeaPhase.OVER else phase,

@@ -354,6 +354,76 @@ class SeaPair(seed: Int, size: SeaSize = SeaSize.CLASSIC) {
     val target get() = if (host.state.myTurn) client else host
 }
 
+class SeaManualTest {
+    private fun manual(seed: Int): SeaPair {
+        val p = SeaPair(seed)
+        p.host.start(SeaSize.CLASSIC, auto = false); p.pump()
+        return p
+    }
+
+    @Test fun manualFleetsStartEmptyAndNeedPlacing() {
+        val p = manual(3)
+        for (e in listOf(p.host, p.client)) {
+            assertEquals(SeaPhase.PLACING, e.state.phase)
+            assertFalse(e.state.auto)
+            assertFalse(e.state.allPlaced)
+            assertTrue(e.state.myShips.all { it.cells.isEmpty() })
+            e.ready() // refused until every ship is down
+            assertFalse(e.state.iAmReady)
+        }
+    }
+
+    @Test fun placeMoveRemoveAndOverlap() {
+        val e = manual(4).host
+        val n = e.state.size.w
+        assertTrue(e.placeShip(0, 0, 0, true))
+        assertFalse("overlap", e.placeShip(1, 1, 0, true))
+        assertFalse("off the edge", e.placeShip(1, n - 1, 0, true))
+        assertTrue(e.placeShip(1, 0, 1, false))
+        e.removeShip(0)
+        assertTrue(e.state.myShips[0].cells.isEmpty())
+        assertTrue(e.placeShip(0, 2, 5, true))
+        e.clearFleet()
+        assertTrue(e.state.myShips.all { it.cells.isEmpty() })
+    }
+
+    @Test fun fullManualGameWorks() {
+        val p = manual(5)
+        for (e in listOf(p.host, p.client)) {
+            val n = e.state.size.w
+            e.state.size.fleet.indices.forEach { i -> assertTrue(e.placeShip(i, 0, i * 2 % n, true)) }
+            assertTrue(e.state.allPlaced)
+        }
+        p.host.ready(); p.client.ready(); p.pump()
+        assertEquals(SeaPhase.BATTLE, p.host.state.phase)
+        // shoot every square until it ends, always on the current shooter's turn
+        var guard = 0
+        while (p.host.state.phase == SeaPhase.BATTLE && guard++ < 2000) {
+            val sh = p.shooter
+            val g = sh.state.enemyGrid
+            val c = g.indexOf('.')
+            if (c < 0) break
+            sh.fire(c % sh.state.size.w, c / sh.state.size.w); p.pump()
+        }
+        assertEquals(SeaPhase.OVER, p.host.state.phase)
+        assertNotNull(p.host.state.iWon)
+    }
+
+    @Test fun sunkShipsAreRevealedToTheOtherSide() {
+        val p = manual(6)
+        for (e in listOf(p.host, p.client)) e.state.size.fleet.indices.forEach { i -> e.placeShip(i, 0, i * 2, true) }
+        p.host.ready(); p.client.ready(); p.pump()
+        val sh = p.shooter
+        val len = sh.state.size.fleet.last()
+        val row = (sh.state.size.fleet.size - 1) * 2
+        for (x in 0 until len) {
+            val s2 = p.shooter
+            s2.fire(x, row); p.pump()
+        }
+        assertTrue(p.shooter.state.enemySunk.isNotEmpty() || p.target.state.enemySunk.isNotEmpty())
+    }
+}
+
 class SeaTest {
     private fun cell(e: SeaEngine, c: Int) = (c % e.state.size.w) to (c / e.state.size.w)
 

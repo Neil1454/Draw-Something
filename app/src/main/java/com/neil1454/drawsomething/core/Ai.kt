@@ -429,7 +429,9 @@ class SeaBrain(private val e: SeaEngine, skill: Skill, random: Random) : Brain(s
     override fun think(now: Long) {
         val s = e.state
         when (s.phase) {
-            SeaPhase.PLACING -> if (!s.iAmReady && ready(now, "place", 1500, 3000)) e.ready()
+            SeaPhase.PLACING -> if (!s.iAmReady) {
+                if (!s.allPlaced) e.shuffleFleet() else if (ready(now, "place", 1500, 3000)) e.ready()
+            }
             SeaPhase.BATTLE -> {
                 if (!s.myTurn || s.awaiting) return
                 if (!ready(now, s.moves, 900, 1600)) return
