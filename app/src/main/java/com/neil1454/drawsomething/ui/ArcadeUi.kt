@@ -128,7 +128,7 @@ class Fx {
             val f = ((now - p.born) / p.life.toFloat()).coerceIn(0f, 1f)
             val grow = if (f < 0.15f) 0.6f + f / 0.15f * 0.5f else 1.1f - (f - 0.15f) * 0.1f
             val a = if (f > 0.7f) (1f - f) / 0.3f else 1f
-            s.run {
+            with(s) {
                 val r = m.measure(p.text, androidx.compose.ui.text.TextStyle(fontSize = (p.size * grow).toSp(), color = p.col.copy(alpha = a), fontWeight = androidx.compose.ui.text.font.FontWeight.Black))
                 drawText(r, topLeft = Offset(p.x - r.size.width / 2f, p.y - f * 10f - r.size.height / 2f))
             }
