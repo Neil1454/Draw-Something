@@ -20,6 +20,8 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     MONOPOLY("Monopoly", "🎩", "The UK property game on the London board: buy, build, trade and bankrupt your rival."),
     INVADERS("Space Invaders", "👾", "Two ships, one sky. Fly and fire together as the invaders march down. Five waves, shields, a mystery ship."),
     CENTIPEDE("Centipede", "🐛", "Blast the centipede as it winds down through the mushrooms. Watch out for the spider and the flea."),
+    LIARSDICE("Liar's Dice", "🎭", "Bluff with hidden dice. Bid higher, or call your rival a liar."),
+    KALAH("Mancala", "🌰", "Sow seeds round the board, grab extra turns and capture your rival's pits. Ancient and addictive."),
     GUESSWHO("Guess Who?", "🕵️", "Each pick a secret face, then take turns asking yes/no questions. First to name the other's face wins."),
     SHOWDOWN("Stakes Showdown", "🎰", "Play for the stakes you each put up. Every stake is its own contest, picked on turn, and the winner claims it."),
     BLACKJACK("Blackjack", "🂡", "Beat the dealer to 21. Double down, win 3 to 2 on blackjack, and switch on the coach for tips."),

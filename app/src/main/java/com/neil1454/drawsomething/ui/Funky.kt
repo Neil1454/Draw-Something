@@ -157,6 +157,8 @@ fun GameKind.colors(): List<Color> = when (this) {
     GameKind.MONOPOLY -> listOf(Color(0xFFC62828), Color(0xFF2E7D32))
     GameKind.INVADERS -> listOf(Color(0xFF1B1464), Color(0xFF00E5A0))
     GameKind.CENTIPEDE -> listOf(Color(0xFF2E7D32), Color(0xFFE91E63))
+    GameKind.KALAH -> listOf(Color(0xFF7C4A1E), Color(0xFFE0A33A))
+    GameKind.LIARSDICE -> listOf(Color(0xFF7F1D1D), Color(0xFF1E293B))
     GameKind.GUESSWHO -> listOf(Color(0xFF1D4ED8), Color(0xFFEC4899))
     GameKind.SHOWDOWN -> listOf(Color(0xFF7C3AED), Color(0xFFF59E0B))
     GameKind.BLACKJACK -> listOf(Color(0xFF0B5D2A), Color(0xFF111827))

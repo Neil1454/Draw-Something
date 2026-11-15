@@ -102,6 +102,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.INVADERS -> h.invaders.start(JSONObject().put("waves", 3).put("lives", 3))
             GameKind.CENTIPEDE -> h.centipede.start(JSONObject().put("waves", 3).put("lives", 3))
             GameKind.SHOWDOWN -> Unit
+            GameKind.KALAH -> h.kalah.start(JSONObject().put("seeds", 0))
+            GameKind.LIARSDICE -> h.liardice.start(JSONObject().put("dice", 0).put("wild", false))
             GameKind.GUESSWHO -> h.guesswho.start(JSONObject().put("size", 0).put("auto", true))
             GameKind.BLACKJACK -> h.blackjack.start(JSONObject().put("rounds", 0).put("tips", 1))
             GameKind.ARKANOID -> h.arkanoid.start(JSONObject().put("waves", 2).put("lives", 3))
@@ -345,6 +347,31 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.SHOWDOWN -> finish(outro(kind))
+            GameKind.KALAH -> {
+                val s = duel.host.kalah.state
+                if (s.moves != last) {
+                    last = s.moves
+                    if (s.moves > 0) {
+                        val who = if (s.lastByMe) "You sow" else "Player 2 sows"
+                        val extra = when {
+                            s.lastExtra -> " The last seed landed in the store, so that's another turn!"
+                            s.capturedCount > 0 -> " The last seed landed in an empty pit, so ${if (s.lastByMe) "you capture" else "they capture"} ${s.capturedCount} seeds from the pit opposite!"
+                            else -> ""
+                        }
+                        say("$who ${s.lastPath.size} seeds.$extra (Stores: you ${s.myStore} · Player 2 ${s.theirStore})" + tip(KALAH_TIPS, s.moves / 5))
+                    }
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.LIARSDICE -> {
+                val s = duel.host.liardice.state
+                val key = s.history.lastOrNull().hashCode()
+                if (key != last) {
+                    last = key
+                    s.history.lastOrNull()?.let { say(it + tip(LIAR_TIPS, s.round)) }
+                }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
             GameKind.GUESSWHO -> {
                 val s = duel.host.guesswho.state
                 if (s.history.size != last) {
@@ -585,6 +612,18 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "The fewer invaders are left, the faster they come. Take out the lowest ones first, they are the ones that bomb you.",
             "If one of you is knocked out, you come back when the wave is cleared. If the invaders reach the bottom, it is over for both of you.",
         )
+        private val KALAH_TIPS = listOf(
+            "Ending in your own store gives a free turn, so count the seeds before you pick a pit.",
+            "A last seed in an empty pit on your side captures everything in the pit opposite.",
+            "Keep your pits near the store loaded for later: they give you extra turns.",
+        )
+
+        private val LIAR_TIPS = listOf(
+            "You can see your own dice, so count how many of each face you hold.",
+            "Each hidden die is a one in six chance of being any particular face.",
+            "A bid that needs more dice than are likely is probably a bluff.",
+        )
+
         private val GW_TIPS = listOf(
             "Good questions split the faces roughly in half, whatever the answer.",
             "Don't guess until you are nearly sure: a wrong guess loses straight away.",
@@ -668,6 +707,8 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.INVADERS -> "👾 Space Invaders: both players fly at the bottom of the same screen and shoot the invaders as they march down. You are Player 1 (the left ship)."
             GameKind.CENTIPEDE -> "🐛 Centipede: shoot the centipede as it winds down through the mushrooms. Every hit splits it. You are Player 1."
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
+            GameKind.KALAH -> "🌰 Mancala: sow seeds round the board, grab extra turns and capture your rival's seeds. You are Player 1 (the bottom row)."
+            GameKind.LIARSDICE -> "🎭 Liar's Dice: each player shakes hidden dice. Bid how many of a face are on the whole table, or call your rival a liar. You are Player 1."
             GameKind.GUESSWHO -> "🕵️ Guess Who?: each player secretly picks a face. Take turns asking yes/no questions and name the other's face first. You are Player 1."
             GameKind.BLACKJACK -> "🂡 Blackjack: you both play against the dealer. Get closer to 21 than the dealer without going over. You are Player 1."
             GameKind.ARKANOID -> "🧱 Arkanoid: both paddles guard the bottom. Bounce the ball up to smash the bricks. You are Player 1."

@@ -28,6 +28,8 @@ and you can switch games without reconnecting.
 | 🧱 **Arkanoid** | Two paddles, one ball, a wall of bricks. Whoever touched the ball last scores. Catch power-ups: wide paddle, lasers, multi-ball, slow motion, fireball, extra life. Lives are shared. |
 | 🂡 **Blackjack** | Two players against the same dealer, each with their own chips and cards. Hit, stand, double down; blackjack pays 3 to 2. Optional coach tips with a tip allowance. |
 | 🕵️ **Guess Who?** | Each pick a secret face from a board of drawn characters. Take turns asking yes/no questions; flip down the faces that can't be it; name the other's face first. |
+| 🌰 **Mancala** | The ancient seed-sowing game (Kalah rules): sow round the board, win extra turns and capture your rival's seeds. Watch the seeds drop one by one. |
+| 🎭 **Liar's Dice** | Bluff with hidden dice. Bid on all the dice on the table, or call your rival a liar. Each phone rolls its own dice, so they stay secret. |
 
 ### The new board games
 
@@ -74,6 +76,20 @@ win (for example "Connect four discs in a row before your rival does"). The cont
 Draw, Pig, Othello, Higher or Lower, Blackjack, Minesweeper, Battleships, Space Invaders, Centipede or Arkanoid. Win it and you claim the
 stake. A tie **rolls the stake over** into the next round and the winner takes both. At the end, whoever claimed the most wins (money
 amounts break a tie). You each need at least one stake, and it needs two real players (no computer opponent).
+
+### Mancala
+
+Six pits and a store each, four seeds (or 3 or 6) in every pit. Tap one of your pits to pick up its seeds and sow them counter-clockwise, one per pit, through
+your store but past your rival's. **Last seed in your store: go again.** **Last seed in an empty pit of yours with seeds opposite: capture them.** When a
+side runs out, the other player keeps what is left on their side and the bigger store wins. The seeds drop one at a time with a sound each, and the computer
+player searches ahead (a little on Easy, deep on Hard).
+
+### Liar's Dice
+
+Three or five dice each (the host chooses), optionally with ones wild. Each phone rolls its own dice and they never leave it until somebody calls liar.
+Take turns bidding on all the dice on the table ("four 5s"), each bid higher than the last, or call **LIAR!** Both hands are revealed with the matching
+dice lit up: if there were at least as many as the bid, the caller loses a die, otherwise the bidder does. The loser opens the next round, and when you lose
+your last die you're out. The computer player works out the odds of each bid, and bluffs now and then.
 
 ### Guess Who?
 

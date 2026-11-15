@@ -28,6 +28,8 @@ object ShowdownRules {
         Contest(GameKind.FLIP, "Own more discs than your rival when the board is full.", "about 5 min"),
         Contest(GameKind.HILO, "Climb higher up the prize ladder than your rival.", "about 3 min"),
         Contest(GameKind.BLACKJACK, "Finish five rounds with more chips than your rival.", "about 5 min"),
+        Contest(GameKind.KALAH, "End with more seeds in your store than your rival.", "about 4 min"),
+        Contest(GameKind.LIARSDICE, "Bluff your rival out of all their dice before they do it to you.", "about 4 min"),
         Contest(GameKind.GUESSWHO, "Work out your rival's secret face before they work out yours.", "about 5 min"),
         Contest(GameKind.MINES, "Score more by clearing squares and dodging the bombs.", "about 4 min"),
         Contest(GameKind.SEA, "Sink the whole enemy fleet before they sink yours.", "about 5 min"),
@@ -48,6 +50,8 @@ object ShowdownRules {
         GameKind.HILO -> JSONObject().put("rows", 0).put("odds", true)
         GameKind.BLACKJACK -> JSONObject().put("rounds", 0).put("tips", 0)
         GameKind.GUESSWHO -> JSONObject().put("size", 0).put("auto", true)
+        GameKind.KALAH -> JSONObject().put("seeds", 0)
+        GameKind.LIARSDICE -> JSONObject().put("dice", 0).put("wild", false)
         GameKind.INVADERS, GameKind.CENTIPEDE -> JSONObject().put("waves", 3).put("lives", 3)
         GameKind.ARKANOID -> JSONObject().put("waves", 2).put("lives", 3)
         else -> JSONObject()

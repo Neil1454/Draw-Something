@@ -32,6 +32,8 @@ object Outcomes {
         is LudoState -> sync(state.phase, GameKind.LUDO, state.myHome, state.theirHome, state.result)
         is MonopolyState -> sync(state.phase, GameKind.MONOPOLY, state.myWorth, state.theirWorth, state.result)
         is InvadersState -> sync(state.phase, GameKind.INVADERS, state.myScore, state.theirScore, state.result)
+        is KalahState -> sync(state.phase, GameKind.KALAH, state.myStore, state.theirStore, state.result)
+        is LiarState -> sync(state.phase, GameKind.LIARSDICE, state.myCount, state.theirCount, state.result)
         is GuessWhoState -> sync(state.phase, GameKind.GUESSWHO, state.myScore, state.theirScore, state.result)
         is BlackjackState -> sync(state.phase, GameKind.BLACKJACK, state.myChips, state.theirChips, state.result)
         is ArkanoidState -> sync(state.phase, GameKind.ARKANOID, state.myScore, state.theirScore, state.result)

@@ -59,6 +59,8 @@ private fun DrawScope.drawGameIcon(kind: GameKind) {
         GameKind.BLACKJACK -> blackjack()
         GameKind.SHOWDOWN -> showdown()
         GameKind.GUESSWHO -> guessWho()
+        GameKind.KALAH -> kalahIcon()
+        GameKind.LIARSDICE -> liarIcon()
     }
 }
 
@@ -375,4 +377,28 @@ private fun DrawScope.guessWho() {
     drawCircle(Color(0xFFFFD23F), 13f, Offset(76f, 20f))
     drawArc(Color(0xFF7C2D12), 200f, 240f, false, Offset(71f, 14f), Size(10f, 9f), style = Stroke(2.6f))
     drawCircle(Color(0xFF7C2D12), 1.6f, Offset(76f, 27f))
+}
+
+private fun DrawScope.kalahIcon() {
+    drawRoundRect(Color(0xFF8B5A2B), Offset(6f, 26f), Size(88f, 48f), CornerRadius(14f))
+    drawRoundRect(Color(0xFF5C3A1A), Offset(6f, 26f), Size(88f, 48f), CornerRadius(14f), style = Stroke(3f))
+    for (r in 0..1) for (c in 0..3) {
+        val cx = 24f + c * 17f; val cy = 38f + r * 24f
+        drawCircle(Color(0xFF2A1708), 7f, Offset(cx, cy))
+        drawCircle(listOf(Color(0xFFEF4444), Color(0xFF3B82F6), Color(0xFFFACC15), Color(0xFF22C55E))[(c + r) % 4], 2.6f, Offset(cx - 1.5f, cy))
+        drawCircle(listOf(Color(0xFFA855F7), Color(0xFFF97316))[(c + r) % 2], 2.6f, Offset(cx + 1.8f, cy + 1.5f))
+    }
+    drawRoundRect(Color(0xFF2A1708), Offset(10f, 33f), Size(8f, 34f), CornerRadius(4f))
+    drawRoundRect(Color(0xFF2A1708), Offset(82f, 33f), Size(8f, 34f), CornerRadius(4f))
+}
+
+private fun DrawScope.liarIcon() {
+    // a cup lifting off a die
+    drawRoundRect(Color.White, Offset(28f, 56f), Size(34f, 34f), CornerRadius(8f))
+    drawRoundRect(Color(0xFF94A3B8), Offset(28f, 56f), Size(34f, 34f), CornerRadius(8f), style = Stroke(2f))
+    for ((px, py) in listOf(38f to 66f, 52f to 66f, 38f to 80f, 52f to 80f, 45f to 73f)) drawCircle(Color(0xFF1E293B), 3f, Offset(px, py))
+    val cup = androidx.compose.ui.graphics.Path().apply { moveTo(48f, 8f); lineTo(80f, 8f); lineTo(76f, 44f); lineTo(52f, 44f); close() }
+    drawPath(cup, Color(0xFFDC2626))
+    drawPath(cup, Color(0xFF7F1D1D), style = Stroke(2.4f))
+    drawRoundRect(Color(0xFFFCA5A5), Offset(48f, 8f), Size(32f, 5f), CornerRadius(2f))
 }

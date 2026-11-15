@@ -308,6 +308,8 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.BLACKJACK -> BlackjackHelp()
                     GameKind.SHOWDOWN -> ShowdownHelp()
                     GameKind.GUESSWHO -> GuessWhoHelp()
+                    GameKind.KALAH -> KalahHelp()
+                    GameKind.LIARSDICE -> LiarDiceHelp()
                 }
             }
         },
@@ -584,6 +586,8 @@ fun GameBrowser(
             GameKind.BLACKJACK -> BlackjackLobby(ui, connected, onSettings, onStartSync)
             GameKind.SHOWDOWN -> ShowdownLobby(ui, connected, onStartSync)
             GameKind.GUESSWHO -> GuessWhoLobby(ui, connected, onSettings, onStartSync)
+            GameKind.KALAH -> KalahLobby(ui, connected, onSettings, onStartSync)
+            GameKind.LIARSDICE -> LiarDiceLobby(ui, connected, onSettings, onStartSync)
             GameKind.ARKANOID -> ArcadeLobby(ui, connected, GameKind.ARKANOID, { ArkanoidHelp() }, onSettings, onStartSync)
         }
     }
@@ -959,6 +963,23 @@ private fun MonopolyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySet
         ChipRow("Game length", MonopolyLength.values().map { it.label }, set.monopolyLen) { onSettings(set.copy(monopolyLen = it)) }
         ToggleChip("🏁 House rule: go round the board once before buying", set.monopolyLap) { onSettings(set.copy(monopolyLap = it)) }
     }) { onStart(GameKind.MONOPOLY, JSONObject().put("len", set.monopolyLen).put("lap", set.monopolyLap)) }
+}
+
+@Composable
+private fun KalahLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.KALAH, { KalahHelp() }, {
+        ChipRow("Seeds in each pit", listOf("3 (quick)", "4 (classic)", "6 (long)"), set.kalahSeeds) { onSettings(set.copy(kalahSeeds = it)) }
+    }) { onStart(GameKind.KALAH, JSONObject().put("seeds", set.kalahSeeds)) }
+}
+
+@Composable
+private fun LiarDiceLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.LIARSDICE, { LiarDiceHelp() }, {
+        ChipRow("Dice each", com.neil1454.drawsomething.core.LiarMath.DICE_CHOICES.map { it.toString() }, set.liarDice) { onSettings(set.copy(liarDice = it)) }
+        ToggleChip("1️⃣ Ones are wild (they count as any face)", set.liarWild) { onSettings(set.copy(liarWild = it)) }
+    }) { onStart(GameKind.LIARSDICE, JSONObject().put("dice", set.liarDice).put("wild", set.liarWild)) }
 }
 
 @Composable
