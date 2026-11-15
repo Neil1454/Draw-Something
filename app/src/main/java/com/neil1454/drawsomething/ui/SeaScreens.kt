@@ -490,6 +490,7 @@ fun SeaPlacingScreen(s: SeaState, act: ActSea, onLeave: () -> Unit) {
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
+        val boardSide = maxWidth - 20.dp
         val board: @Composable (Modifier) -> Unit = { m ->
             SeaBoardView(
                 s, mine = true, clock = clock, grid = "", ships = s.myShips, hidden = emptyList(), sinkStart = emptyMap(), placedAt = placedAt,
@@ -555,7 +556,7 @@ fun SeaPlacingScreen(s: SeaState, act: ActSea, onLeave: () -> Unit) {
                     "Tap a ship below, then tap or drag it onto the sea. Tap a placed ship to pick it up again. Only you can see this.",
                     textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall,
                 )
-                board(Modifier.fillMaxWidth().height(maxWidth - 20.dp))
+                board(Modifier.fillMaxWidth().height(boardSide))
                 controls()
             }
         } else {
