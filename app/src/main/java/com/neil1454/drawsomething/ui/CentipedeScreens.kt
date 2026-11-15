@@ -48,14 +48,30 @@ private fun DrawScope.drawMushroom(col: Int, row: Int, hp: Int) {
     if (hp <= 2) drawLine(Color.Black.copy(alpha = 0.5f), Offset(cx - 0.5f, cy - 1.6f), Offset(cx + 0.4f, cy + 0.2f), 0.3f)
 }
 
-private fun DrawScope.drawSegment(x: Float, y: Float, head: Boolean, dir: Int, now: Long, id: Int) {
+private fun DrawScope.drawPick(k: com.neil1454.drawsomething.core.PickView, now: Long, age: Float) {
+    val y = k.y + 24f * minOf(age, 0.1f)
+    val col = when (k.kind) { 'R' -> Color(0xFFFDE047); 'T' -> Color(0xFF86EFAC); 'H' -> Color(0xFFF472B6); else -> Color(0xFFF97316) }
+    val pulse = 0.85f + 0.2f * sin(now / 110f + k.id)
+    drawCircle(Brush.radialGradient(listOf(col.copy(alpha = 0.55f), Color.Transparent), Offset(k.x, y), 8f), 8f, Offset(k.x, y))
+    drawCircle(col, 3.2f * pulse, Offset(k.x, y))
+    drawCircle(Color.White, 3.2f * pulse, Offset(k.x, y), style = Stroke(0.5f))
+    when (k.kind) {
+        'R' -> drawLine(Color(0xFF713F12), Offset(k.x - 0.6f, y - 1.8f), Offset(k.x + 0.6f, y + 0.2f), 0.7f)
+        'T' -> for (d in listOf(-1.2f, 0f, 1.2f)) drawLine(Color(0xFF14532D), Offset(k.x + d, y + 1.4f), Offset(k.x + d * 1.6f, y - 1.6f), 0.5f)
+        'H' -> drawCircle(Color(0xFF831843), 1.1f, Offset(k.x, y))
+        else -> drawCircle(Color(0xFF431407), 1.4f, Offset(k.x, y + 0.3f))
+    }
+}
+
+private fun DrawScope.drawSegment(x: Float, y: Float, head: Boolean, dir: Int, now: Long, id: Int, frenzy: Boolean = false) {
     val r = if (head) 2.3f else 1.95f
     val step = sin(now / 70f + id * 0.9f)
     // legs
     drawLine(Color(0xFF86EFAC), Offset(x - 0.8f, y - r), Offset(x - 0.8f + step * 0.9f, y - r - 1.2f), 0.45f)
     drawLine(Color(0xFF86EFAC), Offset(x + 0.8f, y + r), Offset(x + 0.8f - step * 0.9f, y + r + 1.2f), 0.45f)
     drawCircle(Brush.radialGradient(listOf(Color(0xFF4ADE80).copy(alpha = 0.35f), Color.Transparent), Offset(x, y), r * 2f), r * 2f, Offset(x, y))
-    drawCircle(Brush.radialGradient(listOf(if (head) Color(0xFFBEF264) else Color(0xFF86EFAC), Color(0xFF15803D)), Offset(x - r * 0.3f, y - r * 0.3f), r * 1.4f), r, Offset(x, y))
+    val hot = frenzy && (now / 120L + id) % 2L == 0L
+    drawCircle(Brush.radialGradient(listOf(if (hot) Color(0xFFFCA5A5) else if (head) Color(0xFFBEF264) else Color(0xFF86EFAC), if (hot) Color(0xFF991B1B) else Color(0xFF15803D)), Offset(x - r * 0.3f, y - r * 0.3f), r * 1.4f), r, Offset(x, y))
     drawCircle(Color(0xFF14532D), r, Offset(x, y), style = Stroke(0.35f))
     if (head) {
         drawCircle(Color(0xFFDC2626), 0.55f, Offset(x + dir * 0.9f, y - 0.9f))
@@ -116,6 +132,19 @@ fun CentipedeScreen(
         onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
         onBurst = { kind, x, y, fx, now, mine ->
             if (!arcadeBurst(kind, x, y, fx, now, mine)) when (kind) {
+                "hd" -> { fx.explode(x, y, now, Color(0xFFBEF264), 22, 1.5f); fx.shake(now, 1.1f, 260); fx.text(x, y - 3f, now, "HEAD!", Color(0xFFBEF264)); Sfx.play(Sound.COIN) }
+                "cb2", "cb3", "cb4", "cb5" -> {
+                    val n = kind.last() - '0'
+                    val col = when (n) { 2 -> Color(0xFFFDE047); 3 -> Color(0xFFFB923C); 4 -> Color(0xFFF43F5E); else -> Color(0xFFE879F9) }
+                    fx.text(x, y, now, "x$n COMBO!", col, 4.6f + n * 0.5f, 1300L); fx.glow(x, y, now, col); Sfx.play(Sound.CHIME)
+                }
+                "tm" -> { fx.text(x, y, now, "TEAM COMBO +25", Color(0xFF4ADE80), 4.4f, 1400L); fx.glow(x, y, now, Color(0xFF4ADE80)); Sfx.play(Sound.WIN) }
+                "fz" -> { fx.text(Arcade.W / 2f, 60f, now, "FRENZY!", Color(0xFFEF4444), 10f, 1600L); fx.shake(now, 1.6f, 500); Sfx.play(Sound.BUZZ) }
+                "bm" -> { fx.explode(x, y, now, Color(0xFFF97316), 30, 1.8f); fx.shake(now, 2f, 450); Sfx.play(Sound.EXPLODE) }
+                "pkR" -> { fx.text(x, y, now, "RAPID FIRE!", Color(0xFFFDE047)); fx.glow(x, y, now, Color(0xFFFDE047)); Sfx.play(Sound.CHIME) }
+                "pkT" -> { fx.text(x, y, now, "TRIPLE SHOT!", Color(0xFF86EFAC)); fx.glow(x, y, now, Color(0xFF86EFAC)); Sfx.play(Sound.CHIME) }
+                "pkH" -> { fx.text(x, y, now, "EXTRA LIFE!", Color(0xFFF472B6)); fx.glow(x, y, now, Color(0xFFF472B6)); Sfx.play(Sound.WIN) }
+                "pkB" -> { fx.text(x, y, now, "BLAST!", Color(0xFFF97316)); fx.glow(x, y, now, Color(0xFFF97316)) }
                 "cs" -> { fx.explode(x, y, now, Color(0xFF86EFAC), 12, 0.9f); Sfx.play(Sound.POP) }
                 "mu" -> { fx.explode(x, y, now, Color(0xFFEF4444), 6, 0.6f); Sfx.play(Sound.TICK) }
                 "sp" -> { fx.explode(x, y, now, Color(0xFFC084FC), 22, 1.3f); Sfx.play(Sound.WIN) }
@@ -129,6 +158,10 @@ fun CentipedeScreen(
                 val gy = ((i * 6007) % 1400) / 10f
                 drawCircle(Color(0x2234D399), 0.25f + (i % 3) * 0.1f, Offset(gx, gy))
             }
+            // the zone where you fly: it pulses red when the centipede gets close
+            val danger = s.segs.any { it.row >= CentipedeRules.ZONE_ROW - 2 }
+            if (danger) drawRect(Color(0xFFEF4444).copy(alpha = 0.10f + 0.10f * sin(f.nowMs / 120f)), Offset(0f, CentipedeRules.ZONE_ROW * CentipedeRules.CELL - 6f), Size(Arcade.W, 10f))
+            if (s.frenzy) drawRect(Color(0xFFEF4444).copy(alpha = 0.05f + 0.04f * sin(f.nowMs / 90f)), Offset.Zero, Size(Arcade.W, Arcade.H))
             // the zone where you fly
             drawRect(Color(0x2238BDF8), Offset(0f, CentipedeRules.ZONE_ROW * CentipedeRules.CELL), Size(Arcade.W, Arcade.H - CentipedeRules.ZONE_ROW * CentipedeRules.CELL))
             drawLine(Color(0x5538BDF8), Offset(0f, CentipedeRules.ZONE_ROW * CentipedeRules.CELL), Offset(Arcade.W, CentipedeRules.ZONE_ROW * CentipedeRules.CELL), 0.3f)
@@ -148,8 +181,9 @@ fun CentipedeScreen(
             for (sg in s.segs.reversed()) {
                 val x = smooth.follow("sx${sg.id}", sg.col * CentipedeRules.CELL + 2f, f.dt, rate)
                 val y = smooth.follow("sy${sg.id}", sg.row * CentipedeRules.CELL + 2f, f.dt, rate)
-                drawSegment(x, y, sg.head, sg.dir, f.nowMs, sg.id)
+                drawSegment(x, y, sg.head, sg.dir, f.nowMs, sg.id, s.frenzy)
             }
+            for (k in s.picks) drawPick(k, f.nowMs, f.ageSec)
             s.spider?.let { drawSpider(smooth.follow("spx", it.first, f.dt, 40f), smooth.follow("spy", it.second, f.dt, 40f), f.nowMs) }
             s.flea?.let { drawFlea(it.first, smooth.follow("fly", it.second, f.dt, 40f), it.third, f.nowMs) }
         },

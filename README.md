@@ -50,6 +50,13 @@ price, and trade properties and cash (whoever receives a mortgaged property pays
 Chest cards follow the UK edition (the wording is paraphrased). Choose a short game and the richest player wins after 15 or 30 turns each.
 The computer plays all three, including bidding at auctions and judging trade offers.
 
+### Centipede extras
+
+Hit things in quick succession and your **combo** climbs (x2 at 4 hits, up to x5), multiplying every point. If you and your partner
+land hits within a moment of each other you get a **TEAM COMBO** bonus. Killed heads (and sometimes other segments) drop pick-ups:
+rapid fire, triple shot, an extra life, or a **blast** that blows up the six segments nearest you. When only three segments are left
+the centipede goes into a red **FRENZY** and speeds up. The play area flashes red when it gets close, and floating words pop up for every moment.
+
 ### Arkanoid
 
 Slide your finger left and right to move your paddle. Bricks come in colours (one hit), grey (two or three hits), gold (unbreakable)

@@ -30,6 +30,7 @@ object CentipedeRules {
 }
 
 class SegView(val id: Int, val col: Int, val row: Int, val head: Boolean, val dir: Int)
+class PickView(val id: Int, val x: Float, val y: Float, val kind: Char)
 
 data class CentipedeState(
     val c: ArcadeCommon = ArcadeCommon(),
@@ -39,6 +40,8 @@ data class CentipedeState(
     val spider: Pair<Float, Float>? = null,
     val flea: Triple<Float, Float, Int>? = null,
     val stepMs: Int = 120,
+    val picks: List<PickView> = emptyList(),
+    val frenzy: Boolean = false,
 ) {
     val phase get() = c.phase
     val myScore get() = c.mine.score
@@ -95,6 +98,86 @@ class CentipedeEngine(
     private var over = false
     private var why = ""
 
+    // ---- the fun extras: combos, team combos, pick-ups and the frenzy
+    private class Pick(val id: Int, var x: Float, var y: Float, val kind: Char)
+    private val picks = ArrayList<Pick>()
+    private var pickId = 0
+    private val combo = IntArray(3)
+    private val comboAt = LongArray(3)
+    private val hitAt = LongArray(3)
+    private var teamNext = 0L
+    private var frenzy = false
+    private var curStep = 124
+
+    private fun multOf(c: Int) = 1 + min(4, c / 4)
+
+    /** Points for a hit, multiplied by the shooter's combo (hits in quick succession), plus a bonus when both players hit together. */
+    private fun award(owner: Ship, base: Int): Int {
+        val p = ships.indexOf(owner).coerceIn(1, 2)
+        if (t - comboAt[p] > 1600L) combo[p] = 0
+        val before = multOf(combo[p])
+        combo[p]++; comboAt[p] = t
+        val m = multOf(combo[p])
+        if (m > before) burst(owner.x, owner.y - 8f, "cb$m")
+        val pts = base * m
+        owner.score += pts
+        val q = 3 - p
+        if (t - hitAt[q] < 700L && t >= teamNext && ships[q].alive && owner.alive) {
+            teamNext = t + 2500L
+            owner.score += 25; ships[q].score += 25
+            burst((owner.x + ships[q].x) / 2f, owner.y - 12f, "tm")
+        }
+        hitAt[p] = t
+        return pts
+    }
+
+    private fun spawnPick(x: Float, y: Float) {
+        val kinds = "RRTTHB"
+        picks.add(Pick(++pickId, x, y, kinds[random.nextInt(kinds.length)]))
+        while (picks.size > 8) picks.removeAt(0)
+    }
+
+    private fun movePicks(dt: Float) {
+        val it = picks.iterator()
+        while (it.hasNext()) {
+            val k = it.next()
+            k.y += 24f * dt
+            var taken = false
+            for (p in 1..2) {
+                val s = ships[p]
+                if (s.alive && abs(k.x - s.x) < 6.5f && abs(k.y - s.y) < 6.5f) { collect(k.kind, s); taken = true; break }
+            }
+            if (taken || k.y > Arcade.H + 4f) it.remove()
+        }
+    }
+
+    private fun collect(kind: Char, s: Ship) {
+        burst(s.x, s.y - 6f, "pk$kind")
+        when (kind) {
+            'R' -> s.rapidUntil = t + Arcade.POWER_MS
+            'T' -> s.tripleUntil = t + Arcade.POWER_MS
+            'H' -> if (s.lives < Arcade.MAX_LIVES) s.lives++ else s.score += 100
+            'B' -> blast(s)
+        }
+    }
+
+    /** Blows up the six segments nearest the ship. */
+    private fun blast(s: Ship) {
+        burst(s.x, s.y - 10f, "bm")
+        repeat(6) {
+            var bestChain: Chain? = null
+            var bestK = 0
+            var bd = 1e9f
+            for (ch in chains) for ((k, sg) in ch.segs.withIndex()) {
+                if (sg.col < 0) continue
+                val d = abs(sg.col * R.CELL + 2f - s.x) + abs(sg.row * R.CELL + 2f - s.y)
+                if (d < bd) { bd = d; bestChain = ch; bestK = k }
+            }
+            val ch = bestChain ?: return
+            killSegment(ch, bestK, s)
+        }
+    }
+
     fun input(x: Float, y: Float, fire: Boolean) {
         act(JSONObject().put("a", "in").put("x", Arcade.r1(x)).put("y", Arcade.r1(y)).put("f", if (fire) 1 else 0))
     }
@@ -105,6 +188,7 @@ class CentipedeEngine(
         ships[1].reset(30f, 130f); ships[2].reset(70f, 130f)
         ships[1].lives = lives; ships[2].lives = lives
         level = 1; t = 0L; elapsed = 0L; over = false; why = ""; bursts.clear(); burstId = 0; segId = 0
+        picks.clear(); pickId = 0; combo.fill(0); comboAt.fill(0L); hitAt.fill(-10_000L); teamNext = 0L; frenzy = false; curStep = R.stepMs(1)
         mush.fill(0)
         repeat(34) {
             val c = random.nextInt(R.COLS)
@@ -129,6 +213,7 @@ class CentipedeEngine(
         fleaNext = t + random.nextLong(10_000, 18_000)
         stage = "READY"; stageUntil = t + Arcade.READY_MS
         stepAcc = 0L
+        picks.clear(); frenzy = false; curStep = R.stepMs(level)
     }
 
     override fun hostHandle(fromHost: Boolean, a: JSONObject) {
@@ -203,7 +288,12 @@ class CentipedeEngine(
         moveBullets(dt)
         // the centipede walks one square at a time
         stepAcc += dMs
-        val every = R.stepMs(level)
+        val total = chains.sumOf { it.segs.size }
+        val nowFrenzy = total in 1..3 && spawnTimes.isEmpty()
+        if (nowFrenzy && !frenzy) burst(Arcade.W / 2f, 60f, "fz")
+        frenzy = nowFrenzy
+        val every = if (frenzy) (R.stepMs(level) * 0.6f).toInt() else R.stepMs(level)
+        curStep = every
         while (stepAcc >= every) { stepAcc -= every; stepChains() }
         // single heads arriving
         val due = spawnTimes.filter { t >= it }
@@ -212,6 +302,7 @@ class CentipedeEngine(
             for (x in due) chains.add(Chain(arrayListOf(Seg(++segId, R.COLS - 1, 0)), -1, 1))
         }
         pests(dt)
+        movePicks(dt)
         collisions()
         if (chains.isEmpty() && spawnTimes.isEmpty()) {
             for (p in 1..2) ships[p].score += 100 * level
@@ -297,7 +388,7 @@ class CentipedeEngine(
         // the spider
         if (spiderX > -50f && abs(b.x - spiderX) < 4.6f && abs(b.y - spiderY) < 3.4f) {
             val near = ships.drop(1).filter { it.alive }.minOfOrNull { abs(it.x - spiderX) + abs(it.y - spiderY) } ?: 60f
-            owner.score += if (near < 22f) 900 else if (near < 44f) 600 else 300
+            award(owner, if (near < 22f) 900 else if (near < 44f) 600 else 300)
             burst(spiderX, spiderY, "sp")
             spiderX = -100f
             spiderNext = t + random.nextLong(8_000, 13_000)
@@ -313,7 +404,7 @@ class CentipedeEngine(
         if (fleaX > -50f && abs(b.x - fleaX) < 3.6f && abs(b.y - fleaY) < 3.6f) {
             fleaHp--
             if (fleaHp <= 0) {
-                owner.score += 200
+                award(owner, 200)
                 burst(fleaX, fleaY, "fl")
                 fleaX = -100f
                 fleaNext = t + random.nextLong(12_000, 20_000)
@@ -325,8 +416,9 @@ class CentipedeEngine(
 
     private fun killSegment(ch: Chain, k: Int, owner: Ship) {
         val sg = ch.segs[k]
-        owner.score += if (k == 0) 100 else 10
-        burst(sg.col * R.CELL + 2f, sg.row * R.CELL + 2f, "cs")
+        award(owner, if (k == 0) 100 else 10)
+        burst(sg.col * R.CELL + 2f, sg.row * R.CELL + 2f, if (k == 0) "hd" else "cs")
+        if (sg.col >= 0 && random.nextInt(100) < (if (k == 0) 30 else 5)) spawnPick(sg.col * R.CELL + 2f, sg.row * R.CELL + 2f)
         if (sg.row < R.ROWS) { mush[R.idx(sg.col, sg.row)] = 4; mushVersion++ }
         val front = ArrayList(ch.segs.subList(0, k))
         val back = ArrayList(ch.segs.subList(k + 1, ch.segs.size))
@@ -380,7 +472,7 @@ class CentipedeEngine(
             if (spiderX > -50f && abs(spiderX - s.x) < 5.5f && abs(spiderY - s.y) < 5f) hit = true
             if (fleaX > -50f && abs(fleaX - s.x) < 4.5f && abs(fleaY - s.y) < 4.5f) hit = true
             if (hit) {
-                s.lives--; s.alive = false; s.rapidUntil = 0L; s.tripleUntil = 0L
+                s.lives--; s.alive = false; s.rapidUntil = 0L; s.tripleUntil = 0L; combo[p] = 0
                 s.respawnAt = t + Arcade.RESPAWN_MS
                 burst(s.x, s.y, "pl")
                 spiderX = -100f; fleaX = -100f
@@ -397,7 +489,8 @@ class CentipedeEngine(
         for (ch in chains) for ((k, sg) in ch.segs.withIndex()) segs.put(JSONArray().put(sg.id).put(sg.col).put(sg.row).put(if (k == 0) 1 else 0).put(ch.dirX))
         val o = JSONObject()
             .put("st", stage).put("w", level).put("W", levels)
-            .put("sg", segs).put("sm", R.stepMs(level)).put("mv", mushVersion)
+            .put("sg", segs).put("sm", curStep).put("mv", mushVersion).put("fr", frenzy)
+            .put("pk", JSONArray().also { a -> for (k in picks) a.put(JSONArray().put(k.id).put(Arcade.r1(k.x)).put(Arcade.r1(k.y)).put(k.kind.code)) })
             .put("b", ArcadeCodec.bullets(bullets))
             .put("s1", ArcadeCodec.ship(ships[1], t)).put("s2", ArcadeCodec.ship(ships[2], t))
             .put("ev", ArcadeCodec.bursts(bursts, t))
@@ -444,6 +537,15 @@ class CentipedeEngine(
             spider = if (sp != null && sp.length() >= 2) sp.optDouble(0).toFloat() to sp.optDouble(1).toFloat() else null,
             flea = if (fl != null && fl.length() >= 3) Triple(fl.optDouble(0).toFloat(), fl.optDouble(1).toFloat(), fl.optInt(2).coerceIn(0, 3)) else null,
             stepMs = s.optInt("sm", 120).coerceIn(30, 400),
+            picks = buildList {
+                val pa = s.optJSONArray("pk")
+                if (pa != null) for (i in 0 until minOf(pa.length(), 10)) {
+                    val e = pa.optJSONArray(i) ?: continue
+                    val kd = e.optInt(3, 0).toChar()
+                    if (kd in "RTHB") add(PickView(e.optInt(0), e.optDouble(1).toFloat().coerceIn(0f, 100f), e.optDouble(2).toFloat().coerceIn(0f, 150f), kd))
+                }
+            },
+            frenzy = s.optBoolean("fr", false),
         )
     }
 

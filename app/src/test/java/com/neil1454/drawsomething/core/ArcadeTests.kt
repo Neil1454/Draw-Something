@@ -268,3 +268,51 @@ class ArkanoidTest {
         }
     }
 }
+
+class CentipedeFunTest {
+    private fun pair(seed: Int = 1): SyncPair<CentipedeEngine> {
+        val p = SyncPair({ n, o, h, s, r, c -> CentipedeEngine(n, o, h, s, r, c) }, seed)
+        p.host.start(JSONObject().put("waves", 3).put("lives", 5))
+        p.pump()
+        return p
+    }
+
+    @Test fun quickHitsBuildAComboThatMultipliesPoints() {
+        val p = pair(seed = 4)
+        p.run(2600)
+        var guard = 0
+        var best = 0
+        var last = 0
+        while (guard++ < 1500 && p.host.state.phase == GPhase.PLAYING) {
+            val target = p.host.state.segs.filter { it.col >= 0 }.maxByOrNull { it.row }
+            p.host.input((target?.col ?: 12) * 4f + 2f, 130f, true)
+            p.run(66)
+            val gain = p.host.state.myScore - last
+            last = p.host.state.myScore
+            best = maxOf(best, gain)
+            if (best > 100) break
+        }
+        assertTrue("a combo-boosted hit scored more than a plain head shot (best single gain $best)", best > 100)
+    }
+
+    @Test fun picksAndFrenzyStayWellFormedAndBothScreensAgree() {
+        val p = pair(seed = 6)
+        p.run(2600)
+        var seenPick = false
+        var seenFrenzy = false
+        var guard = 0
+        while (guard++ < 3000 && p.host.state.phase == GPhase.PLAYING) {
+            val s = p.host.state
+            val target = s.segs.filter { it.col >= 0 }.maxByOrNull { it.row }
+            p.host.input((target?.col ?: 12) * 4f + 2f, 130f, true)
+            p.client.input(s.picks.firstOrNull()?.x ?: ((target?.col ?: 12) * 4f + 6f), 130f, true)
+            p.run(66)
+            if (p.host.state.picks.isNotEmpty()) seenPick = true
+            if (p.host.state.frenzy) seenFrenzy = true
+            assertEquals(p.host.state.picks.size, p.client.state.picks.size)
+            assertTrue(p.host.state.picks.all { it.kind in "RTHB" })
+        }
+        assertTrue("a pick-up appeared", seenPick)
+        assertTrue("the frenzy kicked in when few segments were left", seenFrenzy)
+    }
+}

@@ -71,6 +71,7 @@ class ArcadeFrame(val nowMs: Long, val dt: Float, val ageSec: Float, val iAmHost
 }
 
 private class Spark(val x: Float, val y: Float, val vx: Float, val vy: Float, val born: Long, val life: Long, val col: Color, val size: Float)
+private class Pop(val x: Float, val y: Float, val born: Long, val life: Long, val text: String, val col: Color, val size: Float)
 private class Ring(val x: Float, val y: Float, val born: Long, val life: Long, val col: Color, val maxR: Float)
 
 /** Explosions, glints and screen shake. */
@@ -80,6 +81,16 @@ class Fx {
     private var shakeStart = 0L
     private var shakeMs = 0L
     private var shakeAmp = 0f
+    private val pops = ArrayList<Pop>()
+
+    /** Set by the screen so floating words can be drawn. */
+    var measurer: androidx.compose.ui.text.TextMeasurer? = null
+
+    /** A word that pops up, floats away and fades: "x3 COMBO!", "HEAD!". */
+    fun text(x: Float, y: Float, now: Long, text: String, col: Color, size: Float = 4.2f, life: Long = 1100L) {
+        pops.add(Pop(x.coerceIn(10f, 90f), y, now, life, text, col, size))
+        while (pops.size > 12) pops.removeAt(0)
+    }
 
     fun explode(x: Float, y: Float, now: Long, col: Color, count: Int = 14, power: Float = 1f) {
         for (i in 0 until count) {
@@ -110,6 +121,17 @@ class Fx {
     fun draw(s: DrawScope, now: Long) {
         sparks.removeAll { now - it.born > it.life }
         rings.removeAll { now - it.born > it.life }
+        pops.removeAll { now - it.born > it.life }
+        val m = measurer
+        if (m != null) for (p in pops) {
+            val f = ((now - p.born) / p.life.toFloat()).coerceIn(0f, 1f)
+            val grow = if (f < 0.15f) 0.6f + f / 0.15f * 0.5f else 1.1f - (f - 0.15f) * 0.1f
+            val a = if (f > 0.7f) (1f - f) / 0.3f else 1f
+            s.run {
+                val r = m.measure(p.text, androidx.compose.ui.text.TextStyle(fontSize = (p.size * grow).toSp(), color = p.col.copy(alpha = a), fontWeight = androidx.compose.ui.text.font.FontWeight.Black))
+                drawText(r, topLeft = Offset(p.x - r.size.width / 2f, p.y - f * 10f - r.size.height / 2f))
+            }
+        }
         for (r in rings) {
             val f = ((now - r.born) / r.life.toFloat()).coerceIn(0f, 1f)
             if (now >= r.born) s.drawCircle(r.col.copy(alpha = (1f - f) * 0.9f), r.maxR * f + 1f, Offset(r.x, r.y), style = Stroke(0.9f + (1f - f) * 1.2f))
@@ -166,6 +188,7 @@ fun ArcadeScreen(
     var ctl by remember { mutableStateOf(Offset(c.mine.x, c.mine.y.coerceIn(112f, 134f))) }
     var fire by remember { mutableStateOf(false) }
     val fx = remember { Fx() }
+    fx.measurer = androidx.compose.ui.text.rememberTextMeasurer()
     val smooth = remember { Smooth() }
     val seen = remember { HashSet<Int>() }
     val mineCol = if (isHost) HostShip else GuestShip
