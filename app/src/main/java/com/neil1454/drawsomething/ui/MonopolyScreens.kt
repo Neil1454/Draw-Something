@@ -172,6 +172,7 @@ fun MonopolyScreen(
     var showTrade by remember { mutableStateOf(false) }
     var confirmBankrupt by remember { mutableStateOf(false) }
     var cardShown by remember { mutableIntStateOf(-1) }
+    var buildSq by remember { mutableIntStateOf(-1) }
 
     // Monopoly is a landscape game: the board needs the width. Turn the phone and everything resizes to fit.
     val activity = LocalContext.current as? Activity
@@ -209,9 +210,15 @@ fun MonopolyScreen(
         val boardSide = minOf(maxHeight - 12.dp, maxWidth * 0.62f)
         Row(Modifier.fillMaxSize().padding(6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.size(boardSide).align(Alignment.CenterVertically)) {
-                MonopolyBoardView(s, over, myCol, theirCol, myToken, theirToken, onRoll = { Sfx.play(Sound.TAP); engine.roll() }) { deedSq = it }
+                MonopolyBoardView(s, over, myCol, theirCol, myToken, theirToken, onRoll = { Sfx.play(Sound.TAP); engine.roll() }) { sq ->
+                    if (s.owner[sq] == 1 && MonopolyBoard.squares[sq].kind == SqKind.PROPERTY && !over) buildSq = sq else deedSq = sq
+                }
                 EventStage(s, Modifier.align(Alignment.TopCenter))
                 DeedOffer(s, engine, Modifier.align(Alignment.Center))
+                SetBanner(s, Modifier.align(Alignment.TopCenter))
+                if (buildSq >= 0 && s.owner[buildSq] == 1 && !over) {
+                    BuildCard(s, engine, buildSq, onClose = { buildSq = -1 }, onDeed = { deedSq = buildSq; buildSq = -1 }, modifier = Modifier.align(Alignment.Center))
+                }
                 RentReceipt(s, myCol, theirCol, myToken, theirToken, Modifier.fillMaxSize())
                 if (cardShown == s.seq && s.cardText.isNotBlank() && s.ev == "card") {
                     CardPopup(s, Modifier.align(Alignment.Center).clickable { cardShown = -1 })
@@ -223,6 +230,7 @@ fun MonopolyScreen(
             ) {
                 PlayerRow(s, myCol, theirCol, myToken, theirToken)
                 ActionBar(s, engine, over, onManage = { showManage = true }, onTrade = { showTrade = true }, onBankrupt = { confirmBankrupt = true })
+                AdviceChip(s, onManage = { showManage = true }, onTrade = { if (s.canTrade) showTrade = true })
                 LogBox(s)
                 DeedTracker(s, myCol, theirCol, myToken, theirToken) { deedSq = it }
                 Text("Pinch the board to zoom · drag to move · double-tap to zoom in or out · tap a square for its deed", fontSize = 10.sp, color = Color.White.copy(alpha = 0.55f), textAlign = TextAlign.Center)
@@ -271,6 +279,7 @@ private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, the
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     var viewPx by remember { mutableFloatStateOf(1f) }
+    var hints by remember { mutableStateOf(true) }
     val shape = RoundedCornerShape(14.dp)
 
     fun clamp(p: Offset, z: Float): Offset = Offset(p.x.coerceIn(viewPx * (1f - z), 0f), p.y.coerceIn(viewPx * (1f - z), 0f))
@@ -318,7 +327,11 @@ private fun MonopolyBoardView(s: MonopolyState, over: Boolean, myCol: Color, the
                 drawCentre(s, over, measurer)
             }
         }
-        TokensLayer(s, myToken, theirToken, myCol, theirCol, zoom, pan, viewPx, measurer)
+        TokensLayer(s, myToken, theirToken, myCol, theirCol, zoom, pan, viewPx, measurer, hints)
+        Box(
+            Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xAA000000))
+                .clickable { hints = !hints }.padding(horizontal = 10.dp, vertical = 5.dp),
+        ) { Text(if (hints) "🎯 Set hints: ON" else "🎯 Set hints: OFF", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
         if (zoom > 1.05f) {
             Box(
                 Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xAA000000))
@@ -513,7 +526,14 @@ private class BoardFx(val kind: String, val start: Long, val from: Offset, val t
 private class Seen(var owner: List<Int>, var houses: List<Int>)
 
 @Composable
-private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, myCol: Color, theirCol: Color, zoom: Float, pan: Offset, viewPx: Float, m: TextMeasurer) {
+private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, myCol: Color, theirCol: Color, zoom: Float, pan: Offset, viewPx: Float, m: TextMeasurer, showHints: Boolean) {
+    // squares I could build on right now, and (for set hints) the squares I still need or that are blocked by the other player
+    val buildable = remember(s.owner, s.houses, s.mortgaged, s.myCash, s.step, s.myTurn, s.housesLeft, s.hotelsLeft) {
+        if (s.phase != GPhase.PLAYING || !s.canManage || s.step == "DEBT") emptyList()
+        else (0 until MonopolyBoard.SIZE).filter { MonopolyRules.canBuild(s.ownerArr, s.housesArr, s.mortArr, 1, it, s.myCash, s.housesLeft, s.hotelsLeft) }
+    }
+    val needed = remember(s.owner) { setNeeds(s, 0) }
+    val blocked = remember(s.owner) { setNeeds(s, 2) }
     val clock = remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { while (true) androidx.compose.runtime.withFrameMillis { clock.longValue = it } }
     val fx = remember { mutableStateListOf<BoardFx>() }
@@ -634,6 +654,33 @@ private fun TokensLayer(s: MonopolyState, myToken: String, theirToken: String, m
                     val colour = if (on) Color(0xFFFFE066) else Color(0xFF7A5B00)
                     drawCircle(colour, 6f, Offset(-282f + k * 40f, -66f))
                     drawCircle(colour, 6f, Offset(-282f + k * 40f, 66f))
+                }
+            }
+            // build badges and set hints, drawn just outside the inner edge of each square
+            val beat = 0.5f + 0.5f * kotlin.math.sin(now / 260f)
+            for (i in buildable) {
+                val hs = s.houses[i]
+                inCell(i) { w, h ->
+                    val cy = -h / 2f - 30f - beat * 8f
+                    drawCircle(Color(0xFF16A34A).copy(alpha = 0.35f + 0.3f * beat), 34f + beat * 6f, Offset(0f, cy))
+                    drawCircle(Color(0xFF22C55E), 26f, Offset(0f, cy))
+                    drawCircle(Color.White, 26f, Offset(0f, cy), style = Stroke(4f))
+                    text(m, if (hs == 4) "🏨" else "🔨", Offset(0f, cy), 30f)
+                    drawRect(Color(0xFF22C55E).copy(alpha = 0.25f + 0.35f * beat), Offset(-w / 2f, -h / 2f), Size(w, h), style = Stroke(8f))
+                }
+            }
+            if (showHints) {
+                for (i in needed) inCell(i) { w, h ->
+                    drawRect(Color(0xFFFFD23F).copy(alpha = 0.3f + 0.6f * beat), Offset(-w / 2f + 3f, -h / 2f + 3f), Size(w - 6f, h - 6f), style = Stroke(7f))
+                    val cy = -h / 2f - 26f - beat * 6f
+                    drawCircle(Color(0xFFFFD23F), 22f, Offset(0f, cy))
+                    text(m, "🎯", Offset(0f, cy), 26f)
+                }
+                for (i in blocked) inCell(i) { w, h ->
+                    drawRect(Color(0xFFEF4444).copy(alpha = 0.25f + 0.45f * beat), Offset(-w / 2f + 3f, -h / 2f + 3f), Size(w - 6f, h - 6f), style = Stroke(6f))
+                    val cy = -h / 2f - 24f
+                    drawCircle(Color(0xFFEF4444), 20f, Offset(0f, cy))
+                    text(m, "🔒", Offset(0f, cy), 22f)
                 }
             }
             // one-off effects: coins in flight, floating money, claim bursts, confetti
@@ -1379,6 +1426,202 @@ private fun DeedTracker(s: MonopolyState, myCol: Color, theirCol: Color, myToken
                     }
                 }
                 if (mineAll || theirsAll) Text("★ SET", fontSize = 10.sp, fontWeight = FontWeight.Black, color = if (mineAll) myCol else theirCol)
+            }
+        }
+    }
+}
+
+// ============================================================================ building and sets
+
+/** Draws in a square's own frame (origin at its centre, 'up' = towards the middle of the board), like [drawCell]. */
+private fun DrawScope.inCell(i: Int, block: DrawScope.(Float, Float) -> Unit) {
+    val side = sideOf(i)
+    if (side == -1) return
+    val r = cellRect(i)
+    val deg = when (side) { 1 -> 90f; 2 -> 180f; 3 -> 270f; else -> 0f }
+    withTransform({ translate(r.center.x, r.center.y); rotate(deg, Offset.Zero) }) { block(UNIT, CORNER) }
+}
+
+/**
+ * For each colour set where I own some squares but not all: the squares I still need. [from] 0 = nobody owns them (a place I
+ * could land and buy), 2 = the other player owns them (a trade would be needed).
+ */
+private fun setNeeds(s: MonopolyState, from: Int): List<Int> {
+    val out = ArrayList<Int>()
+    for (g in 0..7) {
+        val sqs = MonopolyBoard.GROUPS[g]
+        val mine = sqs.count { s.owner[it] == 1 }
+        if (mine == 0 || mine == sqs.size) continue
+        // only worth highlighting when it is realistic: I own at least half of the set
+        if (mine * 2 < sqs.size) continue
+        sqs.filter { s.owner[it] == from }.forEach { out.add(it) }
+    }
+    return out
+}
+
+private class Advice(val text: String, val action: String)
+
+/** One helpful, specific nudge about building or completing a set. */
+private fun adviceFor(s: MonopolyState): Advice? {
+    if (s.phase != GPhase.PLAYING || s.step == "FIRST" || s.step == "AUCTION") return null
+    val owner = s.ownerArr; val houses = s.housesArr; val mort = s.mortArr
+    val buildable = (0 until MonopolyBoard.SIZE).filter { MonopolyRules.canBuild(owner, houses, mort, 1, it, s.myCash, s.housesLeft, s.hotelsLeft) }
+    if (s.canManage && s.step != "DEBT" && buildable.isNotEmpty()) {
+        val q = MonopolyBoard.squares[buildable.minByOrNull { houses[it] }!!]
+        return Advice("🔨 You can build! Tap a glowing green square. ${q.name} costs ${money(q.houseCost)} per house.", "build")
+    }
+    for (g in 0..7) {
+        if (!MonopolyBoard.ownsGroup(owner, 1, g)) continue
+        val sqs = MonopolyBoard.GROUPS[g]
+        if (sqs.all { houses[it] == 5 }) continue
+        if (sqs.any { mort[it] }) return Advice("🏦 Lift the mortgage on your ${MonopolyBoard.GROUP_NAMES[g]} set so you can build on it.", "build")
+        val cost = MonopolyBoard.squares[sqs[0]].houseCost
+        return Advice("⭐ You own the whole ${MonopolyBoard.GROUP_NAMES[g]} set! Houses cost ${money(cost)}: " + (if (s.myCash < cost) "save up ${money(cost - s.myCash)} more to build." else "build evenly on every street."), "build")
+    }
+    var best: Advice? = null
+    var bestMine = 0
+    for (g in 0..7) {
+        val sqs = MonopolyBoard.GROUPS[g]
+        val mine = sqs.count { owner[it] == 1 }
+        val missing = sqs.filter { owner[it] != 1 }
+        if (mine == 0 || missing.size != 1 || mine < bestMine) continue
+        val m = missing[0]
+        val name = MonopolyBoard.squares[m].name
+        bestMine = mine
+        best = if (owner[m] == 0) Advice("🎯 Just one ${MonopolyBoard.GROUP_NAMES[g]} street left to complete your set: $name. Land on it to buy!", "")
+        else Advice("🤝 ${s.theirName} owns $name. Trade for it to complete your ${MonopolyBoard.GROUP_NAMES[g]} set!", "trade")
+    }
+    if (best != null) return best
+    for (g in 0..7) {
+        val sqs = MonopolyBoard.GROUPS[g]
+        val theirs = sqs.count { owner[it] == 2 }
+        val missing = sqs.filter { owner[it] != 2 }
+        if (theirs > 0 && missing.size == 1 && owner[missing[0]] == 0) return Advice("⚠️ ${s.theirName} needs only ${MonopolyBoard.squares[missing[0]].name} for the ${MonopolyBoard.GROUP_NAMES[g]} set. Grab it first!", "")
+    }
+    return null
+}
+
+/** A pulsing coach tip in the side panel; tap to act on it. */
+@Composable
+private fun AdviceChip(s: MonopolyState, onManage: () -> Unit, onTrade: () -> Unit) {
+    val adv = adviceFor(s) ?: return
+    val glow by rememberInfiniteTransition(label = "advice").animateFloat(0.35f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "adviceGlow")
+    val shape = RoundedCornerShape(12.dp)
+    Text(
+        adv.text, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.fillMaxWidth().clip(shape).background(Color(0x66000000)).border(2.dp, Color(0xFFFFD23F).copy(alpha = glow), shape)
+            .clickable { if (adv.action == "build") onManage() else if (adv.action == "trade") onTrade() }.padding(10.dp),
+    )
+}
+
+/** "SET COMPLETE!" when somebody gets the last street of a colour. */
+@Composable
+private fun SetBanner(s: MonopolyState, modifier: Modifier) {
+    class Done(val text: String, val col: Color)
+    var done by remember { mutableStateOf<Done?>(null) }
+    val a = remember { Animatable(1f) }
+    val before = remember { Seen(s.owner, s.houses) }
+    LaunchedEffect(s.owner) {
+        var found: Done? = null
+        for (g in 0..7) {
+            val sqs = MonopolyBoard.GROUPS[g]
+            for (who in 1..2) {
+                val now = sqs.all { s.owner[it] == who }
+                val was = sqs.all { before.owner[it] == who }
+                if (now && !was) found = Done(
+                    "⭐ SET COMPLETE!\n${if (who == 1) "You own" else "${s.theirName} owns"} all the ${MonopolyBoard.GROUP_NAMES[g]} streets: " + (if (who == 1) "build houses now!" else "watch out for their houses!"),
+                    if (who == 1) Color(0xFF4ADE80) else Color(0xFFF87171),
+                )
+            }
+        }
+        before.owner = s.owner
+        val f = found ?: return@LaunchedEffect
+        Sfx.play(Sound.WIN)
+        done = f
+        a.snapTo(0f)
+        a.animateTo(1f, tween(3400, easing = LinearEasing))
+    }
+    val d = done
+    if (d != null && a.value < 1f) {
+        val p = a.value
+        val enter = ease((p / 0.1f).coerceIn(0f, 1f))
+        val exit = ((1f - p) / 0.12f).coerceIn(0f, 1f)
+        val shape = RoundedCornerShape(16.dp)
+        Text(
+            d.text, color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp, textAlign = TextAlign.Center,
+            modifier = modifier.padding(top = 120.dp).graphicsLayer {
+                val sc = 0.6f + 0.4f * enter + kotlin.math.sin(p * 30f) * 0.03f * (1f - p)
+                scaleX = sc; scaleY = sc; alpha = exit
+            }.clip(shape).background(Color(0xEE0B1220)).border(3.dp, d.col, shape).padding(horizontal = 16.dp, vertical = 10.dp),
+        )
+    }
+}
+
+/** Tap one of your streets and this opens: its houses, what the next one costs and adds, and why you can't if you can't. */
+@Composable
+private fun BuildCard(s: MonopolyState, engine: MonopolyEngine, sq: Int, onClose: () -> Unit, onDeed: () -> Unit, modifier: Modifier) {
+    val q = MonopolyBoard.squares[sq]
+    val owner = s.ownerArr; val houses = s.housesArr; val mort = s.mortArr
+    val h = houses[sq]
+    val grp = MonopolyBoard.GROUPS[q.group]
+    val canBuild = s.canManage && s.step != "DEBT" && MonopolyRules.canBuild(owner, houses, mort, 1, sq, s.myCash, s.housesLeft, s.hotelsLeft)
+    val canSell = s.canManage && MonopolyRules.canSell(owner, houses, 1, sq, s.housesLeft)
+    val reason = when {
+        !s.canManage -> "You can build on your own turn."
+        s.step == "DEBT" -> "Pay your debt first."
+        h >= 5 -> "Already a hotel: the most you can have."
+        !MonopolyBoard.ownsGroup(owner, 1, q.group) -> "Own all ${grp.size} ${MonopolyBoard.GROUP_NAMES[q.group]} streets to build (you have ${grp.count { owner[it] == 1 }})."
+        grp.any { mort[it] } -> "Lift the mortgage on this set first."
+        grp.any { houses[it] < h } -> "Build evenly: add to the other ${MonopolyBoard.GROUP_NAMES[q.group]} streets first."
+        s.myCash < q.houseCost -> "You need ${money(q.houseCost - s.myCash)} more cash."
+        h == 4 && s.hotelsLeft == 0 -> "No hotels left in the bank."
+        h < 4 && s.housesLeft == 0 -> "No houses left in the bank."
+        else -> ""
+    }
+    val nextRent = if (h < 5) {
+        val copy = houses.copyOf(); copy[sq] = h + 1
+        MonopolyRules.rent(owner, copy, mort, sq, 7)
+    } else 0
+    val nowRent = MonopolyRules.rent(owner, houses, mort, sq, 7)
+    val pop = remember(sq) { Animatable(0f) }
+    LaunchedEffect(sq) { pop.animateTo(1f, tween(300)) }
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        modifier.width(240.dp).graphicsLayer { val sc = 0.7f + 0.3f * pop.value; scaleX = sc; scaleY = sc; alpha = pop.value }
+            .clip(shape).background(CardCream).border(3.dp, Ink, shape),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.fillMaxWidth().background(groupColour(q.group)).padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+            Text(q.name.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp, textAlign = TextAlign.Center)
+        }
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // four house slots and a hotel slot
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                for (k in 1..4) Text(if (h >= k || h == 5) "🏠" else "▫️", fontSize = 22.sp)
+                Text(if (h == 5) "🏨" else "▫️", fontSize = 26.sp)
+            }
+            Text("Rent now ${money(nowRent)}" + if (h < 5) "  →  ${money(nextRent)}" else "", color = Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            Text(
+                "${MonopolyBoard.GROUP_NAMES[q.group]} set: " + grp.joinToString(" ") { if (owner[it] == 1) "🟩" else if (owner[it] == 2) "🟥" else "⬜" } +
+                    "   ·   ${houses.let { hs -> grp.sumOf { hs[it] } }} houses in the set",
+                color = Color(0xFF444444), fontSize = 10.sp, textAlign = TextAlign.Center,
+            )
+            if (reason.isNotEmpty()) Text(reason, color = Color(0xFF9A3412), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (canBuild) Color(0xFF2E7D32) else Color(0xFF9CA3AF))
+                        .clickable(enabled = canBuild) { engine.build(sq) }.padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(if (h == 4) "🏨 HOTEL ${money(q.houseCost)}" else "🔨 BUILD ${money(q.houseCost)}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp) }
+                Box(
+                    Modifier.weight(0.7f).clip(RoundedCornerShape(10.dp)).background(if (canSell) Color(0xFFD97706) else Color(0xFFD1D5DB))
+                        .clickable(enabled = canSell) { engine.sellHouse(sq) }.padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("SELL +${money(q.houseCost / 2)}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("Deed", color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.clickable { onDeed() }.padding(4.dp))
+                Text("Close", color = Color(0xFF555555), fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.clickable { onClose() }.padding(4.dp))
             }
         }
     }

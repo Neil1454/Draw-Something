@@ -38,6 +38,8 @@ need the exact number, so a roll that is too big can't be used by that piece.
 
 **Monopoly** uses the UK London board (Old Kent Road to Mayfair, four stations, two utilities), £1500 each, £200 for GO, £50 jail fine.
 
+Building is part of the play: squares you can build on glow green with a bobbing 🔨 (🏨 when the next step is a hotel); tap one to see its houses, the next rent, and exactly why you can't build if you can't (need the whole set, build evenly, cash, mortgage). Squares you still need to finish a set glow gold 🎯 (🔒 red if the other player owns them; toggle with "Set hints"). A coach tip says what to do next, and a banner celebrates completing a colour set.
+
 Ownership is easy to see: an owned square is washed in its owner's colour with a thick border and a badge showing their token (🎩 or 🚗), and a **Who owns what** panel lists every property by colour set (★ SET when someone has the lot). Events are lively: coins fly between players on rent, tax and purchases, money floats up, a claim burst appears when a square is bought, confetti on passing GO, flashing jail, a headline banner for each event, and chasing lights on the MONOPOLY sign.
 Rent doubles on a complete unbuilt set, houses must be built evenly, hotels need four houses first, and the bank has 32 houses and 12 hotels.
 The game opens with a roll to see who goes first (highest total, ties re-rolled). **House rule (on by default, switch off in the lobby):** you
