@@ -58,6 +58,7 @@ private fun DrawScope.drawGameIcon(kind: GameKind) {
         GameKind.ARKANOID -> arkanoid()
         GameKind.BLACKJACK -> blackjack()
         GameKind.SHOWDOWN -> showdown()
+        GameKind.GUESSWHO -> guessWho()
     }
 }
 
@@ -361,4 +362,17 @@ private fun DrawScope.showdown() {
     drawArc(Color(0xFFFFD23F), 270f, 180f, false, Offset(62f, 22f), Size(16f, 18f), style = Stroke(3f))
     drawRect(Color(0xFFFFD23F), Offset(46f, 50f), Size(8f, 8f))
     drawRoundRect(Color(0xFFB8860B), Offset(38f, 58f), Size(24f, 6f), CornerRadius(2f))
+}
+
+private fun DrawScope.guessWho() {
+    // a face with a question mark over it
+    drawOval(Color(0xFFF5D0B0), Offset(26f, 30f), Size(48f, 58f))
+    drawOval(Color(0xFF1F1F1F), Offset(26f, 26f), Size(48f, 26f))
+    drawCircle(Color.White, 5f, Offset(40f, 56f)); drawCircle(Color.White, 5f, Offset(60f, 56f))
+    drawCircle(Color(0xFF3B82F6), 2.6f, Offset(40f, 56f)); drawCircle(Color(0xFF3B82F6), 2.6f, Offset(60f, 56f))
+    drawArc(Color(0xFF7F1D1D), 20f, 140f, false, Offset(40f, 66f), Size(20f, 12f), style = Stroke(2.4f))
+    drawCircle(Color(0xFF111827), 8f, Offset(40f, 56f), style = Stroke(2f)); drawCircle(Color(0xFF111827), 8f, Offset(60f, 56f), style = Stroke(2f))
+    drawCircle(Color(0xFFFFD23F), 13f, Offset(76f, 20f))
+    drawArc(Color(0xFF7C2D12), 200f, 240f, false, Offset(71f, 14f), Size(10f, 9f), style = Stroke(2.6f))
+    drawCircle(Color(0xFF7C2D12), 1.6f, Offset(76f, 27f))
 }

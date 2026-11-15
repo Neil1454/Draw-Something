@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.neil1454.drawsomething.UiState
 import com.neil1454.drawsomething.core.GPhase
 import com.neil1454.drawsomething.core.GameKind
 import com.neil1454.drawsomething.core.SdItemView
