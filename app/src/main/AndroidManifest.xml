@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- A short buzz when a mine explodes (a normal permission: no prompt) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Nearby Connections (Bluetooth + Wi-Fi), see
          https://developers.google.com/nearby/connections/android/get-started -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />

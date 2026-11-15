@@ -111,6 +111,7 @@ fun MinesScreen(
     var boom by remember { mutableIntStateOf(0) }
     var win by remember { mutableIntStateOf(0) }
     var popupId by remember { mutableLongStateOf(0L) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val shake = rememberBurst(boom, 650)
     val redFlash = rememberBurst(boom, 700)
@@ -144,6 +145,7 @@ fun MinesScreen(
                 n.kind == "boom" -> {
                     spawn(FX_BOOM, n.cell, 1000)
                     boom++
+                    buzzBoom(ctx)
                     pop(if (n.value > 0) "💥 −${n.value}" else "💥 BOOM!", Funk.Red, n.cell)
                 }
                 n.kind == "block" -> {
@@ -440,4 +442,17 @@ private fun MinesOverlay(s: MinesState, win: Int, onPlayAgain: () -> Unit, onBac
             WinStory.by(maxOf(s.myScore, s.theirScore), minOf(s.myScore, s.theirScore), "point") +
             ". The opened squares and the bombs are shown on the board.",
     )
+}
+
+/** A short, sharp buzz-buzz-rumble when a mine goes off. Quietly does nothing if the phone can't vibrate. */
+@Suppress("DEPRECATION")
+private fun buzzBoom(ctx: android.content.Context) {
+    try {
+        val v: android.os.Vibrator? = if (android.os.Build.VERSION.SDK_INT >= 31) {
+            (ctx.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
+        } else ctx.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+        if (v == null || !v.hasVibrator()) return
+        v.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 90, 50, 70, 40, 260), -1))
+    } catch (_: Exception) {
+    }
 }

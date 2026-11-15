@@ -189,6 +189,8 @@ computer too (Easy / Normal / Hard, and it knows how to aim a bomb) and has a Le
 
 ## Minesweeper (minesweeper for two)
 
+When a mine goes off the phone gives a short buzz (it uses the "vibrate" permission, which needs no prompt).
+
 A shared grid (6×6, 8×8, 10×10 or 12×12). You **take turns** tapping a square; a number tells you how
 many bombs touch it. Your first square is always safe.
 
