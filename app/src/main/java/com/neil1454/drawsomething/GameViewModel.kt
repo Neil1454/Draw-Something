@@ -24,6 +24,7 @@ import com.neil1454.drawsomething.core.InvadersEngine
 import com.neil1454.drawsomething.core.CentipedeEngine
 import com.neil1454.drawsomething.core.ArkanoidEngine
 import com.neil1454.drawsomething.core.BlackjackEngine
+import com.neil1454.drawsomething.core.GuessWhoEngine
 import com.neil1454.drawsomething.core.HiLoEngine
 import com.neil1454.drawsomething.core.HolidayEngine
 import com.neil1454.drawsomething.core.HolidayPack
@@ -117,6 +118,8 @@ data class LobbySettings(
     val hiloRows: Int = 1,
     val hiloOdds: Boolean = true,
     val bjRounds: Int = 1,
+    val gwSize: Int = 0,
+    val gwAuto: Boolean = true,
     val bjTips: Int = 0,
     val holidayPack: String = "",
     val holidayLen: Int = 1,
@@ -698,6 +701,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             CentipedeEngine(me, partner, host, sendG, clock = clock),
             ArkanoidEngine(me, partner, host, sendG, clock = clock),
             BlackjackEngine(me, partner, host, sendG, clock = clock),
+            GuessWhoEngine(me, partner, host, sendG, clock = clock),
             ShowdownEngine(me, partner, host, sendG, clock = clock).also { sd -> sd.launch = { k -> launchContest(k) }; sd.localStakes = _ui.value.myStakes },
         )
         syncList.forEach { it.onChange = { publishAll() } }

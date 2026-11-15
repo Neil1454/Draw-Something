@@ -307,6 +307,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.ARKANOID -> ArkanoidHelp()
                     GameKind.BLACKJACK -> BlackjackHelp()
                     GameKind.SHOWDOWN -> ShowdownHelp()
+                    GameKind.GUESSWHO -> GuessWhoHelp()
                 }
             }
         },
@@ -582,6 +583,7 @@ fun GameBrowser(
             GameKind.CENTIPEDE -> ArcadeLobby(ui, connected, GameKind.CENTIPEDE, { CentipedeHelp() }, onSettings, onStartSync)
             GameKind.BLACKJACK -> BlackjackLobby(ui, connected, onSettings, onStartSync)
             GameKind.SHOWDOWN -> ShowdownLobby(ui, connected, onStartSync)
+            GameKind.GUESSWHO -> GuessWhoLobby(ui, connected, onSettings, onStartSync)
             GameKind.ARKANOID -> ArcadeLobby(ui, connected, GameKind.ARKANOID, { ArkanoidHelp() }, onSettings, onStartSync)
         }
     }
@@ -957,6 +959,20 @@ private fun MonopolyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySet
         ChipRow("Game length", MonopolyLength.values().map { it.label }, set.monopolyLen) { onSettings(set.copy(monopolyLen = it)) }
         ToggleChip("🏁 House rule: go round the board once before buying", set.monopolyLap) { onSettings(set.copy(monopolyLap = it)) }
     }) { onStart(GameKind.MONOPOLY, JSONObject().put("len", set.monopolyLen).put("lap", set.monopolyLap)) }
+}
+
+@Composable
+private fun GuessWhoLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.GUESSWHO, { GuessWhoHelp() }, {
+        ChipRow("Faces on the board", com.neil1454.drawsomething.core.GuessWhoData.SIZES.map { it.toString() }, set.gwSize) { onSettings(set.copy(gwSize = it)) }
+        ToggleChip("🪄 Auto-flip faces that can't be it", set.gwAuto) { onSettings(set.copy(gwAuto = it)) }
+        Text(
+            if (set.gwAuto) "After each answer the faces that don't fit flip down for you. You can still flip any face yourself."
+            else "No help: flip faces down yourself as you work things out.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+        )
+    }) { onStart(GameKind.GUESSWHO, JSONObject().put("size", set.gwSize).put("auto", set.gwAuto)) }
 }
 
 @Composable

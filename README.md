@@ -27,6 +27,7 @@ and you can switch games without reconnecting.
 | 🐛 **Centipede** | Blast the centipede as it winds down through the mushrooms; every hit splits it. Watch out for the spider and the flea. Both players share the bottom of the screen. |
 | 🧱 **Arkanoid** | Two paddles, one ball, a wall of bricks. Whoever touched the ball last scores. Catch power-ups: wide paddle, lasers, multi-ball, slow motion, fireball, extra life. Lives are shared. |
 | 🂡 **Blackjack** | Two players against the same dealer, each with their own chips and cards. Hit, stand, double down; blackjack pays 3 to 2. Optional coach tips with a tip allowance. |
+| 🕵️ **Guess Who?** | Each pick a secret face from a board of drawn characters. Take turns asking yes/no questions; flip down the faces that can't be it; name the other's face first. |
 
 ### The new board games
 
@@ -73,6 +74,13 @@ win (for example "Connect four discs in a row before your rival does"). The cont
 Draw, Pig, Othello, Higher or Lower, Blackjack, Minesweeper, Battleships, Space Invaders, Centipede or Arkanoid. Win it and you claim the
 stake. A tie **rolls the stake over** into the next round and the winner takes both. At the end, whoever claimed the most wins (money
 amounts break a tie). You each need at least one stake, and it needs two real players (no computer opponent).
+
+### Guess Who?
+
+Each player secretly picks one face from the same board (12, 18 or 24 faces, chosen by the host). Take turns asking one yes/no question from a
+list (hair colour and style, eyes, glasses, hat, beard, moustache, earrings); the answer comes back at once and the turn passes. Tap faces to
+flip them down; with **auto-flip** on (a lobby option) the faces your answers rule out flip down for you. When you're sure, make a guess:
+right wins, wrong loses on the spot. Each player's secret stays on their own phone until the game ends.
 
 ### Blackjack
 

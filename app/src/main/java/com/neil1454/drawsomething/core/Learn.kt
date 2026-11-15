@@ -102,6 +102,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.INVADERS -> h.invaders.start(JSONObject().put("waves", 3).put("lives", 3))
             GameKind.CENTIPEDE -> h.centipede.start(JSONObject().put("waves", 3).put("lives", 3))
             GameKind.SHOWDOWN -> Unit
+            GameKind.GUESSWHO -> h.guesswho.start(JSONObject().put("size", 0).put("auto", true))
             GameKind.BLACKJACK -> h.blackjack.start(JSONObject().put("rounds", 0).put("tips", 1))
             GameKind.ARKANOID -> h.arkanoid.start(JSONObject().put("waves", 2).put("lives", 3))
         }
@@ -344,6 +345,20 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.SHOWDOWN -> finish(outro(kind))
+            GameKind.GUESSWHO -> {
+                val s = duel.host.guesswho.state
+                if (s.history.size != last) {
+                    last = s.history.size
+                    s.history.lastOrNull()?.let { qa ->
+                        val who = if (qa.asker == 1) "You ask" else "Player 2 asks"
+                        say("$who: ${GuessWhoData.QUESTIONS[qa.q].text} ${if (qa.yes) "YES" else "NO"}. ${if (qa.asker == 1) "Flip down every face that doesn't match." else "They flip down the faces that don't match."}" + tip(GW_TIPS, s.history.size))
+                    }
+                }
+                if (s.phase == GPhase.OVER) {
+                    say(if (s.result == 1) "🎯 You named the right face!" else "🎯 Player 2 named the right face!")
+                    finish(outro(kind))
+                }
+            }
             GameKind.BLACKJACK -> {
                 val s = duel.host.blackjack.state
                 if (s.seq != last) {
@@ -570,6 +585,12 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             "The fewer invaders are left, the faster they come. Take out the lowest ones first, they are the ones that bomb you.",
             "If one of you is knocked out, you come back when the wave is cleared. If the invaders reach the bottom, it is over for both of you.",
         )
+        private val GW_TIPS = listOf(
+            "Good questions split the faces roughly in half, whatever the answer.",
+            "Don't guess until you are nearly sure: a wrong guess loses straight away.",
+            "A question about something only a few faces share will rarely help.",
+        )
+
         private val BJ_TIPS = listOf(
             "Aces count 1 or 11, whichever is better. Face cards count 10.",
             "Blackjack, an ace and a ten-value card, pays 3 to 2.",
@@ -647,6 +668,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.INVADERS -> "👾 Space Invaders: both players fly at the bottom of the same screen and shoot the invaders as they march down. You are Player 1 (the left ship)."
             GameKind.CENTIPEDE -> "🐛 Centipede: shoot the centipede as it winds down through the mushrooms. Every hit splits it. You are Player 1."
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
+            GameKind.GUESSWHO -> "🕵️ Guess Who?: each player secretly picks a face. Take turns asking yes/no questions and name the other's face first. You are Player 1."
             GameKind.BLACKJACK -> "🂡 Blackjack: you both play against the dealer. Get closer to 21 than the dealer without going over. You are Player 1."
             GameKind.ARKANOID -> "🧱 Arkanoid: both paddles guard the bottom. Bounce the ball up to smash the bricks. You are Player 1."
             GameKind.MONOPOLY -> "🎩 Monopoly (UK): buy streets, collect rent, build houses and hotels. You are Player 1. This is a quick 15-turn demo."

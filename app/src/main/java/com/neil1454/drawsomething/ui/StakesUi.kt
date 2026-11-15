@@ -153,10 +153,10 @@ fun StakeResultBanner(ui: UiState, result: Int, modifier: Modifier) {
     var hidden by remember(result) { mutableStateOf(false) }
     if (hidden) return
     val shape = RoundedCornerShape(16.dp)
-    val lines = when (result) {
+    val lines: Pair<String, List<String>> = when (result) {
         1 -> "🏆 You win! You claim ${ui.partnerName}'s stakes:" to ui.theirStakes.map { if (it.known) it.text else "🎁 mystery (revealing…)" }
         2 -> "🏆 ${ui.partnerName} wins and claims your stakes:" to ui.myStakes.map { it.text }
-        else -> "🤝 A draw: nobody claims anything." to emptyList()
+        else -> "🤝 A draw: nobody claims anything." to emptyList<String>()
     }
     Column(
         modifier.padding(top = 46.dp, start = 12.dp, end = 12.dp).clip(shape).background(Color(0xEE0B0624)).border(2.dp, Funk.Sun, shape)
