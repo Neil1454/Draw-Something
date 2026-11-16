@@ -310,6 +310,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.GUESSWHO -> GuessWhoHelp()
                     GameKind.KALAH -> KalahHelp()
                     GameKind.LIARSDICE -> LiarDiceHelp()
+                    GameKind.NOUGHTS -> NoughtsHelp()
                 }
             }
         },
@@ -588,6 +589,7 @@ fun GameBrowser(
             GameKind.GUESSWHO -> GuessWhoLobby(ui, connected, onSettings, onStartSync)
             GameKind.KALAH -> KalahLobby(ui, connected, onSettings, onStartSync)
             GameKind.LIARSDICE -> LiarDiceLobby(ui, connected, onSettings, onStartSync)
+            GameKind.NOUGHTS -> NoughtsLobby(ui, connected, onSettings, onStartSync)
             GameKind.ARKANOID -> ArcadeLobby(ui, connected, GameKind.ARKANOID, { ArkanoidHelp() }, onSettings, onStartSync)
         }
     }
@@ -976,6 +978,15 @@ private fun KalahLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettin
     SyncLobby(ui, connected, GameKind.KALAH, { KalahHelp() }, {
         ChipRow("Seeds in each pit", listOf("3 (quick)", "4 (classic)", "6 (long)"), set.kalahSeeds) { onSettings(set.copy(kalahSeeds = it)) }
     }) { onStart(GameKind.KALAH, JSONObject().put("seeds", set.kalahSeeds)) }
+}
+
+@Composable
+private fun NoughtsLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.NOUGHTS, { NoughtsHelp() }, {
+        ChipRow("Version", listOf("Classic 3 x 3", "Ultimate (9 grids)"), set.noughtsMode) { onSettings(set.copy(noughtsMode = it)) }
+        ChipRow("Games", listOf("Just one", "Best of 3", "Best of 5"), set.noughtsSeries) { onSettings(set.copy(noughtsSeries = it)) }
+    }) { onStart(GameKind.NOUGHTS, JSONObject().put("mode", set.noughtsMode).put("series", set.noughtsSeries)) }
 }
 
 @Composable

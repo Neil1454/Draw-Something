@@ -210,6 +210,7 @@ private fun LearnGameView(kind: GameKind, session: LearnSession, tick: Int, rest
         GameKind.SHOWDOWN -> Unit
         GameKind.KALAH -> KalahScreen(host.kalah.state, host.kalah, restart, onBack, onBack)
         GameKind.LIARSDICE -> LiarDiceScreen(host.liardice.state, host.liardice, restart, onBack, onBack)
+        GameKind.NOUGHTS -> NoughtsScreen(host.noughts.state, host.noughts, restart, onBack, onBack)
         GameKind.GUESSWHO -> GuessWhoScreen(host.guesswho.state, host.guesswho, restart, onBack, onBack)
         GameKind.BLACKJACK -> BlackjackScreen(host.blackjack.state, host.blackjack, restart, onBack, onBack)
         GameKind.ARKANOID -> ArkanoidScreen(host.arkanoid.state, host.arkanoid, restart, onBack, onBack)

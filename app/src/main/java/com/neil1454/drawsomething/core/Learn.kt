@@ -104,6 +104,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> Unit
             GameKind.KALAH -> h.kalah.start(JSONObject().put("seeds", 0))
             GameKind.LIARSDICE -> h.liardice.start(JSONObject().put("dice", 0).put("wild", false))
+            GameKind.NOUGHTS -> h.noughts.start(JSONObject().put("mode", 0).put("series", 0))
             GameKind.GUESSWHO -> h.guesswho.start(JSONObject().put("size", 0).put("auto", true))
             GameKind.BLACKJACK -> h.blackjack.start(JSONObject().put("rounds", 0).put("tips", 1))
             GameKind.ARKANOID -> h.arkanoid.start(JSONObject().put("waves", 2).put("lives", 3))
@@ -361,6 +362,16 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                         say("$who ${s.lastPath.size} seeds.$extra (Stores: you ${s.myStore} · Player 2 ${s.theirStore})" + tip(KALAH_TIPS, s.moves / 5))
                     }
                 }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.NOUGHTS -> {
+                val s = duel.host.noughts.state
+                if (s.moves != last) {
+                    last = s.moves
+                    if (s.moves == 1) say("The cross (✕) always goes first. You are ${if (s.iAmCross) "✕" else "◯"}. Take turns putting your mark in an empty square.")
+                    else if (s.moves in 2..5) say(tip(listOf("The centre square is the strongest one to take.", "Corners are next best: they can start two lines at once.", "Always check whether your rival is about to get three in a row, and block it.", "Make a fork: a move that creates two ways to win at once, so they can only block one."), s.moves - 1).trimStart('\n'))
+                }
+                if (s.roundResult != 0 && s.roundResult != lastSeq) { lastSeq = s.roundResult; say(when (s.roundResult) { 1 -> "🎉 Three in a row for you!"; 2 -> "Three in a row for Player 2."; else -> "🤝 The grid is full: it's a draw. With perfect play it nearly always is!" }) }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.LIARSDICE -> {
@@ -709,6 +720,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
             GameKind.KALAH -> "🌰 Mancala: sow seeds round the board, grab extra turns and capture your rival's seeds. You are Player 1 (the bottom row)."
             GameKind.LIARSDICE -> "🎭 Liar's Dice: each player shakes hidden dice. Bid how many of a face are on the whole table, or call your rival a liar. You are Player 1."
+            GameKind.NOUGHTS -> "❌ Noughts and Crosses: take turns putting your mark on the grid and get three in a row. You are Player 1."
             GameKind.GUESSWHO -> "🕵️ Guess Who?: each player secretly picks a face. Take turns asking yes/no questions and name the other's face first. You are Player 1."
             GameKind.BLACKJACK -> "🂡 Blackjack: you both play against the dealer. Get closer to 21 than the dealer without going over. You are Player 1."
             GameKind.ARKANOID -> "🧱 Arkanoid: both paddles guard the bottom. Bounce the ball up to smash the bricks. You are Player 1."

@@ -44,12 +44,13 @@ class PlayerSide(
     val guesswho = GuessWhoEngine(myName, theirName, isHost, send, random, clock)
     val kalah = KalahEngine(myName, theirName, isHost, send, random, clock)
     val liardice = LiarDiceEngine(myName, theirName, isHost, send, random, clock)
+    val noughts = NoughtsEngine(myName, theirName, isHost, send, random, clock)
 
     private val syncByKind: Map<GameKind, SyncEngine> = mapOf(
         GameKind.DROP to drop, GameKind.MEMORY to memory, GameKind.QUICK to quick,
         GameKind.DICE to dice, GameKind.FLIP to flip, GameKind.HILO to hilo, GameKind.HOLIDAY to holiday, GameKind.TETRIS to tetris,
         GameKind.DRAUGHTS to draughts, GameKind.LUDO to ludo, GameKind.MONOPOLY to monopoly,
-        GameKind.INVADERS to invaders, GameKind.CENTIPEDE to centipede, GameKind.ARKANOID to arkanoid, GameKind.BLACKJACK to blackjack, GameKind.GUESSWHO to guesswho, GameKind.KALAH to kalah, GameKind.LIARSDICE to liardice,
+        GameKind.INVADERS to invaders, GameKind.CENTIPEDE to centipede, GameKind.ARKANOID to arkanoid, GameKind.BLACKJACK to blackjack, GameKind.GUESSWHO to guesswho, GameKind.KALAH to kalah, GameKind.LIARSDICE to liardice, GameKind.NOUGHTS to noughts,
     )
 
     /** The Draw Something guesser only makes sense on the guest side (the host is the drawer). */
@@ -75,6 +76,7 @@ class PlayerSide(
         GuessWhoBrain(guesswho, skill, random),
         KalahBrain(kalah, skill, random),
         LiarDiceBrain(liardice, skill, random),
+        NoughtsBrain(noughts, skill, random),
     )
 
     /** The computer agrees to the Draw Something rules straight away. */
