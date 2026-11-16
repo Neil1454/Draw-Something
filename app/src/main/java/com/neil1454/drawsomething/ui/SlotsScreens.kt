@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.width
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -96,8 +99,16 @@ private val LineColours = listOf(
     Color(0xFFA78BFA), Color(0xFF60A5FA), Color(0xFFFDA4AF), Color(0xFF5EEAD4),
 )
 private const val PREVIEW = "LGOOBDDLGGOBBDL"
-private const val SPIN_MS = 2100L
-private fun reelStop(r: Int) = 650L + r * 330L
+
+/** True when the first three reels already show two scatters: the last two reels then creep to a stop with a flashing frame, as the real machines do. */
+private fun anticipates(grid: String): Boolean = grid.length == 15 && (0 until 9).count { grid[it] == '$' } >= 2
+
+/** When each reel stops, in milliseconds after the lever is pulled. */
+private fun reelStops(grid: String): LongArray {
+    val st = LongArray(SlotRules.REELS) { 650L + it * 330L }
+    if (anticipates(grid)) { st[3] += 700L; st[4] += 1700L }
+    return st
+}
 
 @Composable
 fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onBackToGames: () -> Unit, onLeave: () -> Unit) {
@@ -107,26 +118,34 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
     var done by remember { mutableStateOf(true) }
     var payDialog by remember { mutableStateOf(false) }
     var banner by remember { mutableStateOf("") }
+    var stops by remember { mutableStateOf(reelStops(PREVIEW)) }
+    val quickAt = remember { mutableLongStateOf(0L) }
     val leverPull = remember { androidx.compose.animation.core.Animatable(0f) }
     val resultAt = remember { mutableLongStateOf(0L) }
     val measurer = rememberTextMeasurer()
     val them = engine.theirName
     LaunchedEffect(Unit) { while (true) withFrameMillis { frame.longValue = it } }
 
-    // each new spin: the lever, the whirring reels stopping one by one, then the result
+    // each new spin: the lever, the whirring reels stopping one by one (a near-miss on the scatters makes the last ones creep), then the result
     LaunchedEffect(s.spinNo) {
         if (s.spinNo <= seenSpin.intValue) { seenSpin.intValue = s.spinNo; return@LaunchedEffect }
         seenSpin.intValue = s.spinNo
-        done = false; banner = ""
+        done = false; banner = ""; quickAt.longValue = 0L
+        val st = reelStops(s.grid)
+        stops = st
         spinStart.longValue = frame.longValue
         Sfx.play(Sound.LEVER)
         launch { leverPull.animateTo(1f, tween(200)); leverPull.animateTo(0f, tween(520)) }
         var t = 0L
         var next = 0
-        while (t < SPIN_MS) {
+        var teased = false
+        val end = st.last() + 100L
+        while (t < end && quickAt.longValue == 0L) {
             delay(55); t += 55
-            if (next < SlotRules.REELS && t >= reelStop(next)) { Sfx.play(Sound.STOP); next++ } else if (t % 110L == 0L) Sfx.play(Sound.REEL)
+            if (next < SlotRules.REELS && t >= st[next]) { Sfx.play(Sound.STOP); next++ } else if (t % 110L == 0L) Sfx.play(Sound.REEL)
+            if (!teased && next >= 3 && anticipates(s.grid) && t < st[4]) { teased = true; Sfx.play(Sound.SUSPENSE) }
         }
+        if (quickAt.longValue != 0L) { Sfx.play(Sound.STOP); delay(450) }
         done = true
         resultAt.longValue = frame.longValue
         val bet = if (s.lastBet > 0) s.lastBet else 1
@@ -143,89 +162,129 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
     LaunchedEffect(s.gambles, s.stage) { if (s.card != 0) Sfx.play(if (s.cardWon) Sound.GOOD else Sound.BAD) }
     val myCredits by animateIntAsState(s.myCredits, tween(700), label = "me")
     val theirCredits by animateIntAsState(s.theirCredits, tween(700), label = "them")
+    // the win meter counts up, like the one on a real machine
+    val shownWin by animateIntAsState(if (done && s.stage != "BET") (if (s.stage == "WIN") s.pending else s.total) else 0, tween(900), label = "win")
 
-    Box(Modifier.fillMaxSize()) {
+    val canPlay = s.phase == GPhase.PLAYING && s.myTurn && done
+    val canSpin = canPlay && s.stage == "BET"
+    val canCollect = canPlay && s.stage == "WIN"
+    val free = s.freeSpins > 0
+    val affordable = SlotRules.BETS.indices.filter { SlotRules.cost(SlotRules.BETS[it]) <= s.myCredits }
+    val canGamble = canCollect && s.gambles < SlotRules.MAX_GAMBLES && s.pending > 0
+
+    // ---- the pieces, arranged differently for portrait and landscape
+    val sign: @Composable () -> Unit = {
+        Box(Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(14.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF7F1D1D), Color(0xFFB91C1C), Color(0xFF7F1D1D)))).border(2.dp, Gold, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val n = 22
+                for (i in 0 until n) {
+                    val on = (i + (frame.longValue / 150L).toInt()) % 2 == 0
+                    val cx = size.width * (i + 0.5f) / n
+                    drawCircle(if (on) Gold else Gold.copy(alpha = 0.25f), 3.4f, Offset(cx, 6f)); drawCircle(if (on) Gold else Gold.copy(alpha = 0.25f), 3.4f, Offset(cx, size.height - 6f))
+                }
+            }
+            Text("🎰  LUCKY SEVENS  🎰", color = Gold, fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 3.sp)
+        }
+    }
+    val scores: @Composable () -> Unit = {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Credit("YOU", myCredits, s.mySpins, s.myTurn && s.phase == GPhase.PLAYING, Color(0xFF22D3EE), Modifier.weight(1f))
+            Credit(them.uppercase(), theirCredits, s.theirSpins, !s.myTurn && s.phase == GPhase.PLAYING, Color(0xFFF472B6), Modifier.weight(1f))
+        }
+    }
+    /** The cabinet, drawn at exactly [w] x [h], with its lever beside it. */
+    val machine: @Composable (androidx.compose.ui.unit.Dp, androidx.compose.ui.unit.Dp) -> Unit = { w, h ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(w, h)) {
+                Canvas(Modifier.fillMaxSize()) { drawMachine(s, frame.longValue, spinStart.longValue, done, measurer, stops, quickAt.longValue, if (done) frame.longValue - resultAt.longValue else 0L) }
+                if (banner.isNotEmpty()) {
+                    val big = banner == "JACKPOT!" || banner == "BIG WIN!"
+                    val pop = 1f + 0.06f * sin(frame.longValue / 110f)
+                    Text(
+                        banner, color = Gold, fontWeight = FontWeight.Black, fontSize = if (big) 40.sp else 30.sp, textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center).graphicsLayer { scaleX = pop; scaleY = pop }.clip(RoundedCornerShape(20.dp)).background(Color(0xE60B0624)).border(3.dp, Gold, RoundedCornerShape(20.dp)).padding(horizontal = 24.dp, vertical = 12.dp),
+                    )
+                }
+            }
+            Lever(leverPull.value, canSpin, Modifier.width(46.dp).height(h)) { engine.spin() }
+        }
+    }
+    val tray: @Composable () -> Unit = { CoinTray(s.myCredits, if (done && s.stage != "BET" && s.total > 0) frame.longValue - resultAt.longValue else -1L, frame) }
+    val meters: @Composable () -> Unit = {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Led("CREDITS", "$myCredits", Modifier.weight(1.3f))
+            Led("BET / LINE", "${s.bet}", Modifier.weight(1f))
+            Led("TOTAL BET", "${SlotRules.cost(s.bet)}", Modifier.weight(1f))
+            Led("WIN", "$shownWin", Modifier.weight(1f), win = done && s.total > 0 && s.stage != "BET")
+        }
+    }
+    val status: @Composable () -> Unit = {
+        Text(
+            when {
+                !done -> "🎰 Spinning…"
+                s.stage == "WIN" && s.total > 0 && s.card == 0 -> "${if (s.lastBy == 1) "You" else them} won ${s.total} credits${if (s.lastFree) " (free spin: doubled)" else ""}!"
+                s.stage == "WIN" -> "Prize on the table: ${s.pending}"
+                s.stage == "LOST" -> "💥 The gamble lost!"
+                s.spinNo == 0 -> "Place your bet and pull the lever!"
+                s.total > 0 -> "${if (s.lastBy == 1) "You" else them} won ${s.total}"
+                else -> "No win that time"
+            } + if (s.phase == GPhase.PLAYING && !s.myTurn && done) "   ·   ⏳ $them's turn" else "",
+            color = Gold, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.Center,
+        )
+    }
+    val deck: @Composable () -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                GoldButton("BET\n${s.bet}", { if (affordable.isNotEmpty()) engine.setBet(affordable[(affordable.indexOf(s.betIndex) + 1).mod(affordable.size)]) }, Modifier.weight(1f), enabled = canSpin && !free && affordable.size > 1)
+                GoldButton("MAX\nBET", { if (affordable.isNotEmpty()) { engine.setBet(affordable.last()); engine.spin() } }, Modifier.weight(1f), enabled = canSpin && !free && affordable.isNotEmpty())
+                // while the reels are spinning the SPIN button becomes STOP, for impatient players
+                GoldButton(if (!done) "STOP" else if (free) "FREE\nSPIN" else "SPIN", { if (!done) { if (quickAt.longValue == 0L) quickAt.longValue = frame.longValue } else engine.spin() }, Modifier.weight(1.5f), enabled = canSpin || (!done && quickAt.longValue == 0L), big = true, red = true, lit = canSpin)
+                GoldButton("COLLECT", { engine.collect() }, Modifier.weight(1.2f), enabled = canCollect, lit = canCollect)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GoldButton("♥ GAMBLE RED  ×2", { engine.gamble(true) }, Modifier.weight(1f), enabled = canGamble, red = true)
+                GoldButton("♠ GAMBLE BLACK  ×2", { engine.gamble(false) }, Modifier.weight(1f), enabled = canGamble, dark = true)
+            }
+            if (canGamble) Text("Gamble: guess the colour of the hidden card to double your win (${SlotRules.MAX_GAMBLES - s.gambles} left), or COLLECT it.", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, textAlign = TextAlign.Center)
+            if (s.card != 0 && s.cardWon && canCollect) Text("The card was ${if (s.card == 1) "RED ♥" else "BLACK ♠"}: doubled!", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
+            if (s.freeSpins > 0 && s.phase == GPhase.PLAYING) Text("⭐ ${s.freeSpins} FREE SPINS LEFT (wins doubled)", color = Color(0xFF86EFAC), fontWeight = FontWeight.Black)
+            TextButton(onClick = { payDialog = true }) { Text("📋 Paytable", color = Gold) }
+        }
+    }
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val screenW = maxWidth
+        val screenH = maxHeight
+        val landscape = screenW > screenH
         Canvas(Modifier.fillMaxSize()) {
             drawRect(Brush.verticalGradient(listOf(Color(0xFF1A0505), Color(0xFF4A0D14), Color(0xFF1A0505))))
             // velvet stripes
             var x = 0f
             while (x < size.width) { drawRect(Color.White.copy(alpha = 0.025f), Offset(x, 0f), Size(18f, size.height)); x += 56f }
+            // the light spilling out of the machine
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFFFD23F).copy(alpha = 0.10f + 0.04f * sin(frame.longValue / 400f)), Color.Transparent), Offset(size.width * (if (landscape) 0.32f else 0.5f), size.height * 0.4f), size.minDimension * 0.9f), size.minDimension * 0.9f, Offset(size.width * (if (landscape) 0.32f else 0.5f), size.height * 0.4f))
         }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // the sign
-            Box(Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF7F1D1D), Color(0xFFB91C1C), Color(0xFF7F1D1D)))).border(2.dp, Gold, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                Canvas(Modifier.fillMaxSize()) {
-                    val n = 22
-                    for (i in 0 until n) {
-                        val on = (i + (frame.longValue / 150L).toInt()) % 2 == 0
-                        val cx = size.width * (i + 0.5f) / n
-                        drawCircle(if (on) Gold else Gold.copy(alpha = 0.25f), 3.4f, Offset(cx, 6f)); drawCircle(if (on) Gold else Gold.copy(alpha = 0.25f), 3.4f, Offset(cx, size.height - 6f))
-                    }
+        if (!landscape) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                sign(); scores()
+                val mw = screenW - 20.dp - 46.dp
+                machine(mw, mw / 1.36f)
+                tray(); meters(); status(); deck()
+            }
+        } else {
+            // on its side the machine is as big as the screen allows, and everything else is in a column beside it
+            Row(Modifier.fillMaxSize().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.weight(1.75f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    val availW = screenW * 0.62f - 46.dp - 8.dp
+                    val availH = screenH - 16.dp - 64.dp
+                    val mw = minOf(availW, availH * 1.36f)
+                    machine(mw, mw / 1.36f)
+                    tray()
                 }
-                Text("🎰  LUCKY SEVENS  🎰", color = Gold, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 3.sp)
-            }
-            // the two scores
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Credit("YOU", myCredits, s.mySpins, s.myTurn && s.phase == GPhase.PLAYING, Color(0xFF22D3EE), Modifier.weight(1f))
-                Credit(them.uppercase(), theirCredits, s.theirSpins, !s.myTurn && s.phase == GPhase.PLAYING, Color(0xFFF472B6), Modifier.weight(1f))
-            }
-            val canPlay = s.phase == GPhase.PLAYING && s.myTurn && done
-            val canSpin = canPlay && s.stage == "BET"
-            val canCollect = canPlay && s.stage == "WIN"
-            // the machine, with its lever on the right-hand side
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f).aspectRatio(1.36f)) {
-                    Canvas(Modifier.fillMaxSize()) { drawMachine(s, frame.longValue, spinStart.longValue, done, measurer) }
-                    if (banner.isNotEmpty()) {
-                        val big = banner == "JACKPOT!" || banner == "BIG WIN!"
-                        Text(
-                            banner, color = Gold, fontWeight = FontWeight.Black, fontSize = if (big) 40.sp else 30.sp, textAlign = TextAlign.Center,
-                            modifier = Modifier.align(Alignment.Center).clip(RoundedCornerShape(20.dp)).background(Color(0xE60B0624)).border(3.dp, Gold, RoundedCornerShape(20.dp)).padding(horizontal = 24.dp, vertical = 12.dp),
-                        )
-                    }
+                Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    sign(); scores(); meters(); status(); deck()
                 }
-                Lever(leverPull.value, canSpin, Modifier.width(46.dp).fillMaxHeight()) { engine.spin() }
             }
-            // the coin tray at the foot of the machine
-            CoinTray(s.myCredits, if (done && s.stage != "BET" && s.total > 0) frame.longValue - resultAt.longValue else -1L, frame)
-            // the digital meters, like the glowing red numbers on a real machine
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Led("CREDITS", "$myCredits", Modifier.weight(1.3f))
-                Led("BET / LINE", "${s.bet}", Modifier.weight(1f))
-                Led("TOTAL BET", "${SlotRules.cost(s.bet)}", Modifier.weight(1f))
-                Led("WIN", if (done && s.stage != "BET") "${if (s.stage == "WIN") s.pending else s.total}" else "0", Modifier.weight(1f), win = done && s.total > 0 && s.stage != "BET")
-            }
-            // what the last spin did
-            Text(
-                when {
-                    !done -> "🎰 Spinning…"
-                    s.stage == "WIN" && s.total > 0 && s.card == 0 -> "${if (s.lastBy == 1) "You" else them} won ${s.total} credits${if (s.lastFree) " (free spin: doubled)" else ""}!"
-                    s.stage == "WIN" -> "Prize on the table: ${s.pending}"
-                    s.stage == "LOST" -> "💥 The gamble lost!"
-                    s.spinNo == 0 -> "Place your bet and pull the lever!"
-                    s.total > 0 -> "${if (s.lastBy == 1) "You" else them} won ${s.total}"
-                    else -> "No win that time"
-                } + if (s.phase == GPhase.PLAYING && !s.myTurn && done) "   ·   ⏳ $them's turn" else "",
-                color = Gold, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.Center,
-            )
-            // the button deck: bet, max bet, the big SPIN button, then COLLECT and GAMBLE after a win
-            val free = s.freeSpins > 0
-            val affordable = SlotRules.BETS.indices.filter { SlotRules.cost(SlotRules.BETS[it]) <= s.myCredits }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                GoldButton("BET\n${s.bet}", { if (affordable.isNotEmpty()) engine.setBet(affordable[(affordable.indexOf(s.betIndex) + 1).mod(affordable.size)]) }, Modifier.weight(1f), enabled = canSpin && !free && affordable.size > 1)
-                GoldButton("MAX\nBET", { if (affordable.isNotEmpty()) { engine.setBet(affordable.last()); engine.spin() } }, Modifier.weight(1f), enabled = canSpin && !free && affordable.isNotEmpty())
-                GoldButton(if (free) "FREE\nSPIN" else "SPIN", { engine.spin() }, Modifier.weight(1.5f), enabled = canSpin, big = true, red = true, lit = canSpin)
-                GoldButton("COLLECT", { engine.collect() }, Modifier.weight(1.2f), enabled = canCollect, lit = canCollect)
-            }
-            val canGamble = canCollect && s.gambles < SlotRules.MAX_GAMBLES && s.pending > 0
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GoldButton("♥ GAMBLE RED  ×2", { engine.gamble(true) }, Modifier.weight(1f), enabled = canGamble, red = true)
-                GoldButton("♠ GAMBLE BLACK  ×2", { engine.gamble(false) }, Modifier.weight(1f), enabled = canGamble, dark = true)
-            }
-            if (canCollect && s.gambles < SlotRules.MAX_GAMBLES && s.pending > 0) Text("Gamble: guess the colour of the hidden card to double your win (${SlotRules.MAX_GAMBLES - s.gambles} left), or COLLECT it.", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, textAlign = TextAlign.Center)
-            if (s.card != 0 && s.cardWon && canCollect) Text("The card was ${if (s.card == 1) "RED ♥" else "BLACK ♠"}: doubled!", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
-            if (s.freeSpins > 0 && s.phase == GPhase.PLAYING) Text("⭐ ${s.freeSpins} FREE SPINS LEFT (wins doubled)", color = Color(0xFF86EFAC), fontWeight = FontWeight.Black)
-            TextButton(onClick = { payDialog = true }) { Text("📋 Paytable", color = Gold) }
         }
         // a rain of coins for a jackpot
         if (banner == "JACKPOT!" || banner == "BIG WIN!") Canvas(Modifier.fillMaxSize()) {
@@ -393,28 +452,55 @@ private fun PayDialog(onClose: () -> Unit) {
 
 private fun hashSym(reel: Int, i: Int): Char = SlotRules.SYMBOLS[(((reel * 31 + i * 17 + (i * i) % 7) % 9) + 9) % 9]
 
-private fun DrawScope.drawMachine(s: SlotsState, nowMs: Long, spinStart: Long, done: Boolean, m: TextMeasurer) {
+private fun DrawScope.drawStar(c: Offset, r: Float, col: Color, rot: Float) {
+    val p = Path()
+    for (k in 0 until 8) {
+        val a = rot + k * PI.toFloat() / 4f
+        val rr = if (k % 2 == 0) r else r * 0.28f
+        val pt = Offset(c.x + cos(a) * rr, c.y + sin(a) * rr)
+        if (k == 0) p.moveTo(pt.x, pt.y) else p.lineTo(pt.x, pt.y)
+    }
+    p.close()
+    drawPath(p, col)
+}
+
+private fun DrawScope.drawMachine(
+    s: SlotsState, nowMs: Long, spinStart: Long, done: Boolean, m: TextMeasurer,
+    stops: LongArray, quickAt: Long, sinceResult: Long,
+) {
     val w = size.width; val h = size.height
-    // the cabinet
-    drawRoundRect(Brush.verticalGradient(listOf(Color(0xFFFDE68A), Color(0xFFB45309), Color(0xFF78350F))), Offset.Zero, size, CornerRadius(34f))
+    val paying = done && s.stage != "BET" && (s.lines.isNotEmpty() || s.scatters >= 3)
+    // the cabinet: gold with a bevel, chrome rails down both sides, and rivets
+    drawRoundRect(Brush.verticalGradient(listOf(Color(0xFFFFF3B0), Color(0xFFE0A81C), Color(0xFF8A5A0B), Color(0xFF5A3705))), Offset.Zero, size, CornerRadius(34f))
+    drawRoundRect(Color.White.copy(alpha = 0.35f), Offset(3f, 3f), Size(w - 6f, h - 6f), CornerRadius(32f), style = Stroke(2f))
     val inset = w * 0.035f
     val gx = inset; val gy = inset
     val gw = w - 2 * inset; val gh = h - 2 * inset
+    for (rail in 0..1) {
+        val rx0 = if (rail == 0) 3f else w - inset + 1f
+        drawRect(Brush.horizontalGradient(listOf(Color(0xFF6B7280), Color(0xFFF3F4F6), Color(0xFF9CA3AF), Color(0xFF4B5563)), rx0, rx0 + inset - 4f), Offset(rx0, gy + 14f), Size(inset - 4f, gh - 28f))
+    }
+    for (k in 0 until 7) { val y = gy + gh * (k + 0.5f) / 7f; drawCircle(Color(0xFFFFE9A0), 2.6f, Offset(inset * 0.5f, y)); drawCircle(Color(0xFFFFE9A0), 2.6f, Offset(w - inset * 0.5f, y)) }
     drawRoundRect(Color(0xFF0A0A14), Offset(gx, gy), Size(gw, gh), CornerRadius(22f))
-    // chasing bulbs round the window
-    val bulbs = 40
+    // the bulbs round the window: slow chase when idle, fast while spinning, flashing when you win
+    val bulbs = 44
+    val perim = 2 * (gw + gh)
     for (i in 0 until bulbs) {
-        val f = i.toFloat() / bulbs
-        val perim = 2 * (gw + gh)
-        var d = f * perim
+        val d = i.toFloat() / bulbs * perim
         val p = when {
             d < gw -> Offset(gx + d, gy)
             d < gw + gh -> Offset(gx + gw, gy + (d - gw))
             d < 2 * gw + gh -> Offset(gx + gw - (d - gw - gh), gy + gh)
             else -> Offset(gx, gy + gh - (d - 2 * gw - gh))
         }
-        val on = (i + (nowMs / 120L).toInt()) % 3 == 0
-        drawCircle(if (on) Color(0xFFFEF08A) else Color(0xFF92400E), 3.2f, p)
+        val on = when {
+            paying && sinceResult < 4000L -> ((nowMs / 130L).toInt() + i % 2) % 2 == 0
+            !done -> (i + (nowMs / 55L).toInt()) % 3 == 0
+            else -> (i + (nowMs / 140L).toInt()) % 4 == 0
+        }
+        val col = if (paying && on && (i % 2 == 0)) Color(0xFFFFFFFF) else Color(0xFFFEF08A)
+        if (on) drawCircle(Color(0xFFFFE066).copy(alpha = 0.35f), 6.5f, p)
+        drawCircle(if (on) col else Color(0xFF92400E), 3.2f, p)
     }
     // the reels
     val rx = gx + gw * 0.09f; val ry = gy + gh * 0.22f
@@ -424,42 +510,76 @@ private fun DrawScope.drawMachine(s: SlotsState, nowMs: Long, spinStart: Long, d
     val shownGrid = if (s.spinNo == 0) PREVIEW else s.grid
     val cellStyle = TextStyle(fontSize = (minOf(cw, ch) * 0.52f).toSp())
     val glyph = SlotRules.EMOJI.mapValues { (_, e) -> m.measure(e, cellStyle) }
-    fun put(sym: Char, x0: Float, y: Float, alpha: Float = 1f) {
+    fun put(sym: Char, x0: Float, y: Float, alpha: Float = 1f, scale: Float = 1f) {
         val g = glyph.getValue(sym)
-        drawText(g, topLeft = Offset(x0 + (cw - g.size.width) / 2f, y + (ch - g.size.height) / 2f), alpha = alpha)
+        val tl = Offset(x0 + (cw - g.size.width) / 2f, y + (ch - g.size.height) / 2f)
+        if (scale == 1f) drawText(g, topLeft = tl, alpha = alpha)
+        else withTransform({ scale(scale, scale, Offset(x0 + cw / 2f, y + ch / 2f)) }) { drawText(g, topLeft = tl, alpha = alpha) }
     }
+    // which squares are part of a win (they pop, the rest dim a little)
+    val winCells = HashSet<Int>()
+    if (paying) {
+        for (win in s.lines) for (r in 0 until win.count) winCells.add(r * SlotRules.ROWS + SlotRules.PAYLINES[win.line][r])
+        if (s.scatters >= 3) for (i in 0 until 15) if (s.grid[i] == '$') winCells.add(i)
+    }
+    val popClock = 1f + 0.2f * (0.5f + 0.5f * sin(nowMs / 150f))
     for (r in 0 until SlotRules.REELS) {
         val x0 = rx + r * cw
         drawRect(Brush.horizontalGradient(listOf(Color(0xFFD1D5DB), Color.White, Color(0xFFE5E7EB), Color(0xFF9CA3AF)), x0, x0 + cw), Offset(x0, ry), Size(cw, rh))
+        val stopAt = if (quickAt > 0L) minOf(stops[r], quickAt - spinStart) else stops[r]
+        val spinning = !done && t in 0 until stopAt
         clipRect(x0, ry, x0 + cw, ry + rh) {
-            val stopAt = reelStop(r)
-            if (!done && t in 0 until stopAt) {
-                // whirring: the strip scrolls down, blurred with ghost copies
-                val pos = t / 1000f * 18f
+            if (spinning) {
+                // whirring: the strip scrolls down, smeared with ghost copies
+                val creeping = r >= 3 && anticipates(s.grid) && quickAt == 0L && t > stops[2]
+                val speed = if (creeping) 7f else 18f
+                val pos = t / 1000f * speed
                 val base = floor(pos).toInt(); val frac = pos - base
                 for (j in -1..3) {
                     val sym = hashSym(r, base - j)
                     val y = ry + (j + frac) * ch
-                    put(sym, x0, y, 0.6f)
+                    put(sym, x0, y - ch * 0.14f, 0.20f); put(sym, x0, y + ch * 0.14f, 0.20f)
+                    put(sym, x0, y, 0.75f)
                 }
                 drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.0f), Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.0f)), ry, ry + rh), Offset(x0, ry), Size(cw, rh))
             } else {
-                // stopped: the three symbols, with a little bounce as the reel lands
+                // stopped: the three symbols, with a bounce as the reel lands; the winners pulse
                 val since = if (done || t < 0) 99_999L else t - stopAt
-                val bounce = if (since in 0..600) (ch * 0.16f * exp(-since / 140f) * sin(since / 32f)) else 0f
+                val bounce = if (since in 0..650) (ch * 0.22f * exp(-since / 130f) * sin(since / 30f)) else 0f
                 for (row in 0 until SlotRules.ROWS) {
                     val sym = shownGrid[r * SlotRules.ROWS + row]
                     val y = ry + row * ch + bounce
-                    put(sym, x0, y)
+                    val cell = r * SlotRules.ROWS + row
+                    if (paying && cell in winCells) {
+                        val gl = Brush.radialGradient(listOf(Color(0xFFFFE066).copy(alpha = 0.55f), Color.Transparent), Offset(x0 + cw / 2f, y + ch / 2f), ch * 0.7f)
+                        drawCircle(gl, ch * 0.7f, Offset(x0 + cw / 2f, y + ch / 2f))
+                        put(sym, x0, y, 1f, popClock)
+                    } else put(sym, x0, y, if (paying) 0.55f else 1f)
                 }
             }
         }
         // glass shine and shading at top and bottom of each reel
-        drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.45f)), ry, ry + rh), Offset(x0, ry), Size(cw, rh))
+        drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.50f), Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.50f)), ry, ry + rh), Offset(x0, ry), Size(cw, rh))
         drawLine(Color.Black.copy(alpha = 0.6f), Offset(x0, ry), Offset(x0, ry + rh), 3f)
+        // the "will it be the third scatter?" frame on a reel that is still creeping
+        if (spinning && r >= 3 && anticipates(s.grid) && quickAt == 0L && t > stops[2]) {
+            val fl = 0.5f + 0.5f * sin(nowMs / 90f)
+            drawRect(Color(0xFFFFE066).copy(alpha = 0.12f + 0.14f * fl), Offset(x0, ry), Size(cw, rh))
+            drawRect(Color(0xFFFFE066).copy(alpha = 0.55f + 0.45f * fl), Offset(x0 + 2f, ry + 2f), Size(cw - 4f, rh - 4f), style = Stroke(4f))
+        }
     }
     drawLine(Color.Black.copy(alpha = 0.6f), Offset(rx + rw, ry), Offset(rx + rw, ry + rh), 3f)
     for (row in 1 until SlotRules.ROWS) drawLine(Color.Black.copy(alpha = 0.18f), Offset(rx, ry + row * ch), Offset(rx + rw, ry + row * ch), 2f)
+    // a pane of glass over the reels, with a bright glint that sweeps across now and then
+    run {
+        val cyc = (nowMs % 4200L) / 800f
+        if (cyc in 0f..1f) {
+            val x = rx - rw * 0.25f + cyc * rw * 1.5f
+            val band = Path().apply { moveTo(x, ry); lineTo(x + rw * 0.10f, ry); lineTo(x + rw * 0.10f - rh * 0.25f, ry + rh); lineTo(x - rh * 0.25f, ry + rh); close() }
+            clipRect(rx, ry, rx + rw, ry + rh) { drawPath(band, Color.White.copy(alpha = 0.10f)) }
+        }
+        drawRoundRect(Color.Black.copy(alpha = 0.55f), Offset(rx - 2f, ry - 2f), Size(rw + 4f, rh + 4f), CornerRadius(6f), style = Stroke(5f))
+    }
     // the pay table across the top of the machine, with the symbols that have just paid lit up
     run {
         val px = gx + gw * 0.03f; val py = gy + gh * 0.025f; val pw = gw * 0.94f; val ph = gh * 0.165f
@@ -483,7 +603,7 @@ private fun DrawScope.drawMachine(s: SlotsState, nowMs: Long, spinStart: Long, d
     }
     // the payline numbers down both sides: a line lights up when it pays
     run {
-        val paying = if (done && s.stage != "BET") s.lines.map { it.line }.toSet() else emptySet()
+        val payingLines = if (done && s.stage != "BET") s.lines.map { it.line }.toSet() else emptySet()
         val tabR = minOf(cw * 0.15f, ch * 0.14f)
         val numStyle = TextStyle(fontSize = (tabR * 1.25f).toSp(), color = Color(0xFF111827), fontWeight = FontWeight.Black)
         for (side in 0..1) {
@@ -494,8 +614,9 @@ private fun DrawScope.drawMachine(s: SlotsState, nowMs: Long, spinStart: Long, d
                     val x = if (side == 0) gx + gw * 0.045f else gx + gw * 0.955f
                     val y = ry + row * ch + ch * (k + 1f) / (here.size + 1f)
                     val col = LineColours[li % LineColours.size]
-                    val on = li in paying
+                    val on = li in payingLines
                     val flash = if (on) 0.6f + 0.4f * sin(nowMs / 130f) else 0.45f
+                    if (on) drawCircle(col.copy(alpha = 0.4f * flash), tabR * 1.7f, Offset(x, y))
                     drawCircle(col.copy(alpha = flash), tabR, Offset(x, y))
                     drawCircle(Color(0xFF111827).copy(alpha = 0.6f), tabR, Offset(x, y), style = Stroke(1.6f))
                     val g = m.measure("${li + 1}", numStyle)
@@ -504,27 +625,45 @@ private fun DrawScope.drawMachine(s: SlotsState, nowMs: Long, spinStart: Long, d
             }
         }
     }
-    // the winning lines, once the reels have stopped
+    // the winning lines draw themselves from the left, one by one
     if (done && s.stage != "BET" && s.lines.isNotEmpty()) {
         val flash = 0.55f + 0.45f * sin(nowMs / 140f)
-        for (win in s.lines) {
+        for ((wi, win) in s.lines.withIndex()) {
             val col = LineColours[win.line % LineColours.size]
-            val path = Path()
-            val pts = ArrayList<Offset>()
-            for (r in 0 until win.count) {
+            val pts = List(win.count) { r -> Offset(rx + r * cw + cw / 2f, ry + SlotRules.PAYLINES[win.line][r] * ch + ch / 2f) }
+            val reveal = ((sinceResult - wi * 260L) / 520f).coerceIn(0f, 1f)
+            if (reveal <= 0f) continue
+            val segs = pts.size - 1
+            val upTo = reveal * segs
+            val path = Path().apply { moveTo(pts[0].x, pts[0].y) }
+            for (k in 1 until pts.size) {
+                val f = (upTo - (k - 1)).coerceIn(0f, 1f)
+                if (f <= 0f) break
+                val a0 = pts[k - 1]; val b0 = pts[k]
+                path.lineTo(a0.x + (b0.x - a0.x) * f, a0.y + (b0.y - a0.y) * f)
+            }
+            for ((r, c0) in pts.withIndex()) {
+                if (r > upTo + 0.01f) break
                 val row = SlotRules.PAYLINES[win.line][r]
-                val c = Offset(rx + r * cw + cw / 2f, ry + row * ch + ch / 2f)
-                pts.add(c)
-                if (r == 0) path.moveTo(c.x, c.y) else path.lineTo(c.x, c.y)
                 drawRoundRect(col.copy(alpha = 0.22f * flash), Offset(rx + r * cw + 3f, ry + row * ch + 3f), Size(cw - 6f, ch - 6f), CornerRadius(10f))
                 drawRoundRect(col.copy(alpha = flash), Offset(rx + r * cw + 3f, ry + row * ch + 3f), Size(cw - 6f, ch - 6f), CornerRadius(10f), style = Stroke(3.4f))
+                // twinkling stars round each winning symbol
+                for (k in 0 until 3) {
+                    val a = nowMs / 400f + k * 2.1f + r
+                    val tw = 0.5f + 0.5f * sin(nowMs / 120f + k * 1.7f + r)
+                    drawStar(Offset(c0.x + cos(a) * cw * 0.42f, c0.y + sin(a) * ch * 0.38f), minOf(cw, ch) * 0.10f * (0.6f + tw), Color.White.copy(alpha = 0.4f + 0.6f * tw), a)
+                }
             }
-            drawPath(path, col.copy(alpha = 0.85f * flash), style = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(path, col.copy(alpha = 0.9f * flash), style = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
     // scatters glow when they have paid
     if (done && s.scatters >= 3 && s.stage != "BET") for (r in 0 until SlotRules.REELS) for (row in 0 until SlotRules.ROWS) if (s.grid[r * SlotRules.ROWS + row] == '$') {
         drawCircle(Color(0xFF86EFAC).copy(alpha = 0.35f + 0.3f * sin(nowMs / 120f)), minOf(cw, ch) * 0.5f, Offset(rx + r * cw + cw / 2f, ry + row * ch + ch / 2f), style = Stroke(5f))
+    }
+    // a jackpot lights up the whole cabinet
+    if (done && s.jackpot && s.stage != "BET" && sinceResult in 0..3500L) {
+        drawRoundRect(Color.White.copy(alpha = 0.22f * (0.5f + 0.5f * sin(nowMs / 90f))), Offset.Zero, size, CornerRadius(34f))
     }
 }
 
