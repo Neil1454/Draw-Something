@@ -37,6 +37,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -111,6 +112,11 @@ fun DealNoDealScreen(s: DndState, engine: DealNoDealEngine, onPlayAgain: () -> U
     val them = engine.theirName
     val frame = remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { while (true) withFrameMillis { frame.longValue = it } }
+    // a quiet, tense game-show tune under the whole game
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        Sfx.startMusic(Sfx.MusicTrack.DEAL_OR_NO_DEAL)
+        onDispose { Sfx.stopMusic() }
+    }
 
     // each happening at the table is queued up and shown in the middle of the stage, one after another
     LaunchedEffect(s.moves) {
@@ -304,8 +310,10 @@ private fun CaseCell(b: DndBox, s: DndState, pulse: Float, enabled: Boolean, onC
             drawRoundRect(col.copy(alpha = 0.30f), Offset.Zero, size, CornerRadius(10f))
             drawRoundRect(Color.Black.copy(alpha = 0.45f), Offset(2f, 2f), Size(w - 4f, h - 4f), CornerRadius(8f))
             drawRoundRect(col.copy(alpha = 0.65f), Offset.Zero, size, CornerRadius(10f), style = Stroke(2f))
-            val t = measurer.measure(DndRules.money(b.value), TextStyle(fontSize = 10.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Black))
-            drawText(t, topLeft = Offset((w - t.size.width) / 2f, (h - t.size.height) / 2f))
+            val t = measurer.measure(DndRules.money(b.value), TextStyle(fontSize = 10.sp, color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.Black))
+            drawText(t, topLeft = Offset((w - t.size.width) / 2f, h * 0.52f))
+            val nn = measurer.measure("${b.number}", TextStyle(fontSize = 15.sp, color = Gold, fontWeight = FontWeight.Black))
+            drawText(nn, topLeft = Offset((w - nn.size.width) / 2f, h * 0.10f))
             return@Canvas
         }
         drawCase(Offset(w / 2f, h / 2f + 2f), w * 0.92f, h * 0.84f, 0f, if (mine) MineCol else if (theirs) TheirCol else null)
@@ -357,7 +365,7 @@ private fun DrawScope.drawCase(c: Offset, w: Float, h: Float, lid: Float, accent
  */
 @Composable
 private fun RevealStage(item: RevealItem, them: String, frameMs: Long, onDone: () -> Unit) {
-    val total = when (item.kind) { "pick" -> 1900L; "nodeal" -> 1700L; "swap", "keep" -> 1800L; else -> 4600L }
+    val total = when (item.kind) { "pick" -> 1900L; "nodeal" -> 1700L; "swap", "keep" -> 1800L; else -> 5200L }
     var ms by remember(item) { mutableLongStateOf(0L) }
     var skip by remember(item) { mutableStateOf(false) }
     val measurer = rememberTextMeasurer()
@@ -366,20 +374,29 @@ private fun RevealStage(item: RevealItem, them: String, frameMs: Long, onDone: (
         val start = withFrameMillis { it }
         var s1 = false; var s2 = false; var s3 = false; var s4 = false
         when (item.kind) {
-            "open", "deal", "mybox", "theirbox" -> Sfx.play(Sound.BOX_CREAK)
-            "pick" -> Sfx.play(Sound.CARD)
-            "nodeal" -> Sfx.play(Sound.BANKER)
+            "open", "deal", "mybox", "theirbox" -> { Sfx.play(Sound.KNOCK); delay(260); Sfx.play(Sound.BOX_CREAK) }
+            "pick" -> Sfx.play(Sound.KNOCK)
+            "nodeal" -> { Sfx.play(Sound.BANKER); Sfx.play(Sound.CHEER) }
             "swap" -> Sfx.play(Sound.WHOOSH)
             else -> Sfx.play(Sound.TAP)
         }
+        val tiny = item.value in 0..1000L
         while (true) {
             val now = withFrameMillis { it } - start
             ms = if (skip) maxOf(now, total - 400L) else now
             val box = item.kind in setOf("open", "deal", "mybox", "theirbox")
             if (box && !s1 && ms >= 500L) { s1 = true; Sfx.play(Sound.DRUMROLL) }
-            if (box && !s2 && ms >= 1450L) { s2 = true; Sfx.play(Sound.BOX_OPEN) }
-            if (box && !s3 && ms >= 1650L) { s3 = true; Sfx.play(if (isHigh(item.value)) Sound.GASP else Sound.SPARKLE) }
-            if (box && !s4 && ms >= 1950L) { s4 = true; Sfx.play(if (isHigh(item.value)) Sound.BAD else Sound.GOOD) }
+            if (box && !s2 && ms >= 1550L) { s2 = true; Sfx.play(Sound.BOX_OPEN) }
+            if (box && !s3 && ms >= 1750L) { s3 = true; Sfx.play(if (isHigh(item.value)) Sound.GASP else Sound.SPARKLE) }
+            if (box && !s4 && ms >= 2050L) {
+                s4 = true
+                when {
+                    item.kind == "deal" -> { Sfx.play(Sound.CASH); Sfx.play(Sound.APPLAUSE) }
+                    isHigh(item.value) -> Sfx.play(Sound.GROAN)
+                    tiny -> Sfx.play(Sound.CHEER)
+                    else -> Sfx.play(Sound.APPLAUSE)
+                }
+            }
             if (ms >= total) break
         }
         onDone()
@@ -401,10 +418,10 @@ private fun RevealStage(item: RevealItem, them: String, frameMs: Long, onDone: (
             val bh = bw * 0.82f
             if (isBox) {
                 val appear = easeOutBack((ms / 450f).coerceIn(0f, 1f))
-                val shaking = ms in 500L..1450L
+                val shaking = ms in 500L..1550L
                 val shake = if (shaking) sin(ms * 0.09f) * (4f + (ms - 500L) / 60f) else 0f
-                val lid = ((ms - 1450L) / 380f).coerceIn(0f, 1f)
-                val rise = ((ms - 1800L) / 700f).coerceIn(0f, 1f)
+                val lid = ((ms - 1550L) / 380f).coerceIn(0f, 1f)
+                val rise = ((ms - 1900L) / 700f).coerceIn(0f, 1f)
                 val scale = appear * (1f + 0.04f * sin(ms * 0.02f).coerceAtLeast(0f) * (if (shaking) 1f else 0f))
                 // the burst of light behind the box
                 if (lid > 0f) {
@@ -441,10 +458,13 @@ private fun RevealStage(item: RevealItem, them: String, frameMs: Long, onDone: (
                     val num = measurer.measure("${item.box}", TextStyle(fontSize = (bw * 0.20f).toSp(), color = Color(0xFF111827), fontWeight = FontWeight.Black))
                     drawText(num, topLeft = Offset(pc.x + (plate.width - num.size.width) / 2f, pc.y + (plate.height - num.size.height) / 2f))
                 }
+                // the box's number, large, so you always know which one it is
+                val tagTxt = measurer.measure("BOX ${item.box}", TextStyle(fontSize = (bw * 0.16f).toSp(), color = Gold, fontWeight = FontWeight.Black))
+                drawText(tagTxt, topLeft = Offset(cx - tagTxt.size.width / 2f, cy - bh * 0.5f - tagTxt.size.height - 8f - (if (rise > 0f) rise * bh * 0.55f else 0f)))
                 // the prize, counting up on the card
                 if (rise > 0.35f) {
-                    val shown = (item.value * min(1f, (ms - 2000L) / 650f).coerceIn(0f, 1f)).toLong()
-                    val txt = DndRules.money(if (ms >= 2650L) item.value else DndRules.nice(shown.coerceAtLeast(1L)).coerceAtMost(item.value))
+                    val shown = (item.value * min(1f, (ms - 2100L) / 650f).coerceIn(0f, 1f)).toLong()
+                    val txt = DndRules.money(if (ms >= 2750L) item.value else DndRules.nice(shown.coerceAtLeast(1L)).coerceAtMost(item.value))
                     val t = measurer.measure(txt, TextStyle(fontSize = (bw * 0.19f).toSp(), color = if (high) Color(0xFFB91C1C) else Color(0xFF1D4ED8), fontWeight = FontWeight.Black))
                     val cardY = cy - bh * 0.1f - rise * bh * 0.95f
                     drawText(t, topLeft = Offset(cx - t.size.width / 2f + shake, cardY + (bh * 0.5f - t.size.height) / 2f))
@@ -482,13 +502,27 @@ private fun RevealStage(item: RevealItem, them: String, frameMs: Long, onDone: (
             else -> ""
         }
         if (caption.isNotEmpty()) Text(caption, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp, start = 24.dp, end = 24.dp))
-        if (isBox && ms > 2700L) {
-            val line = when {
-                item.kind == "mybox" || item.kind == "theirbox" -> ""
-                isHigh(item.value) -> "A big prize is gone! 😬"
-                else -> "A small prize out of the game! 🙌"
+        if (isBox && ms > 2300L) {
+            val v = item.value
+            val (line, colour) = when {
+                item.kind == "mybox" -> "YOUR BOX HELD ${DndRules.money(v)}!" to Gold
+                item.kind == "theirbox" -> "${them.uppercase()}'S BOX HELD ${DndRules.money(v)}!" to Gold
+                item.kind == "deal" -> "DEAL!" to Color(0xFF86EFAC)
+                v >= 1_000_000L -> "OUCH! A BIG ONE GONE!" to Color(0xFFFCA5A5)
+                v >= 100_000L -> "OH NO! A RED ONE!" to Color(0xFFFCA5A5)
+                v >= 5_000L -> "PHEW! A BLUE ONE!" to Color(0xFF93C5FD)
+                else -> "BRILLIANT! A TINY ONE OUT!" to Color(0xFF86EFAC)
             }
-            if (line.isNotEmpty()) Text(line, color = if (isHigh(item.value)) Color(0xFFFCA5A5) else Color(0xFF93C5FD), fontWeight = FontWeight.Black, fontSize = 18.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 56.dp))
+            val pop = min(1f, (ms - 2300L) / 260f)
+            val shake = if (isHigh(v) && ms < 3100L) sin(ms * 0.08f) * 7f else 0f
+            Text(
+                line, color = colour, fontWeight = FontWeight.Black, fontSize = (30f * (0.7f + 0.3f * pop)).sp, textAlign = TextAlign.Center, lineHeight = 34.sp,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 128.dp, start = 18.dp, end = 18.dp).graphicsLayer { translationX = shake; scaleX = pop; scaleY = pop },
+            )
+            if (item.kind == "open") Text(
+                if (isHigh(v)) "That's a prize the Banker was hoping you'd keep out of play…" else "That prize is out of the game, so it isn't in either of your boxes.",
+                color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 76.dp, start = 24.dp, end = 24.dp),
+            )
         }
         Text("tap to skip", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp))
     }
@@ -512,8 +546,9 @@ private fun BankerCall(s: DndState, engine: DealNoDealEngine, them: String, fram
     // ring, ring…
     LaunchedEffect(s.round, step) {
         if (step == 0) { while (true) { Sfx.play(Sound.RING); delay(1500) } }
-        if (step == 1) { Sfx.play(Sound.PICKUP); delay(250); Sfx.play(Sound.BANKER); delay(1500); step = 2 }
-        if (step == 2) { Sfx.play(Sound.DRUMROLL); delay(1000); Sfx.play(Sound.CASH); step = 3 }
+        // you lift the receiver and the Banker talks (a muffled voice down a bad line), then a drum roll and his offer
+        if (step == 1) { Sfx.play(Sound.PICKUP); delay(350); Sfx.play(Sound.VOICE); delay(2400); step = 2 }
+        if (step == 2) { Sfx.play(Sound.DRUMROLL); delay(1150); Sfx.play(Sound.BANKER); step = 3 }
     }
     val unseen = s.unseen
     val average = if (unseen.isEmpty()) 0L else unseen.average().toLong()
@@ -562,7 +597,11 @@ private fun BankerCall(s: DndState, engine: DealNoDealEngine, them: String, fram
                     Text("Round ${s.round} of ${s.rounds}", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 12.dp))
                     FunkyButton("📞  PICK UP THE PHONE", { step = 1 }, Modifier.fillMaxWidth().padding(bottom = 36.dp), listOf(Color(0xFF16A34A), Color(0xFF0E9F6E)), fontSize = 20.sp)
                 }
-                1 -> Text("“Hello…”", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp, modifier = Modifier.padding(bottom = 120.dp))
+                1 -> {
+                    val dots = ".".repeat(1 + ((frameMs / 300L) % 3).toInt())
+                    Text("“Hello, it's the Banker$dots”", color = Color.White, fontWeight = FontWeight.Black, fontSize = 26.sp, textAlign = TextAlign.Center)
+                    Text("🗣️  he's talking…", color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, modifier = Modifier.padding(bottom = 110.dp, top = 6.dp))
+                }
                 2 -> {
                     Text("The Banker's offer is…", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Text("🥁", fontSize = 40.sp, modifier = Modifier.padding(bottom = 90.dp))

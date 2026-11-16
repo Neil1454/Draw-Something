@@ -88,14 +88,22 @@ object Sfx {
     }
 
     private var music: AudioTrack? = null
+    private var musicTrack: MusicTrack? = null
 
-    /** Starts the quiet looping tune (Tetris only). Does nothing if sound is off or it is already playing. */
+    /** The tunes that can loop quietly under a game. */
+    enum class MusicTrack { TETRIS, DEAL_OR_NO_DEAL }
+
+    /** Starts a quiet looping tune. Does nothing if sound is off or that tune is already playing; a different tune replaces the one playing. */
     @Synchronized
-    fun startMusic() {
-        if (!enabled || music != null) return
+    fun startMusic(track: MusicTrack = MusicTrack.TETRIS) {
+        if (!enabled) return
+        if (music != null && musicTrack == track) return
+        stopMusic()
         try {
-            val data = synchronized(cache) { musicData ?: Synth.renderMusic().also { musicData = it } }
-            val track = AudioTrack.Builder()
+            val data = synchronized(cache) {
+                musicData.getOrPut(track) { if (track == MusicTrack.TETRIS) Synth.renderMusic() else Synth.renderDealMusic() }
+            }
+            val audio = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_GAME)
@@ -112,12 +120,15 @@ object Sfx {
                 .setBufferSizeInBytes(data.size * 2)
                 .setTransferMode(AudioTrack.MODE_STATIC)
                 .build()
-            track.write(data, 0, data.size)
-            track.setLoopPoints(0, data.size, -1)
-            track.play()
-            music = track
+            audio.write(data, 0, data.size)
+            audio.setLoopPoints(0, data.size, -1)
+            audio.setVolume(if (track == MusicTrack.DEAL_OR_NO_DEAL) 0.55f else 1f)
+            audio.play()
+            music = audio
+            musicTrack = track
         } catch (e: Exception) {
             music = null
+            musicTrack = null
         }
     }
 
@@ -130,7 +141,8 @@ object Sfx {
             // already gone
         }
         music = null
+        musicTrack = null
     }
 
-    private var musicData: ShortArray? = null
+    private val musicData = EnumMap<MusicTrack, ShortArray>(MusicTrack::class.java)
 }

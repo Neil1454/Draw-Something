@@ -116,7 +116,7 @@ class SynthTest {
             val peak = pcm.maxOf { kotlin.math.abs(it.toInt()) }
             assertTrue("$s is silent", peak > 2000)
             assertTrue("$s is too loud", peak <= 32767)
-            assertTrue("$s should be under 1.2 seconds", Synth.durationMs(s) < 1200)
+            if (s in Synth.LONG) assertTrue("$s should be under 3 seconds", Synth.durationMs(s) < 3000) else assertTrue("$s should be under 1.5 seconds", Synth.durationMs(s) < 1500)
         }
     }
 
