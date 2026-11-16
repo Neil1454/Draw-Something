@@ -27,6 +27,10 @@ object ArkanoidRules {
     const val PADDLE_Y = 130f
     const val PADDLE_W = 16f
     const val PADDLE_WIDE = 27f
+    const val PADDLE_NARROW = 9.5f
+    /** The ball gets this much faster after every paddle hit in one rally, up to the cap. */
+    const val RALLY_STEP = 0.015f
+    const val RALLY_CAP = 0.5f
     const val BALL_R = 1.6f
     const val PADDLE_SPEED = 160f
     const val DROP_SPEED = 30f
@@ -73,6 +77,10 @@ data class ArkanoidState(
     val drops: List<DropView> = emptyList(),
     val slow: Boolean = false,
     val fireball: Boolean = false,
+    /** A bad power-up is making the ball faster. */
+    val fast: Boolean = false,
+    /** How much faster than the level's starting speed the ball is now (1.0 at the start of a rally). */
+    val speed: Float = 1f,
     val remaining: Int = 0,
 ) {
     val phase get() = c.phase
@@ -121,6 +129,8 @@ class ArkanoidEngine(
     private var lastOwner = 1
     private var slowUntil = 0L
     private var fireUntil = 0L
+    private var fastUntil = 0L
+    private var rally = 0
     private var over = false
     private var why = ""
 
@@ -129,14 +139,16 @@ class ArkanoidEngine(
         act(JSONObject().put("a", "in").put("x", Arcade.r1(x)).put("f", if (fire) 1 else 0))
     }
 
-    private fun halfWidth(p: Int) = (if (t < ships[p].tripleUntil) R.PADDLE_WIDE else R.PADDLE_W) / 2f
+    private fun halfWidth(p: Int) = (if (t < ships[p].narrowUntil) R.PADDLE_NARROW else if (t < ships[p].tripleUntil) R.PADDLE_WIDE else R.PADDLE_W) / 2f
+
+    private fun addScore(p: Int, pts: Int) { ships[p].score += if (t < ships[p].doubleUntil) pts * 2 else pts }
 
     override fun hostBegin(opts: JSONObject) {
         levels = opts.optInt("waves", 5).coerceIn(1, 9)
         lives = opts.optInt("lives", Arcade.START_LIVES).coerceIn(1, 5)
         ships[1].reset(30f, R.PADDLE_Y); ships[2].reset(70f, R.PADDLE_Y)
         level = 1; t = 0L; elapsed = 0L; over = false; why = ""; bursts.clear(); burstId = 0; dropId = 0
-        lastOwner = 1
+        lastOwner = 1; rally = 0
         startLevel()
         lastAt = clock()
     }
@@ -145,7 +157,7 @@ class ArkanoidEngine(
         val l = R.layout(level)
         for (i in bricks.indices) bricks[i] = l[i]
         balls.clear(); drops.clear(); lasers.clear()
-        serveAt = -1L; slowUntil = 0L; fireUntil = 0L
+        serveAt = -1L; slowUntil = 0L; fireUntil = 0L; fastUntil = 0L; rally = 0
         serveOwner = if (level % 2 == 1) 1 else 2
         stage = "READY"; stageUntil = t + Arcade.READY_MS
     }
@@ -243,7 +255,7 @@ class ArkanoidEngine(
     private fun moveBalls(dt: Float) {
         val slow = t < slowUntil
         val fire = t < fireUntil
-        val sp = R.ballSpeed(level) * (if (slow) 0.7f else 1f)
+        val sp = min(150f, R.ballSpeed(level) * (1f + min(R.RALLY_CAP, rally * R.RALLY_STEP)) * (if (slow) 0.7f else 1f) * (if (t < fastUntil) 1.35f else 1f))
         var anyLost = false
         val it = balls.iterator()
         while (it.hasNext()) {
@@ -270,7 +282,7 @@ class ArkanoidEngine(
                         val ang = rel * 1.05f
                         b.vx = sp * sin(ang); b.vy = -sp * cos(ang)
                         b.y = R.PADDLE_Y - 1.5f - R.BALL_R
-                        b.owner = p; lastOwner = p
+                        b.owner = p; lastOwner = p; rally++
                         burst(b.x, R.PADDLE_Y, "pd")
                         break
                     }
@@ -296,7 +308,7 @@ class ArkanoidEngine(
             if (lost) { lastOwner = b.owner; anyLost = true; it.remove() }
         }
         if (anyLost && balls.isEmpty() && !over && stage == "PLAY") {
-            lives--
+            lives--; rally = 0
             burst(ships[lastOwner].x, R.PADDLE_Y, "pl")
             serveOwner = lastOwner
             serveAt = -1L
@@ -335,12 +347,15 @@ class ArkanoidEngine(
 
     private fun power(kind: Char, p: Int) {
         val s = ships[p]
-        s.score += 25
+        addScore(p, 25)
         when (kind) {
             'W' -> s.tripleUntil = t + Arcade.POWER_MS
             'L' -> s.rapidUntil = t + Arcade.POWER_MS
             'S' -> slowUntil = t + 8_000L
             'F' -> fireUntil = t + 7_000L
+            'X' -> s.doubleUntil = t + 10_000L
+            'N' -> { s.narrowUntil = t + 9_000L; s.tripleUntil = 0L }
+            'Z' -> fastUntil = t + 8_000L
             'H' -> if (lives < Arcade.MAX_LIVES) lives++ else s.score += 100
             'M' -> {
                 val src = ArrayList(balls)
@@ -362,7 +377,7 @@ class ArkanoidEngine(
         val cy = R.TOP + row * R.BH + R.BH / 2f
         when (bricks[i]) {
             '9' -> burst(cx, cy, "gd")
-            '2', '3' -> { bricks[i] = bricks[i] - 1; ships[owner].score += 5; burst(cx, cy, "hp") }
+            '2', '3' -> { bricks[i] = bricks[i] - 1; addScore(owner, 5); burst(cx, cy, "hp") }
             'E' -> explode(col, row, owner)
             '1' -> destroy(i, owner, true)
         }
@@ -372,10 +387,11 @@ class ArkanoidEngine(
         val col = i % R.COLS
         val row = i / R.COLS
         bricks[i] = '.'
-        ships[owner].score += 10 + 2 * (R.ROWS - row)
+        addScore(owner, 10 + 2 * (R.ROWS - row))
         burst(col * R.BW + R.BW / 2f, R.TOP + row * R.BH + R.BH / 2f, "bk")
         if (mayDrop && random.nextInt(100) < 15) {
-            val kinds = if (lives >= Arcade.MAX_LIVES) "WWMMLLSFF" else "WWMMLLSFFH"
+            // good ones most of the time, with a few that make life harder (N shrinks the catcher's paddle, Z speeds the ball up)
+            val kinds = if (lives >= Arcade.MAX_LIVES) "WWMMLLSFFXXNZ" else "WWMMLLSFFHXXNZ"
             drops.add(Drop(++dropId, col * R.BW + R.BW / 2f, R.TOP + row * R.BH + R.BH, kinds[random.nextInt(kinds.length)]))
         }
     }
@@ -384,7 +400,7 @@ class ArkanoidEngine(
         val cx = col * R.BW + R.BW / 2f
         val cy = R.TOP + row * R.BH + R.BH / 2f
         bricks[R.idx(col, row)] = '.'
-        ships[owner].score += 30
+        addScore(owner, 30)
         burst(cx, cy, "bm")
         for (dr in -1..1) for (dc in -1..1) {
             val c = col + dc; val r = row + dr
@@ -413,7 +429,7 @@ class ArkanoidEngine(
             .put("s1", ArcadeCodec.ship(ships[1], t)).put("s2", ArcadeCodec.ship(ships[2], t))
             .put("ev", ArcadeCodec.bursts(bursts, t))
             .put("rd", max(0L, stageUntil - t).toInt()).put("tm", elapsed)
-            .put("sl", t < slowUntil).put("fb", t < fireUntil)
+            .put("sl", t < slowUntil).put("fb", t < fireUntil).put("fz", t < fastUntil).put("ry", rally)
             .put("ov", over).put("why", why)
     }
 
@@ -441,7 +457,7 @@ class ArkanoidEngine(
             for (i in 0 until minOf(arr.length(), 24)) {
                 val e = arr.optJSONArray(i) ?: continue
                 val k = e.optInt(3, 0).toChar()
-                if (k !in "WMLSFH") continue
+                if (k !in "WMLSFHXNZ") continue
                 dv += DropView(e.optInt(0), e.optDouble(1).toFloat().coerceIn(0f, 100f), e.optDouble(2).toFloat().coerceIn(0f, 150f), k)
             }
         }
@@ -454,6 +470,7 @@ class ArkanoidEngine(
                 receivedAt = clock(), result = result, why = s.optString("why", "").take(8),
             ),
             bricks = br, balls = bl, drops = dv, slow = s.optBoolean("sl", false), fireball = s.optBoolean("fb", false),
+            fast = s.optBoolean("fz", false), speed = 1f + min(R.RALLY_CAP, s.optInt("ry", 0).coerceIn(0, 200) * R.RALLY_STEP),
             remaining = br.count { it != '.' && it != '9' },
         )
     }
@@ -495,11 +512,11 @@ class ArkanoidBrain(private val e: ArkanoidEngine, skill: Skill, random: Random)
             val aim = (50f - target) * 0.08f
             target += aim + wobble * (if (skill == Skill.EASY) 7f else if (skill == Skill.NORMAL) 3f else 1f)
         } else {
-            val drop = s.drops.filter { it.y > 60f }.minByOrNull { abs(it.x - me.x) }
+            val drop = s.drops.filter { it.y > 60f && it.kind != 'N' && it.kind != 'Z' }.minByOrNull { abs(it.x - me.x) }
             target = drop?.x ?: if (s.balls.isEmpty()) me.x else 50f
         }
         // power-ups are worth a detour when no ball is about to arrive
-        if (ball == null || ball.y < 70f) s.drops.filter { it.y > 40f }.minByOrNull { abs(it.x - me.x) }?.let { target = it.x }
+        if (ball == null || ball.y < 70f) s.drops.filter { it.y > 40f && it.kind != 'N' && it.kind != 'Z' }.minByOrNull { abs(it.x - me.x) }?.let { target = it.x }
         e.input(target.coerceIn(5f, 95f), true)
     }
 }

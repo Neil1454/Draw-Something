@@ -167,7 +167,7 @@ class Smooth {
 class ArcadeWords(
     val level: String = "WAVE", val rapid: String = "⚡ RAPID", val triple: String = "🔱 TRIPLE",
     /** The words on the control pad under the screen, and whether it moves you across only (0) or across and up and down (1). */
-    val pad: String = "SLIDE HERE TO FLY · HOLD TO FIRE", val padAxis: Int = 1,
+    val pad: String = "SLIDE HERE", val padAxis: Int = 1,
 )
 
 @Composable
@@ -228,7 +228,7 @@ fun ArcadeScreen(
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscape = maxWidth > maxHeight
-            val padH = if (landscape) 74.dp else 112.dp
+            val padH = if (landscape) 54.dp else 74.dp
             val fieldH = if (landscape) maxHeight - 10.dp - padH - 8.dp else (maxHeight - 64.dp - padH - 8.dp)
             val fieldW = minOf(fieldH * (100f / 140f), maxWidth - 8.dp)
             val fieldHeight = fieldW * (140f / 100f)
@@ -344,10 +344,10 @@ private fun ControlPad(
                 }
             }
         }
-        Text(
-            if (touching) "✋ MOVING" + (if (twoAxis) "  ·  HOLDING = FIRING" else "") else "👆 ${words.pad}",
-            Modifier.align(Alignment.TopCenter).padding(top = 6.dp), fontSize = 11.sp, fontWeight = FontWeight.Black,
-            color = Color.White.copy(alpha = if (touching) 1f else 0.8f), letterSpacing = 1.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        // a short label while nothing is touching it; nothing at all once you are using it
+        if (!touching) Text(
+            "👆 ${words.pad}", Modifier.align(Alignment.TopCenter).padding(top = 4.dp), fontSize = 10.sp, fontWeight = FontWeight.Black,
+            color = Color.White.copy(alpha = 0.7f), letterSpacing = 1.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
 }

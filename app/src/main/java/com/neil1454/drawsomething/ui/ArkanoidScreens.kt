@@ -35,7 +35,9 @@ fun ArkanoidHelp() {
         Text("• Slide your finger left and right to move your paddle. Hit the ball with the edge of the paddle to send it off at an angle.")
         Text("• Whoever touched the ball last scores the points for every brick it breaks.")
         Text("• Grey bricks take two or three hits, gold bricks can't be broken, and red bricks explode the bricks around them.")
-        Text("• Bricks drop power-ups: catch them with a paddle. W wide paddle, L lasers (keep your finger down), M three balls, S slow motion, F fireball that burns straight through, ♥ an extra life for the team.")
+        Text("• Bricks drop power-ups: catch them with a paddle. W wide paddle, L lasers (keep your finger down), M three balls, S slow motion, F fireball that burns straight through, ♥ an extra life for the team, ×2 double points for you.")
+        Text("• Watch out for the two with a flashing yellow warning edge: N shrinks the paddle that catches it, and » makes the ball much faster for a while.")
+        Text("• The ball also gets faster the longer a rally goes on (shown as SPEED at the top), and starts quicker on every new level. Dropping it resets the speed.")
         Text("• The lives are shared. You only lose one when the last ball drops. Clear every level to win together, and the higher score wins the bragging rights.")
     }
 }
@@ -50,7 +52,8 @@ private fun rowColour(y: Float): Color =
 
 private fun dropColour(k: Char): Color = when (k) {
     'W' -> Color(0xFF38BDF8); 'L' -> Color(0xFFEF4444); 'M' -> Color(0xFF22C55E)
-    'S' -> Color(0xFFA855F7); 'F' -> Color(0xFFF97316); else -> Color(0xFFF472B6)
+    'S' -> Color(0xFFA855F7); 'F' -> Color(0xFFF97316); 'X' -> Color(0xFFFACC15)
+    'N' -> Color(0xFFB91C1C); 'Z' -> Color(0xFFEA580C); else -> Color(0xFFF472B6)
 }
 
 /** Every level has its own look: the sky, the glow and the floor change. */
@@ -159,7 +162,7 @@ private fun lerp(a: Color, b: Color, t: Float) = Color(a.red + (b.red - a.red) *
 
 private fun DrawScope.drawPaddle(v: ShipView, smooth: Smooth, key: String, col: Color, now: Long, dt: Float, mine: Boolean) {
     val x = smooth.follow("$key-x", v.x, dt, 30f)
-    val w = smooth.follow("$key-w", if (v.triple) ArkanoidRules.PADDLE_WIDE else ArkanoidRules.PADDLE_W, dt, 14f)
+    val w = smooth.follow("$key-w", if (v.narrow) ArkanoidRules.PADDLE_NARROW else if (v.triple) ArkanoidRules.PADDLE_WIDE else ArkanoidRules.PADDLE_W, dt, 14f)
     val y = ArkanoidRules.PADDLE_Y
     val t = now / 1000f
     val left = x - w / 2f
@@ -191,6 +194,8 @@ private fun DrawScope.drawPaddle(v: ShipView, smooth: Smooth, key: String, col: 
             drawCircle(Color(0xFFEF4444).copy(alpha = 0.35f), 2.2f, Offset(sx, y - 5f))
         }
     }
+    if (v.narrow) drawRoundRect(Color(0xFFEF4444).copy(alpha = 0.45f + 0.3f * sin(t * 14f)), Offset(left - 0.4f, y - 2.2f), Size(w + 0.8f, 4.8f), CornerRadius(2.4f), style = Stroke(0.5f))
+    if (v.doubled) for (k in 0 until 3) drawCircle(Color(0xFFFACC15).copy(alpha = 0.7f), 0.5f, Offset(x + sin(t * 3f + k * 2.1f) * w * 0.4f, y - 3.2f - ((t * 6f + k) % 3f)))
     if (v.triple) drawRoundRect(Color(0xFF38BDF8).copy(alpha = 0.35f + 0.2f * sin(t * 8f)), Offset(left - 0.4f, y - 2.2f), Size(w + 0.8f, 4.8f), CornerRadius(2.4f), style = Stroke(0.45f))
     if (mine) {
         val tri = androidx.compose.ui.graphics.Path().apply { moveTo(x, y + 5.2f); lineTo(x - 1.7f, y + 7.8f); lineTo(x + 1.7f, y + 7.8f); close() }
@@ -245,7 +250,8 @@ private fun DrawScope.drawDrop(d: DropView, f: ArcadeFrame, m: androidx.compose.
     drawRoundRect(Brush.verticalGradient(listOf(lerp(col, Color.White, 0.5f), col, lerp(col, Color.Black, 0.4f)), y - 2f, y + 2.2f), Offset(d.x - w / 2f, y - 2f), Size(w, 4.2f), CornerRadius(2.1f))
     drawRoundRect(Color.White.copy(alpha = 0.55f), Offset(d.x - w / 2f + 0.8f, y - 1.6f), Size(w - 1.6f, 1.1f), CornerRadius(0.6f))
     drawRoundRect(Color.White, Offset(d.x - w / 2f, y - 2f), Size(w, 4.2f), CornerRadius(2.1f), style = Stroke(0.3f))
-    val label = if (d.kind == 'H') "♥" else d.kind.toString()
+    if (d.kind == 'N' || d.kind == 'Z') drawRoundRect(Color(0xFFFDE047).copy(alpha = 0.5f + 0.5f * sin(t * 12f)), Offset(d.x - w / 2f - 0.5f, y - 2.5f), Size(w + 1f, 5.2f), CornerRadius(2.6f), style = Stroke(0.35f))
+    val label = when (d.kind) { 'H' -> "♥"; 'X' -> "×2"; 'N' -> "⇹"; 'Z' -> "»"; else -> d.kind.toString() }
     val r = m.measure(label, TextStyle(fontSize = 3.3f.toSp(), color = Color.White, fontWeight = FontWeight.Black))
     if (spin > 0.75f) drawText(r, topLeft = Offset(d.x - r.size.width / 2f, y - r.size.height / 2f + 0.1f))
 }
@@ -278,7 +284,7 @@ fun ArkanoidScreen(
         onInput = { x, _, f -> engine.input(x, f) },
         onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
         drawShips = false,
-        words = ArcadeWords(level = "LEVEL", rapid = "🔫 LASERS", triple = "↔ WIDE", pad = "SLIDE HERE TO MOVE YOUR PADDLE", padAxis = 0),
+        words = ArcadeWords(level = "LEVEL", rapid = "🔫 LASERS", triple = "↔ WIDE", pad = "SLIDE HERE", padAxis = 0),
         onBurst = { kind, x, y, fx, now, _ ->
             if (!arcadeBurst(kind, x, y, fx, now, Color.White)) when (kind) {
                 "bk" -> { val col = rowColour(y); fx.explode(x, y, now, col, 14, 1.0f); fx.glow(x, y, now, col); Sfx.play(Sound.POP) }
@@ -310,7 +316,9 @@ fun ArkanoidScreen(
             // team power-ups that are running
             var tx = 4f
             if (s.slow) { drawText(measurer.measure("🐢 SLOW", TextStyle(fontSize = 3.4f.toSp(), color = Color(0xFF7DD3FC), fontWeight = FontWeight.Black)), topLeft = Offset(tx, 4f)); tx += 22f }
-            if (s.fireball) drawText(measurer.measure("🔥 FIREBALL", TextStyle(fontSize = 3.4f.toSp(), color = Color(0xFFFDBA74), fontWeight = FontWeight.Black)), topLeft = Offset(tx, 4f))
+            if (s.fireball) { drawText(measurer.measure("🔥 FIREBALL", TextStyle(fontSize = 3.4f.toSp(), color = Color(0xFFFDBA74), fontWeight = FontWeight.Black)), topLeft = Offset(tx, 4f)); tx += 28f }
+            if (s.fast) drawText(measurer.measure("⚠ FAST BALL", TextStyle(fontSize = 3.4f.toSp(), color = Color(0xFFFCA5A5), fontWeight = FontWeight.Black)), topLeft = Offset(tx, 4f))
+            if (s.speed > 1.04f) drawText(measurer.measure("SPEED ×%.1f".format(s.speed), TextStyle(fontSize = 3.2f.toSp(), color = Color(0xFFFDE68A).copy(alpha = 0.9f), fontWeight = FontWeight.Black)), topLeft = Offset(Arcade.W - 26f, 4f))
         },
     )
 }

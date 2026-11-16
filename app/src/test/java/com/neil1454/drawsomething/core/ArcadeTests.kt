@@ -250,10 +250,16 @@ class ArkanoidTest {
         val a = ArkanoidBrain(p.host, Skill.HARD, kotlin.random.Random(1))
         val b = ArkanoidBrain(p.client, Skill.HARD, kotlin.random.Random(2))
         var guard = 0
+        var maxSpeed = 1f
+        val seen = HashSet<Char>()
         while (p.host.state.phase == GPhase.PLAYING && guard++ < 30_000) {
             a.think(p.now); b.think(p.now)
             p.advance(33)
+            maxSpeed = maxOf(maxSpeed, p.host.state.speed)
+            p.host.state.drops.forEach { seen.add(it.kind) }
         }
+        assertTrue("the ball speeds up during a rally (peaked at x$maxSpeed)", maxSpeed > 1.05f)
+        assertTrue("power-ups appeared: $seen", seen.isNotEmpty())
         assertEquals(GPhase.OVER, p.host.state.phase)
         assertEquals("victory", p.host.state.c.why)
         assertTrue(p.host.state.myScore > 0 && p.host.state.theirScore > 0)
