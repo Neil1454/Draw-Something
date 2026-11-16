@@ -204,6 +204,18 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
                         )
                 }
             }
+            // each game's own title card, with its own jingle, as the game begins
+            run {
+                val cardKind: GameKind? = when {
+                    contest != null -> contest.kind
+                    minesOn -> GameKind.MINES
+                    seaOn -> GameKind.SEA
+                    showdown != null -> GameKind.SHOWDOWN
+                    game != null && board != null -> GameKind.DRAW
+                    else -> null
+                }
+                if (cardKind != null) GameTitleCard(cardKind, finishedResult(ui) == null)
+            }
             // A small, always-visible way out of the game, and what is at stake.
             LeaveCorner(Modifier.align(Alignment.TopEnd)) { confirmLeave = true }
             StakesCorner(ui, Modifier.align(Alignment.TopStart))
