@@ -1,0 +1,368 @@
+{
+ "id": "science_nature",
+ "title": "Science & Nature",
+ "emoji": "🔬",
+ "blurb": "Space, the human body, animals and how the world works.",
+ "questions": [
+  {
+   "q": "What is the chemical formula for water?",
+   "a": [
+    "CO2",
+    "O2",
+    "NaCl",
+    "H2O"
+   ],
+   "c": 3,
+   "fact": "Two hydrogen atoms joined to one oxygen atom.",
+   "cat": "Chemistry"
+  },
+  {
+   "q": "About how many bones does an adult human have?",
+   "a": [
+    "300",
+    "180",
+    "206",
+    "250"
+   ],
+   "c": 2,
+   "fact": "Babies are born with around 300, and many fuse together as they grow.",
+   "cat": "Body"
+  },
+  {
+   "q": "What is the closest star to Earth?",
+   "a": [
+    "Proxima Centauri",
+    "The Sun",
+    "Polaris",
+    "Sirius"
+   ],
+   "c": 1,
+   "fact": "The Sun is about 150 million kilometres away.",
+   "cat": "Space"
+  },
+  {
+   "q": "Which planet has the most famous set of rings?",
+   "a": [
+    "Jupiter",
+    "Neptune",
+    "Uranus",
+    "Saturn"
+   ],
+   "c": 3,
+   "fact": "Saturn's rings are made mostly of chunks of ice.",
+   "cat": "Space"
+  },
+  {
+   "q": "What force keeps your feet on the ground?",
+   "a": [
+    "Gravity",
+    "Magnetism",
+    "Friction",
+    "Inertia"
+   ],
+   "c": 0,
+   "fact": "On the Moon gravity is only about a sixth as strong.",
+   "cat": "Physics"
+  },
+  {
+   "q": "What is known as the powerhouse of the cell?",
+   "a": [
+    "The mitochondrion",
+    "The nucleus",
+    "The chloroplast",
+    "The ribosome"
+   ],
+   "c": 0,
+   "fact": "Mitochondria turn food into energy the cell can use.",
+   "cat": "Biology"
+  },
+  {
+   "q": "Which gas makes up most of Earth's air?",
+   "a": [
+    "Oxygen",
+    "Argon",
+    "Nitrogen",
+    "Carbon dioxide"
+   ],
+   "c": 2,
+   "fact": "Nitrogen is about 78% of the atmosphere, and oxygen about 21%.",
+   "cat": "Earth"
+  },
+  {
+   "q": "Which is the fastest animal on land?",
+   "a": [
+    "The cheetah",
+    "The horse",
+    "The lion",
+    "The greyhound"
+   ],
+   "c": 0,
+   "fact": "A cheetah can reach about 60 mph in short bursts.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What is the largest planet in our solar system?",
+   "a": [
+    "Neptune",
+    "Jupiter",
+    "Saturn",
+    "Earth"
+   ],
+   "c": 1,
+   "fact": "More than 1,300 Earths could fit inside Jupiter.",
+   "cat": "Space"
+  },
+  {
+   "q": "How many legs does a spider have?",
+   "a": [
+    "12",
+    "10",
+    "8",
+    "6"
+   ],
+   "c": 2,
+   "fact": "Insects have six legs, which is why spiders aren't insects.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What do caterpillars grow up to become?",
+   "a": [
+    "Dragonflies",
+    "Beetles",
+    "Bees",
+    "Butterflies or moths"
+   ],
+   "c": 3,
+   "fact": "They change inside a chrysalis or a cocoon.",
+   "cat": "Nature"
+  },
+  {
+   "q": "At sea level, at what temperature does water boil in degrees Celsius?",
+   "a": [
+    "110",
+    "212",
+    "100",
+    "90"
+   ],
+   "c": 2,
+   "fact": "212 is the boiling point in Fahrenheit.",
+   "cat": "Science"
+  },
+  {
+   "q": "Which organ pumps blood round the body?",
+   "a": [
+    "The heart",
+    "The liver",
+    "The kidney",
+    "The lungs"
+   ],
+   "c": 0,
+   "fact": "A heart beats about 100,000 times a day.",
+   "cat": "Body"
+  },
+  {
+   "q": "Which of these birds cannot fly?",
+   "a": [
+    "The penguin",
+    "The pigeon",
+    "The owl",
+    "The eagle"
+   ],
+   "c": 0,
+   "fact": "Penguins use their wings like flippers to swim.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What is the hardest substance in the human body?",
+   "a": [
+    "Fingernails",
+    "Tooth enamel",
+    "The thigh bone",
+    "The skull"
+   ],
+   "c": 1,
+   "fact": "Enamel is the hard white coating on your teeth.",
+   "cat": "Body"
+  },
+  {
+   "q": "What kind of animal is a Komodo dragon?",
+   "a": [
+    "A lizard",
+    "A snake",
+    "A crocodile",
+    "A dinosaur"
+   ],
+   "c": 0,
+   "fact": "It is the biggest lizard alive today and lives on a few Indonesian islands.",
+   "cat": "Nature"
+  },
+  {
+   "q": "How many planets are in our solar system?",
+   "a": [
+    "8",
+    "7",
+    "10",
+    "9"
+   ],
+   "c": 0,
+   "fact": "Pluto was reclassified as a dwarf planet in 2006.",
+   "cat": "Space"
+  },
+  {
+   "q": "Which vitamin do we make when sunlight hits our skin?",
+   "a": [
+    "Vitamin D",
+    "Vitamin C",
+    "Vitamin A",
+    "Vitamin B12"
+   ],
+   "c": 0,
+   "fact": "Vitamin D helps keep bones strong.",
+   "cat": "Body"
+  },
+  {
+   "q": "What do plants do to turn sunlight into food?",
+   "a": [
+    "Photosynthesis",
+    "Digestion",
+    "Respiration",
+    "Fermentation"
+   ],
+   "c": 0,
+   "fact": "The word means 'putting together with light'.",
+   "cat": "Biology"
+  },
+  {
+   "q": "What is a group of lions called?",
+   "a": [
+    "A herd",
+    "A pride",
+    "A pack",
+    "A flock"
+   ],
+   "c": 1,
+   "fact": "Prides are mostly related females and their cubs.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What is the largest organ of the human body?",
+   "a": [
+    "The liver",
+    "The skin",
+    "The stomach",
+    "The brain"
+   ],
+   "c": 1,
+   "fact": "An adult's skin weighs around 4 kilograms.",
+   "cat": "Body"
+  },
+  {
+   "q": "Roughly how fast does light travel?",
+   "a": [
+    "300,000 km every second",
+    "3,000 km every second",
+    "30,000 km every second",
+    "3,000,000 km every second"
+   ],
+   "c": 0,
+   "fact": "Light from the Sun takes about 8 minutes to reach us.",
+   "cat": "Physics"
+  },
+  {
+   "q": "Which blood cells carry oxygen round your body?",
+   "a": [
+    "Red blood cells",
+    "White blood cells",
+    "Plasma",
+    "Platelets"
+   ],
+   "c": 0,
+   "fact": "They get their colour from a protein called haemoglobin.",
+   "cat": "Body"
+  },
+  {
+   "q": "What is the scientific study of the weather called?",
+   "a": [
+    "Geology",
+    "Meteorology",
+    "Ecology",
+    "Astronomy"
+   ],
+   "c": 1,
+   "fact": "It has nothing to do with meteors, despite the name!",
+   "cat": "Earth"
+  },
+  {
+   "q": "Which insect's cocoon is used to make silk?",
+   "a": [
+    "The silkworm",
+    "The bee",
+    "The ant",
+    "The ladybird"
+   ],
+   "c": 0,
+   "fact": "One cocoon can be unwound into a thread about a kilometre long.",
+   "cat": "Nature"
+  },
+  {
+   "q": "Which is the only mammal that can truly fly?",
+   "a": [
+    "The sugar glider",
+    "The colugo",
+    "The flying squirrel",
+    "The bat"
+   ],
+   "c": 3,
+   "fact": "Flying squirrels only glide, but bats really flap their wings.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What is the chemical symbol for iron?",
+   "a": [
+    "I",
+    "Fe",
+    "In",
+    "Ir"
+   ],
+   "c": 1,
+   "fact": "Fe comes from 'ferrum', the Latin word for iron.",
+   "cat": "Chemistry"
+  },
+  {
+   "q": "What is the smallest planet in our solar system?",
+   "a": [
+    "Mars",
+    "Pluto",
+    "Venus",
+    "Mercury"
+   ],
+   "c": 3,
+   "fact": "Mercury is only a little bigger than our Moon.",
+   "cat": "Space"
+  },
+  {
+   "q": "Which animal has the longest neck?",
+   "a": [
+    "The ostrich",
+    "The giraffe",
+    "The swan",
+    "The camel"
+   ],
+   "c": 1,
+   "fact": "A giraffe's neck has just seven bones, the same number as ours.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What do we call animals that eat only plants?",
+   "a": [
+    "Carnivores",
+    "Insectivores",
+    "Omnivores",
+    "Herbivores"
+   ],
+   "c": 3,
+   "fact": "Cows, rabbits and elephants are all herbivores.",
+   "cat": "Nature"
+  }
+ ]
+}

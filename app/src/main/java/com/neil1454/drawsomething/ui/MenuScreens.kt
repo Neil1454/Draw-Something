@@ -310,6 +310,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.GUESSWHO -> GuessWhoHelp()
                     GameKind.KALAH -> KalahHelp()
                     GameKind.LIARSDICE -> LiarDiceHelp()
+                    GameKind.TRIVIA -> TriviaHelp()
                     GameKind.HOCKEY -> HockeyHelp()
                     GameKind.HANGMAN -> HangmanHelp()
                     GameKind.NOUGHTS -> NoughtsHelp()
@@ -591,6 +592,7 @@ fun GameBrowser(
             GameKind.GUESSWHO -> GuessWhoLobby(ui, connected, onSettings, onStartSync)
             GameKind.KALAH -> KalahLobby(ui, connected, onSettings, onStartSync)
             GameKind.LIARSDICE -> LiarDiceLobby(ui, connected, onSettings, onStartSync)
+            GameKind.TRIVIA -> TriviaLobby(ui, connected, onSettings, onStartSync)
             GameKind.HOCKEY -> HockeyLobby(ui, connected, onSettings, onStartSync)
             GameKind.HANGMAN -> HangmanLobby(ui, connected, onSettings, onStartSync)
             GameKind.NOUGHTS -> NoughtsLobby(ui, connected, onSettings, onStartSync)
@@ -1009,6 +1011,32 @@ private fun HockeyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySetti
         ChipRow("Game", listOf("🏒 Air Hockey", "🏓 Pong"), set.hockeyMode) { onSettings(set.copy(hockeyMode = it)) }
         ChipRow("First to", listOf("5 goals", "7 goals", "10 goals"), set.hockeyTarget) { onSettings(set.copy(hockeyTarget = it)) }
     }) { onStart(GameKind.HOCKEY, JSONObject().put("mode", set.hockeyMode).put("target", set.hockeyTarget)) }
+}
+
+@Composable
+private fun TriviaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    val packs = com.neil1454.drawsomething.core.TriviaPacks.all()
+    val packIdx = packs.indexOfFirst { it.id == set.triviaPack }.coerceAtLeast(0)
+    val secsIdx = set.triviaSecs.coerceIn(0, HolidayRules.SECONDS.lastIndex)
+    SyncLobby(ui, connected && packs.isNotEmpty(), GameKind.TRIVIA, { TriviaHelp() }, {
+        if (packs.isEmpty()) {
+            Text("No trivia packs are installed in this version.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            ChipRow("Topic", packs.map { "${it.emoji} ${it.title}" }, packIdx) { onSettings(set.copy(triviaPack = packs[it].id)) }
+            packs.getOrNull(packIdx)?.blurb?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+            ChipRow("Questions", HolidayLength.values().map { it.label }, set.triviaLen) { onSettings(set.copy(triviaLen = it)) }
+            ChipRow("Time per question", HolidayRules.SECONDS.map { if (it == 0) "No timer" else "${it}s" }, secsIdx) { onSettings(set.copy(triviaSecs = it)) }
+            ToggleChip("🔁 Bonus round: win back points on the questions you missed", set.triviaBonus) { onSettings(set.copy(triviaBonus = it)) }
+        }
+    }) {
+        onStart(
+            GameKind.TRIVIA,
+            JSONObject().put("pack", packs.getOrNull(packIdx)?.id ?: "").put("len", set.triviaLen).put("secs", HolidayRules.SECONDS[secsIdx]).put("bonus", set.triviaBonus),
+        )
+    }
 }
 
 @Composable

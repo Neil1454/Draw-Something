@@ -19,6 +19,7 @@ class PlayerSide(
     random: Random = Random.Default,
     /** Quiz only: the right answer to the question on screen, as known by the host's phone. */
     holidayKey: () -> Int? = { null },
+    triviaKey: () -> Int? = { null },
 ) {
     private val inbox = ArrayDeque<ByteArray>()
 
@@ -44,6 +45,7 @@ class PlayerSide(
     val guesswho = GuessWhoEngine(myName, theirName, isHost, send, random, clock)
     val kalah = KalahEngine(myName, theirName, isHost, send, random, clock)
     val liardice = LiarDiceEngine(myName, theirName, isHost, send, random, clock)
+    val trivia = HolidayEngine(myName, theirName, isHost, send, random, clock, GameKind.TRIVIA)
     val hockey = HockeyEngine(myName, theirName, isHost, send, random, clock)
     val hangman = HangmanEngine(myName, theirName, isHost, send, random, clock)
     val noughts = NoughtsEngine(myName, theirName, isHost, send, random, clock)
@@ -52,7 +54,7 @@ class PlayerSide(
         GameKind.DROP to drop, GameKind.MEMORY to memory, GameKind.QUICK to quick,
         GameKind.DICE to dice, GameKind.FLIP to flip, GameKind.HILO to hilo, GameKind.HOLIDAY to holiday, GameKind.TETRIS to tetris,
         GameKind.DRAUGHTS to draughts, GameKind.LUDO to ludo, GameKind.MONOPOLY to monopoly,
-        GameKind.INVADERS to invaders, GameKind.CENTIPEDE to centipede, GameKind.ARKANOID to arkanoid, GameKind.BLACKJACK to blackjack, GameKind.GUESSWHO to guesswho, GameKind.KALAH to kalah, GameKind.LIARSDICE to liardice, GameKind.HOCKEY to hockey, GameKind.HANGMAN to hangman, GameKind.NOUGHTS to noughts,
+        GameKind.INVADERS to invaders, GameKind.CENTIPEDE to centipede, GameKind.ARKANOID to arkanoid, GameKind.BLACKJACK to blackjack, GameKind.GUESSWHO to guesswho, GameKind.KALAH to kalah, GameKind.LIARSDICE to liardice, GameKind.TRIVIA to trivia, GameKind.HOCKEY to hockey, GameKind.HANGMAN to hangman, GameKind.NOUGHTS to noughts,
     )
 
     /** The Draw Something guesser only makes sense on the guest side (the host is the drawer). */
@@ -78,6 +80,7 @@ class PlayerSide(
         GuessWhoBrain(guesswho, skill, random),
         KalahBrain(kalah, skill, random),
         LiarDiceBrain(liardice, skill, random),
+        HolidayBrain(trivia, isHost, triviaKey, skill, random),
         HockeyBrain(hockey, skill, random),
         HangmanBrain(hangman, skill, random),
         NoughtsBrain(noughts, skill, random),
@@ -149,8 +152,8 @@ class Duel(seed: Int, hostSkill: Skill = Skill.NORMAL, guestSkill: Skill = Skill
         private set
 
     init {
-        host = PlayerSide(true, "Player 1", "Player 2", hostSkill, { guest.receive(it) }, { guest.draw.board.strokes.size.let { null } }, { now }, Random(seed), holidayKey = { null })
-        guest = PlayerSide(false, "Player 2", "Player 1", guestSkill, { host.receive(it) }, { host.draw.state.word?.text }, { now }, Random(seed + 1), holidayKey = { host.holiday.secretCorrect(2) })
+        host = PlayerSide(true, "Player 1", "Player 2", hostSkill, { guest.receive(it) }, { guest.draw.board.strokes.size.let { null } }, { now }, Random(seed), holidayKey = { null }, triviaKey = { null })
+        guest = PlayerSide(false, "Player 2", "Player 1", guestSkill, { host.receive(it) }, { host.draw.state.word?.text }, { now }, Random(seed + 1), holidayKey = { host.holiday.secretCorrect(2) }, triviaKey = { host.trivia.secretCorrect(2) })
         guest.start()
         host.start()
         advance(0)

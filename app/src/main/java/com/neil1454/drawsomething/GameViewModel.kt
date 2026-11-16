@@ -130,6 +130,10 @@ data class LobbySettings(
     val kalahSeeds: Int = 1,
     val liarDice: Int = 1,
     val liarWild: Boolean = false,
+    val triviaPack: String = "",
+    val triviaLen: Int = 1,
+    val triviaSecs: Int = 1,
+    val triviaBonus: Boolean = true,
     val hockeyMode: Int = 0,
     val hockeyTarget: Int = 0,
     val hangMode: Int = 0,
@@ -207,6 +211,26 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         com.neil1454.drawsomething.sound.Haptics.init(app)
         com.neil1454.drawsomething.ui.TetrisPrefs.init(app)
         if (Features.HOLIDAY) loadHolidayPacks(app)
+        loadTriviaPacks(app)
+    }
+
+    /** Every JSON file in assets/trivia is a topic for the trivia quiz. A bad file is skipped, never fatal. */
+    private fun loadTriviaPacks(app: Application) {
+        val found = ArrayList<HolidayPack>()
+        try {
+            for (name in app.assets.list("trivia").orEmpty()) {
+                if (!name.endsWith(".json")) continue
+                try {
+                    val text = app.assets.open("trivia/$name").bufferedReader().use { it.readText() }
+                    HolidayPack.parse(text)?.let { found.add(it) }
+                } catch (e: Exception) {
+                    // skip this file
+                }
+            }
+        } catch (e: Exception) {
+            // no packs
+        }
+        com.neil1454.drawsomething.core.TriviaPacks.install(found)
     }
 
     /** Every JSON file in assets/holidays is a holiday for the quiz. A bad file is skipped, never fatal. */
@@ -433,6 +457,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             secretWord = { engine?.state?.word?.text },
             clock = { SystemClock.elapsedRealtime() },
             holidayKey = { (syncEngines[GameKind.HOLIDAY] as? HolidayEngine)?.secretCorrect(2) },
+            triviaKey = { (syncEngines[GameKind.TRIVIA] as? HolidayEngine)?.secretCorrect(2) },
         )
         startSession(COMPUTER_NAME)
         computer?.start()
@@ -724,6 +749,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             GuessWhoEngine(me, partner, host, sendG, clock = clock),
             KalahEngine(me, partner, host, sendG, clock = clock),
             LiarDiceEngine(me, partner, host, sendG, clock = clock),
+            HolidayEngine(me, partner, host, sendG, clock = clock, quizKind = GameKind.TRIVIA),
             HockeyEngine(me, partner, host, sendG, clock = clock),
             HangmanEngine(me, partner, host, sendG, clock = clock),
             NoughtsEngine(me, partner, host, sendG, clock = clock),

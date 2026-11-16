@@ -41,7 +41,7 @@ object Outcomes {
         is BlackjackState -> sync(state.phase, GameKind.BLACKJACK, state.myChips, state.theirChips, state.result)
         is ArkanoidState -> sync(state.phase, GameKind.ARKANOID, state.myScore, state.theirScore, state.result)
         is CentipedeState -> sync(state.phase, GameKind.CENTIPEDE, state.myScore, state.theirScore, state.result)
-        is HolidayState -> sync(state.phase, GameKind.HOLIDAY, state.myScore, state.theirScore, state.result)
+        is HolidayState -> sync(state.phase, state.kind, state.myScore, state.theirScore, state.result)
         else -> null
     }
 

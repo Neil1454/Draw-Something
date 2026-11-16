@@ -78,8 +78,8 @@ class HolidayPack(
     }
 }
 
-/** The holidays this build knows about. The Android side fills it from the assets/holidays folder. */
-object HolidayPacks {
+/** A set of question packs. The Android side fills the two below from the assets folders. */
+open class PackRegistry {
     private var packs: List<HolidayPack> = emptyList()
 
     fun install(list: List<HolidayPack>) {
@@ -89,6 +89,12 @@ object HolidayPacks {
     fun all(): List<HolidayPack> = packs
     fun byId(id: String?): HolidayPack? = packs.firstOrNull { it.id == id } ?: packs.firstOrNull()
 }
+
+/** The holidays this build knows about (assets/holidays). */
+object HolidayPacks : PackRegistry()
+
+/** The general-knowledge trivia packs (assets/trivia), played with the same quiz engine. */
+object TriviaPacks : PackRegistry()
 
 enum class HolidayLength(val label: String, val questions: Int) {
     SHORT("Quick · 8", 8),
@@ -208,6 +214,8 @@ data class HolidayState(
     val theirBDone: Boolean = false,
     /** 0 playing, 1 I won, 2 they won, 3 draw. */
     val result: Int = 0,
+    /** Which quiz this is: the holiday quiz, or trivia (they share one engine and screen). */
+    val kind: GameKind = GameKind.HOLIDAY,
 ) {
     /** The bonus question dressed up as an ordinary one, so the same screen code can show it. */
     fun bonusView(): HolidayState = copy(
@@ -224,11 +232,18 @@ class HolidayEngine(
     theirName: String,
     isHost: Boolean,
     send: (GMsg) -> Unit,
-    random: Random = Random.Default,
-    clock: () -> Long = { System.currentTimeMillis() },
-) : SyncEngine(GameKind.HOLIDAY, myName, theirName, isHost, send, random, clock) {
+    random: Random,
+    clock: () -> Long,
+    quizKind: GameKind,
+) : SyncEngine(quizKind, myName, theirName, isHost, send, random, clock) {
 
-    var state = HolidayState(myName, theirName)
+    /** The holiday quiz. (Trivia is the same engine, started with [GameKind.TRIVIA].) */
+    constructor(
+        myName: String, theirName: String, isHost: Boolean, send: (GMsg) -> Unit,
+        random: Random = Random.Default, clock: () -> Long = { System.currentTimeMillis() },
+    ) : this(myName, theirName, isHost, send, random, clock, GameKind.HOLIDAY)
+
+    var state = HolidayState(myName, theirName, kind = quizKind)
         private set
     override val stateAny: Any get() = state
     override val phase get() = state.phase
@@ -284,7 +299,7 @@ class HolidayEngine(
     private val bLastSec = IntArray(3) { -1 }
 
     override fun hostBegin(opts: JSONObject) {
-        val pack = HolidayPacks.byId(opts.optString("pack", ""))
+        val pack = (if (kind == GameKind.TRIVIA) TriviaPacks else HolidayPacks).byId(opts.optString("pack", ""))
         val len = HolidayLength.values()[opts.optInt("len", 1).coerceIn(0, HolidayLength.values().size - 1)].questions
         val secs = opts.optInt("secs", HolidayRules.DEFAULT_SECONDS).let { if (it <= 0) 0 else it.coerceIn(5, 120) }
         qs = pack?.questions?.shuffled(random)?.take(len) ?: emptyList()

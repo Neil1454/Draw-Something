@@ -1,0 +1,356 @@
+{
+ "id": "pop_sport",
+ "title": "Pop Culture & Sport",
+ "emoji": "🎬",
+ "blurb": "Films, music, games and sport.",
+ "questions": [
+  {
+   "q": "Which school of magic does Harry Potter attend?",
+   "a": [
+    "Ilvermorny",
+    "Hogwarts",
+    "Durmstrang",
+    "Beauxbatons"
+   ],
+   "c": 1,
+   "fact": "Hogwarts is in Scotland, in the books.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "In Toy Story, what is the cowboy doll called?",
+   "a": [
+    "Woody",
+    "Buzz",
+    "Slinky",
+    "Rex"
+   ],
+   "c": 0,
+   "fact": "Tom Hanks voices Woody in the films.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "How many rings are on the Olympic flag?",
+   "a": [
+    "4",
+    "7",
+    "6",
+    "5"
+   ],
+   "c": 3,
+   "fact": "They stand for the five regions of the world joined together.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which band sang 'Bohemian Rhapsody'?",
+   "a": [
+    "Led Zeppelin",
+    "Queen",
+    "The Beatles",
+    "Abba"
+   ],
+   "c": 1,
+   "fact": "Freddie Mercury was Queen's lead singer.",
+   "cat": "Music"
+  },
+  {
+   "q": "Which country won the 2022 FIFA World Cup?",
+   "a": [
+    "Argentina",
+    "Croatia",
+    "Brazil",
+    "France"
+   ],
+   "c": 0,
+   "fact": "Argentina beat France on penalties in the final in Qatar.",
+   "cat": "Sport"
+  },
+  {
+   "q": "What is the name of Mickey Mouse's pet dog?",
+   "a": [
+    "Max",
+    "Pluto",
+    "Goofy",
+    "Odie"
+   ],
+   "c": 1,
+   "fact": "Pluto is the only one of the main characters who doesn't talk.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "Which sport is played at Wimbledon?",
+   "a": [
+    "Rugby",
+    "Tennis",
+    "Cricket",
+    "Golf"
+   ],
+   "c": 1,
+   "fact": "Wimbledon is played on grass, and players traditionally wear white.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which actor plays Iron Man in the Marvel films?",
+   "a": [
+    "Chris Evans",
+    "Robert Downey Jr.",
+    "Chris Hemsworth",
+    "Mark Ruffalo"
+   ],
+   "c": 1,
+   "fact": "Iron Man's first film came out in 2008.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "In which sport would you score a slam dunk?",
+   "a": [
+    "Volleyball",
+    "Netball",
+    "Handball",
+    "Basketball"
+   ],
+   "c": 3,
+   "fact": "The hoop is 10 feet (3.05 metres) off the ground.",
+   "cat": "Sport"
+  },
+  {
+   "q": "What is the lion cub called in The Lion King?",
+   "a": [
+    "Nala",
+    "Mufasa",
+    "Simba",
+    "Scar"
+   ],
+   "c": 2,
+   "fact": "Simba means 'lion' in Swahili.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "Which animated film features the song 'Let It Go'?",
+   "a": [
+    "Frozen",
+    "Tangled",
+    "Moana",
+    "Brave"
+   ],
+   "c": 0,
+   "fact": "It won the Oscar for best original song in 2014.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "How many players does one basketball team have on court?",
+   "a": [
+    "5",
+    "7",
+    "6",
+    "4"
+   ],
+   "c": 0,
+   "fact": "Each team can have up to 12 players in the squad.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which Pokémon is the famous yellow mascot?",
+   "a": [
+    "Jigglypuff",
+    "Pikachu",
+    "Meowth",
+    "Charmander"
+   ],
+   "c": 1,
+   "fact": "Pikachu's name comes from two Japanese sound words, for sparks and for a mouse's squeak.",
+   "cat": "Games"
+  },
+  {
+   "q": "In UK Monopoly, which is the most expensive property?",
+   "a": [
+    "Trafalgar Square",
+    "Park Lane",
+    "Regent Street",
+    "Mayfair"
+   ],
+   "c": 3,
+   "fact": "Mayfair costs £400 and Park Lane £350.",
+   "cat": "Games"
+  },
+  {
+   "q": "What is the name of Mario's younger brother?",
+   "a": [
+    "Luigi",
+    "Toad",
+    "Yoshi",
+    "Wario"
+   ],
+   "c": 0,
+   "fact": "Luigi first appeared in the arcade game Mario Bros. in 1983.",
+   "cat": "Games"
+  },
+  {
+   "q": "Which Beatle played the drums?",
+   "a": [
+    "Ringo Starr",
+    "John Lennon",
+    "Paul McCartney",
+    "George Harrison"
+   ],
+   "c": 0,
+   "fact": "Ringo joined the band in 1962.",
+   "cat": "Music"
+  },
+  {
+   "q": "In which sport do you score a birdie?",
+   "a": [
+    "Golf",
+    "Badminton",
+    "Darts",
+    "Archery"
+   ],
+   "c": 0,
+   "fact": "A birdie is one stroke under par for a hole.",
+   "cat": "Sport"
+  },
+  {
+   "q": "What is the maximum break in snooker?",
+   "a": [
+    "140",
+    "147",
+    "180",
+    "155"
+   ],
+   "c": 1,
+   "fact": "It takes 15 reds with 15 blacks, then all six colours.",
+   "cat": "Sport"
+  },
+  {
+   "q": "What is the name of Harry Potter's pet owl?",
+   "a": [
+    "Errol",
+    "Hedwig",
+    "Scabbers",
+    "Pigwidgeon"
+   ],
+   "c": 1,
+   "fact": "Hedwig was a gift from Hagrid for Harry's 11th birthday.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "What is the highest score possible with three darts?",
+   "a": [
+    "170",
+    "180",
+    "150",
+    "200"
+   ],
+   "c": 1,
+   "fact": "That means three treble 20s.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which city hosted the Olympic Games in 2012?",
+   "a": [
+    "London",
+    "Athens",
+    "Rio de Janeiro",
+    "Beijing"
+   ],
+   "c": 0,
+   "fact": "It was the third time London had hosted the Games.",
+   "cat": "Sport"
+  },
+  {
+   "q": "What is Homer Simpson's wife called?",
+   "a": [
+    "Lisa",
+    "Patty",
+    "Marge",
+    "Maggie"
+   ],
+   "c": 2,
+   "fact": "Marge is famous for her tall blue hair.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "What type of fish is Nemo?",
+   "a": [
+    "A clownfish",
+    "A pufferfish",
+    "A goldfish",
+    "A seahorse"
+   ],
+   "c": 0,
+   "fact": "Clownfish live safely among the stinging arms of sea anemones.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "About how long is a marathon?",
+   "a": [
+    "20 miles",
+    "30 miles",
+    "13 miles",
+    "26 miles"
+   ],
+   "c": 3,
+   "fact": "It is exactly 26 miles and 385 yards (42.195 km).",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which singer is known as the Queen of Pop?",
+   "a": [
+    "Beyoncé",
+    "Adele",
+    "Madonna",
+    "Kylie Minogue"
+   ],
+   "c": 2,
+   "fact": "Madonna's first big hit was 'Holiday' in 1983.",
+   "cat": "Music"
+  },
+  {
+   "q": "What is the name of the fictional African country in Black Panther?",
+   "a": [
+    "Wakanda",
+    "Latveria",
+    "Zamunda",
+    "Genovia"
+   ],
+   "c": 0,
+   "fact": "Wakanda is home to the metal vibranium.",
+   "cat": "Film & TV"
+  },
+  {
+   "q": "Which racing sport is Lewis Hamilton famous for?",
+   "a": [
+    "Rally driving",
+    "MotoGP",
+    "NASCAR",
+    "Formula 1"
+   ],
+   "c": 3,
+   "fact": "He has won the Formula 1 world title seven times.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which instrument has black and white keys?",
+   "a": [
+    "The piano",
+    "The violin",
+    "The trumpet",
+    "The flute"
+   ],
+   "c": 0,
+   "fact": "A standard piano has 88 keys.",
+   "cat": "Music"
+  },
+  {
+   "q": "What colour is Kermit the Frog?",
+   "a": [
+    "Blue",
+    "Green",
+    "Red",
+    "Yellow"
+   ],
+   "c": 1,
+   "fact": "Kermit first appeared in 1955.",
+   "cat": "Film & TV"
+  }
+ ]
+}

@@ -30,6 +30,7 @@ object ShowdownRules {
         Contest(GameKind.BLACKJACK, "Finish five rounds with more chips than your rival.", "about 5 min"),
         Contest(GameKind.KALAH, "End with more seeds in your store than your rival.", "about 4 min"),
         Contest(GameKind.LIARSDICE, "Bluff your rival out of all their dice before they do it to you.", "about 4 min"),
+        Contest(GameKind.TRIVIA, "Know more: score higher in the trivia quiz.", "about 3 min"),
         Contest(GameKind.HOCKEY, "Win at air hockey: first to five goals.", "about 3 min"),
         Contest(GameKind.HANGMAN, "Score more points guessing words in hangman.", "about 4 min"),
         Contest(GameKind.NOUGHTS, "Win the noughts and crosses: three in a row before your rival.", "about 2 min"),
@@ -55,6 +56,7 @@ object ShowdownRules {
         GameKind.GUESSWHO -> JSONObject().put("deck", 0).put("size", 0).put("auto", true)
         GameKind.KALAH -> JSONObject().put("seeds", 0)
         GameKind.LIARSDICE -> JSONObject().put("dice", 0).put("wild", false)
+        GameKind.TRIVIA -> JSONObject().put("len", 0).put("secs", 30)
         GameKind.HOCKEY -> JSONObject().put("mode", 0).put("target", 0)
         GameKind.HANGMAN -> JSONObject().put("mode", 1).put("rounds", 0)
         GameKind.NOUGHTS -> JSONObject().put("mode", 0).put("series", 0)

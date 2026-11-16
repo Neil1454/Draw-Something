@@ -1,0 +1,356 @@
+{
+ "id": "uk_quiz",
+ "title": "The UK Quiz",
+ "emoji": "🇬🇧",
+ "blurb": "Britain from Scotland to Cornwall: places, history and culture.",
+ "questions": [
+  {
+   "q": "What is the capital city of Scotland?",
+   "a": [
+    "Aberdeen",
+    "Edinburgh",
+    "Dundee",
+    "Glasgow"
+   ],
+   "c": 1,
+   "fact": "Edinburgh Castle sits on an extinct volcano.",
+   "cat": "Geography"
+  },
+  {
+   "q": "What is the longest river in the UK?",
+   "a": [
+    "The Trent",
+    "The Severn",
+    "The Thames",
+    "The Tay"
+   ],
+   "c": 1,
+   "fact": "The Severn is about 220 miles long.",
+   "cat": "Geography"
+  },
+  {
+   "q": "What is the highest mountain in the UK?",
+   "a": [
+    "Snowdon",
+    "Scafell Pike",
+    "Cairn Gorm",
+    "Ben Nevis"
+   ],
+   "c": 3,
+   "fact": "Ben Nevis in Scotland is 1,345 metres high.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Who was the UK's first female Prime Minister?",
+   "a": [
+    "Margaret Thatcher",
+    "Theresa May",
+    "Liz Truss",
+    "Queen Victoria"
+   ],
+   "c": 0,
+   "fact": "She took office in 1979.",
+   "cat": "History"
+  },
+  {
+   "q": "In which year did the Great Fire of London happen?",
+   "a": [
+    "1566",
+    "1766",
+    "1866",
+    "1666"
+   ],
+   "c": 3,
+   "fact": "It began in a baker's shop in Pudding Lane.",
+   "cat": "History"
+  },
+  {
+   "q": "What is the capital city of Wales?",
+   "a": [
+    "Swansea",
+    "Wrexham",
+    "Cardiff",
+    "Newport"
+   ],
+   "c": 2,
+   "fact": "Cardiff became the capital in 1955.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Big Ben is the nickname of the great bell in which tower?",
+   "a": [
+    "Victoria Tower",
+    "The Shard",
+    "Elizabeth Tower",
+    "St Paul's"
+   ],
+   "c": 2,
+   "fact": "The tower was renamed in 2012 for the Queen's Diamond Jubilee.",
+   "cat": "Landmarks"
+  },
+  {
+   "q": "What is the national flower of England?",
+   "a": [
+    "The shamrock",
+    "The rose",
+    "The thistle",
+    "The daffodil"
+   ],
+   "c": 1,
+   "fact": "The red Tudor rose is the symbol of England.",
+   "cat": "Culture"
+  },
+  {
+   "q": "Which king of England had six wives?",
+   "a": [
+    "Henry VIII",
+    "Charles II",
+    "George III",
+    "Henry VII"
+   ],
+   "c": 0,
+   "fact": "Two of his wives were beheaded.",
+   "cat": "History"
+  },
+  {
+   "q": "Which city is home to Anfield stadium?",
+   "a": [
+    "Sheffield",
+    "Manchester",
+    "Liverpool",
+    "Newcastle"
+   ],
+   "c": 2,
+   "fact": "Anfield is home to Liverpool Football Club.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Who wrote the Harry Potter books?",
+   "a": [
+    "Roald Dahl",
+    "J. K. Rowling",
+    "Enid Blyton",
+    "Philip Pullman"
+   ],
+   "c": 1,
+   "fact": "The first book came out in 1997.",
+   "cat": "Books"
+  },
+  {
+   "q": "What is the capital city of Northern Ireland?",
+   "a": [
+    "Armagh",
+    "Lisburn",
+    "Belfast",
+    "Derry"
+   ],
+   "c": 2,
+   "fact": "The Titanic was built in Belfast.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Which batter-based side dish is traditionally served with a roast beef dinner?",
+   "a": [
+    "Black pudding",
+    "Toad in the hole",
+    "Yorkshire pudding",
+    "Bubble and squeak"
+   ],
+   "c": 2,
+   "fact": "A good Yorkshire pudding should rise high in a hot oven.",
+   "cat": "Food"
+  },
+  {
+   "q": "Which London bridge has towers and can open to let ships through?",
+   "a": [
+    "Waterloo Bridge",
+    "Westminster Bridge",
+    "London Bridge",
+    "Tower Bridge"
+   ],
+   "c": 3,
+   "fact": "Its two halves lift up like drawbridges.",
+   "cat": "Landmarks"
+  },
+  {
+   "q": "Which two countries does the Channel Tunnel connect?",
+   "a": [
+    "The UK and France",
+    "The UK and the Netherlands",
+    "The UK and Ireland",
+    "The UK and Belgium"
+   ],
+   "c": 0,
+   "fact": "It opened in 1994 and trains take about 35 minutes to cross.",
+   "cat": "History"
+  },
+  {
+   "q": "In which school's playing fields was rugby supposedly invented?",
+   "a": [
+    "Rugby School",
+    "Winchester",
+    "Eton",
+    "Harrow"
+   ],
+   "c": 0,
+   "fact": "The story says William Webb Ellis picked up the ball in 1823.",
+   "cat": "Sport"
+  },
+  {
+   "q": "What does BBC stand for?",
+   "a": [
+    "Bright Broadcasting Company",
+    "Britain's Big Channel",
+    "British Broadcasting Corporation",
+    "British Business Council"
+   ],
+   "c": 2,
+   "fact": "The BBC began radio broadcasts in 1922.",
+   "cat": "Culture"
+  },
+  {
+   "q": "Which author created Sherlock Holmes?",
+   "a": [
+    "Agatha Christie",
+    "Roald Dahl",
+    "Sir Arthur Conan Doyle",
+    "Charles Dickens"
+   ],
+   "c": 2,
+   "fact": "Holmes lives at 221B Baker Street.",
+   "cat": "Books"
+  },
+  {
+   "q": "What is the largest city in Scotland?",
+   "a": [
+    "Inverness",
+    "Aberdeen",
+    "Edinburgh",
+    "Glasgow"
+   ],
+   "c": 3,
+   "fact": "Glasgow is home to over 600,000 people.",
+   "cat": "Geography"
+  },
+  {
+   "q": "What is the name of the famous prehistoric stone circle in Wiltshire?",
+   "a": [
+    "Stonehenge",
+    "Avebury",
+    "Skara Brae",
+    "Callanish"
+   ],
+   "c": 0,
+   "fact": "Parts of Stonehenge are around 5,000 years old.",
+   "cat": "Landmarks"
+  },
+  {
+   "q": "Which year did England's men win the FIFA World Cup?",
+   "a": [
+    "1990",
+    "1966",
+    "1986",
+    "1970"
+   ],
+   "c": 1,
+   "fact": "England beat West Germany 4-2 at Wembley.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which famous street in London is the home of the Prime Minister?",
+   "a": [
+    "Fleet Street",
+    "Oxford Street",
+    "Baker Street",
+    "Downing Street"
+   ],
+   "c": 3,
+   "fact": "The Prime Minister lives at number 10.",
+   "cat": "Culture"
+  },
+  {
+   "q": "Who wrote 'On the Origin of Species'?",
+   "a": [
+    "Alexander Fleming",
+    "Charles Darwin",
+    "Isaac Newton",
+    "Stephen Hawking"
+   ],
+   "c": 1,
+   "fact": "It was published in 1859.",
+   "cat": "History"
+  },
+  {
+   "q": "In which country is Loch Ness?",
+   "a": [
+    "Scotland",
+    "Ireland",
+    "Wales",
+    "England"
+   ],
+   "c": 0,
+   "fact": "It is the largest lake in Britain by volume.",
+   "cat": "Geography"
+  },
+  {
+   "q": "How many countries make up the United Kingdom?",
+   "a": [
+    "5",
+    "4",
+    "6",
+    "3"
+   ],
+   "c": 1,
+   "fact": "England, Scotland, Wales and Northern Ireland.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Which UK city is nicknamed the 'Steel City'?",
+   "a": [
+    "Birmingham",
+    "Newcastle",
+    "Leeds",
+    "Sheffield"
+   ],
+   "c": 3,
+   "fact": "Sheffield was famous for making steel and cutlery.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Which palace is the London home of the monarch?",
+   "a": [
+    "Kensington Palace",
+    "Buckingham Palace",
+    "St James's Palace",
+    "Windsor Castle"
+   ],
+   "c": 1,
+   "fact": "It has 775 rooms.",
+   "cat": "Landmarks"
+  },
+  {
+   "q": "What is the UK's currency called?",
+   "a": [
+    "The krona",
+    "The dollar",
+    "The euro",
+    "The pound sterling"
+   ],
+   "c": 3,
+   "fact": "The pound is the oldest currency still in use today.",
+   "cat": "General"
+  },
+  {
+   "q": "Which seaside city has a famous pier and a Pavilion known for its Indian-style domes?",
+   "a": [
+    "Margate",
+    "Brighton",
+    "Blackpool",
+    "Bournemouth"
+   ],
+   "c": 1,
+   "fact": "The Royal Pavilion was built for the Prince Regent.",
+   "cat": "Landmarks"
+  }
+ ]
+}

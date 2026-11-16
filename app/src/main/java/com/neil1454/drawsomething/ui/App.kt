@@ -256,6 +256,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.SHOWDOWN -> showdownOptions(ui)
             GameKind.KALAH -> JSONObject().put("seeds", set.kalahSeeds)
             GameKind.LIARSDICE -> JSONObject().put("dice", set.liarDice).put("wild", set.liarWild)
+            GameKind.TRIVIA -> JSONObject().put("pack", set.triviaPack).put("len", set.triviaLen).put("bonus", set.triviaBonus).put("secs", com.neil1454.drawsomething.core.HolidayRules.SECONDS[set.triviaSecs.coerceIn(0, com.neil1454.drawsomething.core.HolidayRules.SECONDS.lastIndex)])
             GameKind.HOCKEY -> JSONObject().put("mode", set.hockeyMode).put("target", set.hockeyTarget)
             GameKind.HANGMAN -> JSONObject().put("mode", set.hangMode).put("rounds", set.hangRounds)
             GameKind.NOUGHTS -> JSONObject().put("mode", set.noughtsMode).put("series", set.noughtsSeries)

@@ -71,6 +71,30 @@ fun HolidayHelp() {
 }
 
 @Composable
+fun TriviaHelp() {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("A head-to-head general knowledge quiz! You both see the same question at the same time. Pick a topic (general knowledge, science, pop culture and sport, or the UK) and race to answer.")
+        Text("• The FIRST correct answer wins ${HolidayRules.CORRECT} points, plus up to ${HolidayRules.SPEED_BONUS} more for being quick.")
+        Text("• If you're also right but slower, you still get ${HolidayRules.ALSO_RIGHT}. A wrong answer costs ${-HolidayRules.WRONG} points.")
+        Text("• Need longer? Press \"Give me more time\" (up to ${HolidayRules.EXTRA_PER_QUIZ} times). A right answer is then worth a flat ${HolidayRules.EXTENDED_RIGHT}.")
+        Text("• After each answer a 'did you know' fact appears.")
+        Text("• 🔁 BONUS ROUND: the questions you got wrong or missed come back in your own round so you can win points back. The host can switch it off.")
+    }
+}
+
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.triviaIcon() {
+    val white = Color.White.copy(alpha = 0.95f)
+    drawRoundRect(white, androidx.compose.ui.geometry.Offset(12f, 14f), androidx.compose.ui.geometry.Size(76f, 56f), androidx.compose.ui.geometry.CornerRadius(14f))
+    val tail = androidx.compose.ui.graphics.Path().apply { moveTo(30f, 68f); lineTo(24f, 90f); lineTo(50f, 68f); close() }
+    drawPath(tail, white)
+    val q = androidx.compose.ui.graphics.Path().apply {
+        moveTo(38f, 34f); cubicTo(38f, 20f, 62f, 20f, 62f, 34f); cubicTo(62f, 42f, 50f, 42f, 50f, 51f)
+    }
+    drawPath(q, Color(0xFF6D28D9), style = androidx.compose.ui.graphics.drawscope.Stroke(7f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+    drawCircle(Color(0xFF6D28D9), 4.2f, androidx.compose.ui.geometry.Offset(50f, 60f))
+}
+
+@Composable
 fun HolidayScreen(
     raw: HolidayState,
     engine: HolidayEngine,

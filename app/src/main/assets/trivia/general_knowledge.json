@@ -1,0 +1,404 @@
+{
+ "id": "general_knowledge",
+ "title": "General Knowledge",
+ "emoji": "🧠",
+ "blurb": "Geography, history, food, sport and more: a bit of everything.",
+ "questions": [
+  {
+   "q": "What is the capital city of Australia?",
+   "a": [
+    "Perth",
+    "Canberra",
+    "Melbourne",
+    "Sydney"
+   ],
+   "c": 1,
+   "fact": "Canberra was built as a compromise because Sydney and Melbourne both wanted to be the capital.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Which planet is known as the Red Planet?",
+   "a": [
+    "Mercury",
+    "Venus",
+    "Mars",
+    "Jupiter"
+   ],
+   "c": 2,
+   "fact": "Iron-rich dust on its surface gives Mars its rusty red colour.",
+   "cat": "Space"
+  },
+  {
+   "q": "How many continents are there?",
+   "a": [
+    "7",
+    "6",
+    "5",
+    "8"
+   ],
+   "c": 0,
+   "fact": "Africa, Antarctica, Asia, Australia (Oceania), Europe, North America and South America.",
+   "cat": "Geography"
+  },
+  {
+   "q": "What is the largest ocean on Earth?",
+   "a": [
+    "The Indian",
+    "The Arctic",
+    "The Pacific",
+    "The Atlantic"
+   ],
+   "c": 2,
+   "fact": "The Pacific covers about a third of the whole planet.",
+   "cat": "Geography"
+  },
+  {
+   "q": "In which country is the Great Pyramid of Giza?",
+   "a": [
+    "Peru",
+    "Sudan",
+    "Mexico",
+    "Egypt"
+   ],
+   "c": 3,
+   "fact": "It was built about 4,500 years ago for the pharaoh Khufu.",
+   "cat": "History"
+  },
+  {
+   "q": "Which language has the most native speakers in the world?",
+   "a": [
+    "Hindi",
+    "English",
+    "Spanish",
+    "Mandarin Chinese"
+   ],
+   "c": 3,
+   "fact": "More than 900 million people speak Mandarin as their first language.",
+   "cat": "Language"
+  },
+  {
+   "q": "What is the hardest natural substance?",
+   "a": [
+    "Gold",
+    "Diamond",
+    "Iron",
+    "Quartz"
+   ],
+   "c": 1,
+   "fact": "Diamonds are made of carbon squeezed under enormous pressure deep underground.",
+   "cat": "Science"
+  },
+  {
+   "q": "Which country gave the Statue of Liberty to the USA?",
+   "a": [
+    "Spain",
+    "Italy",
+    "Britain",
+    "France"
+   ],
+   "c": 3,
+   "fact": "It was a gift in 1886 to celebrate friendship between the two countries.",
+   "cat": "History"
+  },
+  {
+   "q": "What is the currency of Japan?",
+   "a": [
+    "The won",
+    "The yuan",
+    "The rupee",
+    "The yen"
+   ],
+   "c": 3,
+   "fact": "The yen has been Japan's money since 1871.",
+   "cat": "Geography"
+  },
+  {
+   "q": "How many players does one football team have on the pitch?",
+   "a": [
+    "9",
+    "11",
+    "10",
+    "12"
+   ],
+   "c": 1,
+   "fact": "Including the goalkeeper.",
+   "cat": "Sport"
+  },
+  {
+   "q": "Which river flows through London?",
+   "a": [
+    "The Severn",
+    "The Thames",
+    "The Trent",
+    "The Mersey"
+   ],
+   "c": 1,
+   "fact": "The Thames is about 215 miles long.",
+   "cat": "Geography"
+  },
+  {
+   "q": "What is the smallest country in the world by area?",
+   "a": [
+    "Vatican City",
+    "San Marino",
+    "Liechtenstein",
+    "Monaco"
+   ],
+   "c": 0,
+   "fact": "It is smaller than most city parks, at around 44 hectares.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Who painted the Mona Lisa?",
+   "a": [
+    "Raphael",
+    "Leonardo da Vinci",
+    "Vincent van Gogh",
+    "Michelangelo"
+   ],
+   "c": 1,
+   "fact": "It hangs in the Louvre in Paris and is one of the most famous paintings ever.",
+   "cat": "Art"
+  },
+  {
+   "q": "What is the tallest mountain above sea level?",
+   "a": [
+    "Mount Everest",
+    "Kilimanjaro",
+    "Mont Blanc",
+    "K2"
+   ],
+   "c": 0,
+   "fact": "Everest stands about 8,849 metres high.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Which of these is the chemical symbol for gold?",
+   "a": [
+    "Go",
+    "Gd",
+    "Ag",
+    "Au"
+   ],
+   "c": 3,
+   "fact": "Au comes from 'aurum', the Latin word for gold.",
+   "cat": "Science"
+  },
+  {
+   "q": "How many days are there in a leap year?",
+   "a": [
+    "366",
+    "367",
+    "364",
+    "365"
+   ],
+   "c": 0,
+   "fact": "The extra day is 29 February.",
+   "cat": "General"
+  },
+  {
+   "q": "Which city hosts the famous Running of the Bulls?",
+   "a": [
+    "Athens, Greece",
+    "Lisbon, Portugal",
+    "Rome, Italy",
+    "Pamplona, Spain"
+   ],
+   "c": 3,
+   "fact": "It is part of the San Fermín festival every July.",
+   "cat": "Culture"
+  },
+  {
+   "q": "What is the main ingredient of guacamole?",
+   "a": [
+    "Tomato",
+    "Avocado",
+    "Lime",
+    "Onion"
+   ],
+   "c": 1,
+   "fact": "Guacamole comes from Mexico and its name comes from an Aztec word for avocado sauce.",
+   "cat": "Food"
+  },
+  {
+   "q": "Which gas do plants take in from the air?",
+   "a": [
+    "Carbon dioxide",
+    "Helium",
+    "Oxygen",
+    "Nitrogen"
+   ],
+   "c": 0,
+   "fact": "They use it, with sunlight and water, to make their food.",
+   "cat": "Nature"
+  },
+  {
+   "q": "In which year did the Titanic sink?",
+   "a": [
+    "1905",
+    "1912",
+    "1920",
+    "1898"
+   ],
+   "c": 1,
+   "fact": "It hit an iceberg on its first voyage, in April 1912.",
+   "cat": "History"
+  },
+  {
+   "q": "Which ancient wonder stood in Alexandria?",
+   "a": [
+    "The Colossus",
+    "The Hanging Gardens",
+    "The Lighthouse (Pharos)",
+    "The Temple of Artemis"
+   ],
+   "c": 2,
+   "fact": "The Pharos may have been over 100 metres tall.",
+   "cat": "History"
+  },
+  {
+   "q": "What is the capital city of Canada?",
+   "a": [
+    "Toronto",
+    "Ottawa",
+    "Vancouver",
+    "Montreal"
+   ],
+   "c": 1,
+   "fact": "Ottawa was chosen in 1857 partly because it sat between English and French Canada.",
+   "cat": "Geography"
+  },
+  {
+   "q": "How many strings does a standard violin have?",
+   "a": [
+    "4",
+    "5",
+    "3",
+    "6"
+   ],
+   "c": 0,
+   "fact": "They are tuned to G, D, A and E.",
+   "cat": "Music"
+  },
+  {
+   "q": "Which US state is nicknamed the Sunshine State?",
+   "a": [
+    "Arizona",
+    "Texas",
+    "California",
+    "Florida"
+   ],
+   "c": 3,
+   "fact": "Florida gets around 230 sunny days a year.",
+   "cat": "Geography"
+  },
+  {
+   "q": "What colour do you get by mixing blue and yellow paint?",
+   "a": [
+    "Green",
+    "Brown",
+    "Purple",
+    "Orange"
+   ],
+   "c": 0,
+   "fact": "Blue and yellow are primary colours, and green is the one they make together.",
+   "cat": "Art"
+  },
+  {
+   "q": "Which sport uses a shuttlecock?",
+   "a": [
+    "Table tennis",
+    "Badminton",
+    "Tennis",
+    "Squash"
+   ],
+   "c": 1,
+   "fact": "A shuttlecock can fly off a racket at over 300 mph in top-level play.",
+   "cat": "Sport"
+  },
+  {
+   "q": "What is the largest animal that has ever lived?",
+   "a": [
+    "The giraffe",
+    "The African elephant",
+    "The blue whale",
+    "The hippo"
+   ],
+   "c": 2,
+   "fact": "It can grow to around 30 metres long.",
+   "cat": "Nature"
+  },
+  {
+   "q": "How many sides does a hexagon have?",
+   "a": [
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "c": 1,
+   "fact": "Honeycomb cells are hexagons because they pack together with no gaps.",
+   "cat": "Maths"
+  },
+  {
+   "q": "What is the capital city of Spain?",
+   "a": [
+    "Valencia",
+    "Madrid",
+    "Seville",
+    "Barcelona"
+   ],
+   "c": 1,
+   "fact": "Madrid is one of the highest capital cities in Europe.",
+   "cat": "Geography"
+  },
+  {
+   "q": "At what temperature does water freeze, in degrees Celsius?",
+   "a": [
+    "32",
+    "100",
+    "-10",
+    "0"
+   ],
+   "c": 3,
+   "fact": "32 is the freezing point in Fahrenheit.",
+   "cat": "Science"
+  },
+  {
+   "q": "Which country is home to the city of Marrakech?",
+   "a": [
+    "Morocco",
+    "Egypt",
+    "Tunisia",
+    "Algeria"
+   ],
+   "c": 0,
+   "fact": "Marrakech is famous for its huge market square, Jemaa el-Fnaa.",
+   "cat": "Geography"
+  },
+  {
+   "q": "Which sea creature has three hearts?",
+   "a": [
+    "The octopus",
+    "The crab",
+    "The shark",
+    "The dolphin"
+   ],
+   "c": 0,
+   "fact": "Two pump blood to the gills and one to the rest of the body.",
+   "cat": "Nature"
+  },
+  {
+   "q": "What is the name of the long, thin strip of land that links North and South America?",
+   "a": [
+    "The Suez Canal",
+    "The Bering Strait",
+    "The Strait of Gibraltar",
+    "The Isthmus of Panama"
+   ],
+   "c": 3,
+   "fact": "The Panama Canal was cut through it, opening in 1914.",
+   "cat": "Geography"
+  }
+ ]
+}

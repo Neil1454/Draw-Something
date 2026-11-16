@@ -104,6 +104,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> Unit
             GameKind.KALAH -> h.kalah.start(JSONObject().put("seeds", 0))
             GameKind.LIARSDICE -> h.liardice.start(JSONObject().put("dice", 0).put("wild", false))
+            GameKind.TRIVIA -> h.trivia.start(JSONObject().put("len", 0).put("secs", 30))
             GameKind.HOCKEY -> h.hockey.start(JSONObject().put("mode", 0).put("target", 0))
             GameKind.HANGMAN -> h.hangman.start(JSONObject().put("mode", 1).put("rounds", 0))
             GameKind.NOUGHTS -> h.noughts.start(JSONObject().put("mode", 0).put("series", 0))
@@ -396,6 +397,26 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                     else say(if (s.lastScorer == 1) "⚽ Goal for you! It's now ${s.myScore} – ${s.theirScore}." else "😬 Goal for Player 2. It's now ${s.myScore} – ${s.theirScore}." + tip(listOf("Hit the puck from behind so it goes towards their goal.", "Stay between the puck and your goal when it's in their half.", "Bounces off the side walls make shots harder to read."), s.goals))
                 } else if (s.stage == "PLAY" && s.elapsedMs in 2500..2700 && lastSeq != 1) { lastSeq = 1; say("The puck speeds up the harder you hit it, but friction slows it down again.") }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.TRIVIA -> {
+                val s = duel.host.trivia.state
+                if (s.phase == GPhase.OVER) {
+                    finish(outro(kind))
+                } else if (s.step == "BONUS" && !bonusSaid) {
+                    bonusSaid = true
+                    say("🔁 BONUS ROUND! Each player now gets their own questions, made from the ones they got wrong or missed. A right answer wins back the points you lost on it (never more), so it pays to remember the answers.")
+                } else if (s.step == "ASK" && s.seq != lastSeq) {
+                    lastSeq = s.seq
+                    say("Question ${s.index} of ${s.total} · ${s.category.ifEmpty { "Trivia" }}\n${s.question}\nPick the right answer before time runs out. Quickest correct answer scores the most." + tip(HOLIDAY_TIPS, s.index))
+                } else if (s.step == "REVEAL" && s.moves != last) {
+                    last = s.moves
+                    val right = s.options.getOrNull(s.correct) ?: "?"
+                    say(
+                        "The answer: $right.\n" +
+                            "You ${deltaText(s.myDelta, s.myChoice, s.correct)}; Player 2 ${deltaText(s.theirDelta, s.theirChoice, s.correct)}." +
+                            (if (s.fact.isNotBlank()) "\n💡 ${s.fact}" else ""),
+                    )
+                }
             }
             GameKind.LIARSDICE -> {
                 val s = duel.host.liardice.state
@@ -721,6 +742,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
         fun defaultSpeed(kind: GameKind): Float = when (kind) {
             GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.ARKANOID, GameKind.TETRIS -> 0.25f
             GameKind.QUICK, GameKind.HOLIDAY -> 0.5f
+            GameKind.TRIVIA -> 0.5f
             GameKind.HOCKEY -> 0.5f
             GameKind.DICE, GameKind.MEMORY, GameKind.HILO, GameKind.MINES, GameKind.SEA, GameKind.DRAW, GameKind.DROP -> 0.75f
             else -> 1f
@@ -744,6 +766,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
             GameKind.KALAH -> "🌰 Mancala: sow seeds round the board, grab extra turns and capture your rival's seeds. You are Player 1 (the bottom row)."
             GameKind.LIARSDICE -> "🎭 Liar's Dice: each player shakes hidden dice. Bid how many of a face are on the whole table, or call your rival a liar. You are Player 1."
+            GameKind.TRIVIA -> "🧠 Trivia: a head-to-head general knowledge quiz. You are Player 1; the quickest correct answer wins the most points."
             GameKind.HOCKEY -> "🏒 Air Hockey: a real-time duel. Slide your mallet round your half and knock the puck into their goal. You are Player 1 (the bottom)."
             GameKind.HANGMAN -> "🪢 Hangman: take turns guessing letters of a hidden word before the drawing is finished. You are Player 1."
             GameKind.NOUGHTS -> "❌ Noughts and Crosses: take turns putting your mark on the grid and get three in a row. You are Player 1."

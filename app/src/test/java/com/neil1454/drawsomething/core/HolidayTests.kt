@@ -23,6 +23,12 @@ object PackFiles {
         val dir = dirs.map { File(it) }.firstOrNull { it.isDirectory } ?: error("holiday packs not found")
         return dir.listFiles { f -> f.name.endsWith(".json") }!!.mapNotNull { HolidayPack.parse(it.readText()) }
     }
+
+    /** The trivia packs (the folder next to the holiday one). */
+    fun trivia(): List<HolidayPack> {
+        val dir = dirs.map { File(it.replace("holidays", "trivia")) }.firstOrNull { it.isDirectory } ?: error("trivia packs not found")
+        return dir.listFiles { f -> f.name.endsWith(".json") }!!.mapNotNull { HolidayPack.parse(it.readText()) }
+    }
 }
 
 class HolidayPackTest {
