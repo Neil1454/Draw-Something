@@ -69,6 +69,13 @@ object Haptics {
             Sound.EXPLODE -> boom()
             Sound.WIN -> wave(longArrayOf(0, 40, 50, 40, 50, 120), intArrayOf(0, 120, 0, 180, 0, 255))
             Sound.LOSE -> wave(longArrayOf(0, 120, 80, 200), intArrayOf(0, 200, 0, 120))
+            Sound.RING -> wave(longArrayOf(0, 60, 50, 60, 50, 60, 200, 60, 50, 60), intArrayOf(0, 180, 0, 180, 0, 180, 0, 180, 0, 180))
+            Sound.PICKUP, Sound.REEL, Sound.SPARKLE -> pulse(10, 60)
+            Sound.BOX_CREAK, Sound.GASP, Sound.SUSPENSE -> pulse(30, 90)
+            Sound.BOX_OPEN, Sound.STOP, Sound.LEVER -> pulse(40, 200)
+            Sound.DRUMROLL, Sound.BANKER -> wave(longArrayOf(0, 25, 20, 25, 20, 25, 20, 25, 20, 80), intArrayOf(0, 70, 0, 90, 0, 110, 0, 130, 0, 200))
+            Sound.CASH, Sound.JACKPOT -> wave(longArrayOf(0, 40, 40, 40, 40, 40, 40, 140), intArrayOf(0, 150, 0, 190, 0, 230, 0, 255))
+            Sound.JINGLE_A, Sound.JINGLE_B, Sound.JINGLE_C, Sound.JINGLE_D, Sound.JINGLE_E, Sound.JINGLE_F, Sound.JINGLE_G, Sound.JINGLE_H -> pulse(14, 80)
         }
     }
 

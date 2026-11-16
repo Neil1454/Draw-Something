@@ -10,6 +10,10 @@ import kotlin.random.Random
 /** Every sound effect in the app. They are generated in code, so there are no audio files to ship. */
 enum class Sound {
     TAP, POP, GOOD, BAD, WIN, LOSE, EXPLODE, SPLASH, FLIP, TICK, CHIME, CARD, COIN, WHOOSH, DROP, ROLL, GO, BUZZ, ZAP, THUD,
+    // game-show and casino sounds
+    RING, PICKUP, BOX_CREAK, BOX_OPEN, DRUMROLL, BANKER, SUSPENSE, CASH, JACKPOT, REEL, STOP, LEVER, SPARKLE, GASP,
+    // a short signature jingle for each game's title card: every game gets one of these
+    JINGLE_A, JINGLE_B, JINGLE_C, JINGLE_D, JINGLE_E, JINGLE_F, JINGLE_G, JINGLE_H,
 }
 
 /**
@@ -54,6 +58,37 @@ object Synth {
         Sound.BUZZ -> listOf(seg(150, 300, 0.4, Wave.SQUARE, decay = 1.5))
         Sound.ZAP -> listOf(seg(1500, 90, 0.22, Wave.SQUARE, to = 380, decay = 3.5))
         Sound.THUD -> listOf(seg(95, 120, 0.5, to = 55, decay = 4.0))
+        // an old-fashioned telephone: a warble of two tones, ringing twice
+        Sound.RING -> List(10) { seg(if (it % 2 == 0) 1480 else 1250, 34, 0.30, Wave.SQUARE, at = it * 36, decay = 0.6) } +
+            List(10) { seg(if (it % 2 == 0) 1480 else 1250, 34, 0.30, Wave.SQUARE, at = 560 + it * 36, decay = 0.6) }
+        Sound.PICKUP -> listOf(Seg(0.0, 0.0, 40, 0.3, Wave.NOISE, 0, 6.0), seg(300, 90, 0.35, to = 180, at = 20), seg(640, 70, 0.2, at = 140, to = 880))
+        Sound.BOX_CREAK -> listOf(seg(110, 420, 0.28, Wave.SAW, to = 340, decay = 1.2), Seg(0.0, 0.0, 420, 0.07, Wave.NOISE, 0, 1.0))
+        Sound.BOX_OPEN -> listOf(Seg(0.0, 0.0, 150, 0.35, Wave.NOISE, 0, 5.0), seg(260, 420, 0.4, to = 880, decay = 2.0), seg(1319, 320, 0.2, at = 140, decay = 3.0), seg(1760, 280, 0.16, at = 220, decay = 3.0))
+        Sound.DRUMROLL -> List(18) { Seg(0.0, 0.0, 46, 0.14 + it * 0.012, Wave.NOISE, it * 52, 4.0) } + listOf(seg(70, 900, 0.30, decay = 1.0))
+        // an original, menacing little motif in the key of D minor (not the television theme)
+        Sound.BANKER -> listOf(
+            seg(147, 200, 0.42, Wave.SAW, decay = 1.5), seg(147, 200, 0.42, Wave.SAW, at = 190, decay = 1.5), seg(175, 200, 0.42, Wave.SAW, at = 380, decay = 1.5),
+            seg(165, 200, 0.42, Wave.SAW, at = 570, decay = 1.5), seg(131, 380, 0.46, Wave.SAW, at = 760, decay = 1.2), seg(73, 1000, 0.34, decay = 0.8),
+        )
+        Sound.SUSPENSE -> List(8) { seg(220 + it * 28, 90, 0.30, at = it * 120, decay = 2.5) } + listOf(seg(55, 1000, 0.30, decay = 0.8))
+        Sound.CASH -> List(14) { seg(if (it % 2 == 0) 1568 else 2093, 70, 0.26, Wave.SQUARE, at = it * 52, decay = 3.0) } + listOf(Seg(0.0, 0.0, 700, 0.10, Wave.NOISE, 0, 2.0))
+        Sound.JACKPOT -> listOf(
+            seg(523, 140, 0.4, Wave.SQUARE), seg(659, 140, 0.4, Wave.SQUARE, at = 140), seg(784, 140, 0.4, Wave.SQUARE, at = 280), seg(1047, 180, 0.4, Wave.SQUARE, at = 420),
+            seg(784, 140, 0.4, Wave.SQUARE, at = 600), seg(1047, 140, 0.4, Wave.SQUARE, at = 740), seg(1319, 270, 0.45, Wave.SQUARE, at = 880, decay = 1.8), seg(1047, 270, 0.25, at = 880, decay = 1.8),
+        )
+        Sound.REEL -> listOf(seg(900, 20, 0.22, Wave.SQUARE))
+        Sound.STOP -> listOf(Seg(0.0, 0.0, 30, 0.3, Wave.NOISE, 0, 8.0), seg(150, 100, 0.5, to = 70, decay = 4.0))
+        Sound.LEVER -> List(5) { Seg(0.0, 0.0, 22, 0.28, Wave.NOISE, it * 46, 8.0) } + listOf(seg(120, 130, 0.5, to = 60, at = 260, decay = 4.0))
+        Sound.SPARKLE -> List(6) { seg(1500 + it * 260, 100, 0.22, at = it * 70, decay = 3.5) }
+        Sound.GASP -> listOf(Seg(0.0, 0.0, 380, 0.18, Wave.NOISE, 0, 2.5), seg(620, 380, 0.22, to = 180, decay = 2.5))
+        Sound.JINGLE_A -> listOf(seg(523, 110, 0.4, Wave.SQUARE), seg(659, 110, 0.4, Wave.SQUARE, at = 110), seg(784, 110, 0.4, Wave.SQUARE, at = 220), seg(1047, 380, 0.4, Wave.SQUARE, at = 330, decay = 2.0))
+        Sound.JINGLE_B -> listOf(seg(440, 100), seg(523, 100, at = 100), seg(587, 100, at = 200), seg(659, 100, at = 300), seg(784, 420, at = 400, decay = 2.0))
+        Sound.JINGLE_C -> listOf(seg(220, 130, 0.4, Wave.SAW), seg(262, 130, 0.4, Wave.SAW, at = 130), seg(330, 130, 0.4, Wave.SAW, at = 260), seg(440, 440, 0.4, Wave.SAW, at = 390, decay = 2.0))
+        Sound.JINGLE_D -> listOf(seg(392, 90, 0.4, Wave.SQUARE), seg(330, 90, 0.4, Wave.SQUARE, at = 100), seg(392, 90, 0.4, Wave.SQUARE, at = 200), seg(523, 380, 0.4, Wave.SQUARE, at = 300, decay = 2.0))
+        Sound.JINGLE_E -> listOf(seg(277, 200, 0.4, to = 415, decay = 1.5), seg(415, 200, 0.4, to = 370, at = 200, decay = 1.5), seg(370, 420, 0.4, to = 554, at = 400, decay = 1.8))
+        Sound.JINGLE_F -> listOf(seg(392, 140, 0.4), seg(392, 140, 0.4, at = 160), seg(523, 140, 0.4, at = 320), seg(659, 460, 0.4, at = 480, decay = 2.0), seg(523, 460, 0.2, at = 480, decay = 2.0))
+        Sound.JINGLE_G -> listOf(seg(330, 170, 0.4, Wave.SAW), seg(494, 170, 0.4, Wave.SAW, at = 180), seg(466, 170, 0.4, Wave.SAW, at = 360), seg(330, 440, 0.4, Wave.SAW, at = 540, decay = 2.0))
+        Sound.JINGLE_H -> listOf(seg(523, 80, 0.4, Wave.SQUARE), seg(784, 80, 0.4, Wave.SQUARE, at = 100), seg(523, 80, 0.4, Wave.SQUARE, at = 200), seg(659, 80, 0.4, Wave.SQUARE, at = 300), seg(784, 340, 0.4, Wave.SQUARE, at = 400, decay = 2.0))
     }
 
     /** The samples for [sound]: 16-bit, mono, [RATE] Hz. */
