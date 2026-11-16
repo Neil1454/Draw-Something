@@ -104,6 +104,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> Unit
             GameKind.KALAH -> h.kalah.start(JSONObject().put("seeds", 0))
             GameKind.LIARSDICE -> h.liardice.start(JSONObject().put("dice", 0).put("wild", false))
+            GameKind.HANGMAN -> h.hangman.start(JSONObject().put("mode", 1).put("rounds", 0))
             GameKind.NOUGHTS -> h.noughts.start(JSONObject().put("mode", 0).put("series", 0))
             GameKind.GUESSWHO -> h.guesswho.start(JSONObject().put("size", 0).put("auto", true))
             GameKind.BLACKJACK -> h.blackjack.start(JSONObject().put("rounds", 0).put("tips", 1))
@@ -372,6 +373,18 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                     else if (s.moves in 2..5) say(tip(listOf("The centre square is the strongest one to take.", "Corners are next best: they can start two lines at once.", "Always check whether your rival is about to get three in a row, and block it.", "Make a fork: a move that creates two ways to win at once, so they can only block one."), s.moves - 1).trimStart('\n'))
                 }
                 if (s.roundResult != 0 && s.roundResult != lastSeq) { lastSeq = s.roundResult; say(when (s.roundResult) { 1 -> "🎉 Three in a row for you!"; 2 -> "Three in a row for Player 2."; else -> "🤝 The grid is full: it's a draw. With perfect play it nearly always is!" }) }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.HANGMAN -> {
+                val s = duel.host.hangman.state
+                if (s.moves != last || s.round * 100 + s.misses != lastSeq) {
+                    last = s.moves; lastSeq = s.round * 100 + s.misses
+                    when {
+                        s.moves == 0 && s.stage == "GUESS" -> say("A secret word is hidden behind the underscores: ${s.mask}. Take turns guessing letters. A right letter lets you go again; a wrong one costs a life and draws another part of the hanged man.")
+                        s.lastLetter != ' ' && s.stage == "GUESS" -> say(if (s.lastHit) "✅ ${s.lastLetter} is in the word!  ${s.mask}" else "❌ No ${s.lastLetter}. ${HangmanRules.MAX_MISSES - s.misses} lives left." + tip(listOf("Start with common letters like E, A, T and O.", "Vowels first: most words have at least two.", "Think about the word's length and the pattern of letters you can see."), s.round + s.moves / 4))
+                        s.stage == "REVEAL" || s.stage == "END" -> say(if (s.roundOutcome == 1) "🎉 The word was ${s.word}." else "💀 Out of lives. The word was ${s.word}.")
+                    }
+                }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.LIARSDICE -> {
@@ -720,6 +733,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
             GameKind.KALAH -> "🌰 Mancala: sow seeds round the board, grab extra turns and capture your rival's seeds. You are Player 1 (the bottom row)."
             GameKind.LIARSDICE -> "🎭 Liar's Dice: each player shakes hidden dice. Bid how many of a face are on the whole table, or call your rival a liar. You are Player 1."
+            GameKind.HANGMAN -> "🪢 Hangman: take turns guessing letters of a hidden word before the drawing is finished. You are Player 1."
             GameKind.NOUGHTS -> "❌ Noughts and Crosses: take turns putting your mark on the grid and get three in a row. You are Player 1."
             GameKind.GUESSWHO -> "🕵️ Guess Who?: each player secretly picks a face. Take turns asking yes/no questions and name the other's face first. You are Player 1."
             GameKind.BLACKJACK -> "🂡 Blackjack: you both play against the dealer. Get closer to 21 than the dealer without going over. You are Player 1."

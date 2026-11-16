@@ -26,6 +26,7 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     SHOWDOWN("Stakes Showdown", "🎰", "Play for the stakes you each put up. Every stake is its own contest, picked on turn, and the winner claims it."),
     BLACKJACK("Blackjack", "🂡", "Beat the dealer to 21. Double down, win 3 to 2 on blackjack, and switch on the coach for tips."),
     ARKANOID("Arkanoid", "🧱", "Bounce the ball and smash the bricks together. Catch power-ups: lasers, multi-ball, fireball."),
+    HANGMAN("Hangman", "🪢", "Guess the secret word before the drawing is finished. Set words for each other, or race on a shared word."),
     NOUGHTS("Noughts and Crosses", "❌", "Three in a row wins. Play the classic grid, or Ultimate with nine boards in one. Best of 1, 3 or 5."),
 }
 
