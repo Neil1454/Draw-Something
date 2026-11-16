@@ -159,8 +159,42 @@ private fun CardArt(c: GwChar, modifier: Modifier) {
     }
 }
 
+/**
+ * The grid of cards. While choosing a secret face ([big]) the cards are large, three across, and the screen scrolls. While playing,
+ * everything has to be on screen at once, so the number of columns is chosen to make the cards as big as they can be: by width alone when
+ * there is room to scroll, or by width and height together when [availH] is fixed (landscape).
+ */
 @Composable
-private fun FaceCard(c: GwChar, flipped: Boolean, highlight: Boolean, mine: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun GwBoard(
+    faces: List<GwChar>, availW: androidx.compose.ui.unit.Dp, availH: androidx.compose.ui.unit.Dp?, big: Boolean,
+    flipped: (Int) -> Boolean, mine: Int, onCard: (GwChar) -> Unit,
+) {
+    val gap = 6.dp
+    val labelH = if (big) 24.dp else 20.dp
+    val cols = when {
+        big -> if (availW > 520.dp) 5 else 3
+        availH == null -> if (faces.size > 24) 6 else 4
+        else -> (3..10).maxByOrNull { c ->
+            val rows = (faces.size + c - 1) / c
+            minOf((availW - gap * (c - 1)) / c, (availH - gap * (rows - 1)) / rows - labelH - 10.dp).value
+        } ?: 6
+    }
+    val rows = (faces.size + cols - 1) / cols
+    val byWidth = (availW - gap * (cols - 1)) / cols
+    val cell = if (availH == null) byWidth else minOf(byWidth, (availH - gap * (rows - 1)) / rows - labelH - 10.dp).coerceAtLeast(30.dp)
+    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+        faces.chunked(cols).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                row.forEach { f ->
+                    FaceCard(f, flipped = flipped(f.id), highlight = f.id == mine, mine = f.id == mine, onClick = { onCard(f) }, modifier = Modifier.width(cell), big = big)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FaceCard(c: GwChar, flipped: Boolean, highlight: Boolean, mine: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, big: Boolean = false) {
     val down by animateFloatAsState(if (flipped) 1f else 0f, tween(350), label = "flip")
     val shape = RoundedCornerShape(12.dp)
     Column(
@@ -175,7 +209,7 @@ private fun FaceCard(c: GwChar, flipped: Boolean, highlight: Boolean, mine: Bool
         } else {
             CardArt(c, Modifier.fillMaxWidth().aspectRatio(1f))
         }
-        Text(c.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (down >= 0.5f) Color(0xFF94A3B8) else Color(0xFF0F172A), maxLines = 1)
+        Text(c.name, fontSize = if (big) 15.sp else 11.sp, fontWeight = FontWeight.Bold, color = if (down >= 0.5f) Color(0xFF94A3B8) else Color(0xFF0F172A), maxLines = 1)
     }
 }
 
@@ -337,73 +371,82 @@ fun GuessWhoScreen(
     val myFace = s.mySecret.takeIf { it >= 0 }?.let { GuessWhoData.ALL[it] }
     val waiting = s.pending != null && s.pending.byMe
 
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF3B0764))))) {
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (myFace != null && !s.mustAnswer) SmallFace(myFace, "Your face", 54.dp)
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🕵️ GUESS WHO?", color = Color(0xFFFFD23F), fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 2.sp)
-                    Text(
-                        when {
-                            s.stage == "PICK" && !s.myPicked -> "Tap a face to choose it as YOUR secret face"
-                            s.stage == "PICK" -> "Waiting for ${engine.theirName} to choose…"
-                            s.mustAnswer -> "${engine.theirName} is waiting for your answer"
-                            waiting -> "Waiting for ${engine.theirName} to answer…"
-                            s.myTurn && guessMode -> "Tap the face you think is theirs"
-                            s.myTurn -> "Your turn: ask a question, or make a guess"
-                            else -> "${engine.theirName} is thinking…"
-                        },
-                        color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, fontSize = 14.sp,
-                    )
+    val picking = s.stage == "PICK" && !s.myPicked
+    val onCard: (GwChar) -> Unit = { f ->
+        when {
+            s.phase != GPhase.PLAYING -> Unit
+            s.stage == "PICK" && !s.myPicked -> pending = f.id
+            s.stage == "PLAY" && s.myTurn && guessMode && s.pending == null -> pending = f.id
+            s.stage == "PLAY" -> { if (f.id in manual) manual.remove(f.id) else manual.add(f.id); Sfx.play(Sound.FLIP) }
+        }
+    }
+    val header: @Composable () -> Unit = {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (myFace != null && !s.mustAnswer) SmallFace(myFace, "Your face", 54.dp)
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🕵️ GUESS WHO?", color = Color(0xFFFFD23F), fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 2.sp)
+                Text(
+                    when {
+                        picking -> "Scroll through and tap a face to choose it as YOUR secret face"
+                        s.stage == "PICK" -> "Waiting for ${engine.theirName} to choose…"
+                        s.mustAnswer -> "${engine.theirName} is waiting for your answer"
+                        waiting -> "Waiting for ${engine.theirName} to answer…"
+                        s.myTurn && guessMode -> "Tap the face you think is theirs"
+                        s.myTurn -> "Your turn: ask a question, or make a guess"
+                        else -> "${engine.theirName} is thinking…"
+                    },
+                    color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, fontSize = 14.sp,
+                )
+            }
+        }
+    }
+    val answerBlock: @Composable () -> Unit = {
+        // somebody asked me something: it needs my answer before anything else
+        if (s.mustAnswer && s.phase == GPhase.PLAYING) AnswerCard(s, engine.theirName, myFace) { engine.answer(it) }
+        if (waiting) {
+            val dots by rememberInfiniteTransition(label = "dots").animateFloat(0f, 3.99f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "dotsv")
+            Text("⏳ ${s.pending!!.question}" + ".".repeat(dots.toInt() + 1), color = Color(0xFFFFD23F), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        }
+    }
+    val controls: @Composable () -> Unit = {
+        if (s.stage == "PLAY") {
+            Text("🔎 ${remaining.size} of ${faces.size} faces still in play", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            if (s.myTurn && s.pending == null) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FunkyButton("❓ Ask a question", { guessMode = false; askOpen = true }, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), fontSize = 15.sp)
+                    FunkyButton(if (guessMode) "✖ Cancel guess" else "🎯 Make a guess", { guessMode = !guessMode }, Modifier.weight(1f), if (guessMode) listOf(Funk.Pink, Funk.Red) else listOf(Funk.Orange, Funk.Red), fontSize = 15.sp)
+                }
+            } else if (!s.myTurn && s.pending == null) {
+                Text("⏳ Waiting for ${engine.theirName}…", color = Color.White.copy(alpha = 0.8f))
+            }
+            if (!s.autoFlip) Text("Tap faces to flip them down as you rule them out.", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+            Bubbles(s, engine.theirName)
+        }
+    }
+    val board: @Composable (androidx.compose.ui.unit.Dp, androidx.compose.ui.unit.Dp?) -> Unit = { w, h ->
+        GwBoard(faces, w, h, big = picking, flipped = { flipped(it) && s.stage == "PLAY" }, mine = s.mySecret, onCard = onCard)
+    }
+
+    BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF3B0764))))) {
+        val screenW = maxWidth
+        val screenH = maxHeight
+        val landscape = screenW > screenH
+        if (landscape && s.stage == "PLAY") {
+            // on its side: the whole board on the left, as big as it can be, and the questions and answers on the right
+            Row(Modifier.fillMaxSize().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.weight(1.7f).fillMaxHeight(), contentAlignment = Alignment.Center) { board(screenW * 0.6f, screenH - 16.dp) }
+                Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(top = 28.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    header(); answerBlock(); controls()
                 }
             }
-            // somebody asked me something: it needs my answer before anything else
-            if (s.mustAnswer && s.phase == GPhase.PLAYING) AnswerCard(s, engine.theirName, myFace) { engine.answer(it) }
-            if (waiting) {
-                val dots by rememberInfiniteTransition(label = "dots").animateFloat(0f, 3.99f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "dotsv")
-                Text("⏳ ${s.pending!!.question}" + ".".repeat(dots.toInt() + 1), color = Color(0xFFFFD23F), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-            }
-            // the board
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val cols = if (faces.size > 24) 6 else 4
-                val gap = 6.dp
-                val cell = (maxWidth - gap * (cols - 1)) / cols
-                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                    faces.chunked(cols).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            row.forEach { f ->
-                                FaceCard(
-                                    f, flipped = flipped(f.id) && s.stage == "PLAY", highlight = f.id == s.mySecret, mine = f.id == s.mySecret,
-                                    onClick = {
-                                        when {
-                                            s.phase != GPhase.PLAYING -> Unit
-                                            s.stage == "PICK" && !s.myPicked -> pending = f.id
-                                            s.stage == "PLAY" && s.myTurn && guessMode && s.pending == null -> pending = f.id
-                                            s.stage == "PLAY" -> { if (f.id in manual) manual.remove(f.id) else manual.add(f.id); Sfx.play(Sound.FLIP) }
-                                        }
-                                    },
-                                    modifier = Modifier.width(cell),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            if (s.stage == "PLAY") {
-                Text("🔎 ${remaining.size} of ${faces.size} faces still in play", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                if (s.myTurn && s.pending == null) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FunkyButton("❓ Ask a question", { guessMode = false; askOpen = true }, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), fontSize = 15.sp)
-                        FunkyButton(if (guessMode) "✖ Cancel guess" else "🎯 Make a guess", { guessMode = !guessMode }, Modifier.weight(1f), if (guessMode) listOf(Funk.Pink, Funk.Red) else listOf(Funk.Orange, Funk.Red), fontSize = 15.sp)
-                    }
-                } else if (!s.myTurn && s.pending == null) {
-                    Text("⏳ Waiting for ${engine.theirName}…", color = Color.White.copy(alpha = 0.8f))
-                }
-                if (!s.autoFlip) Text("Tap faces to flip them down as you rule them out.", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
-                Bubbles(s, engine.theirName)
+        } else {
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                header(); answerBlock()
+                board(screenW - 20.dp, null)
+                controls()
             }
         }
         popup?.let {
