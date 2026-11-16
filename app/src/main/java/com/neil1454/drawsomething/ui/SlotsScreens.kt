@@ -1,5 +1,6 @@
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -14,6 +15,15 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -97,6 +107,8 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
     var done by remember { mutableStateOf(true) }
     var payDialog by remember { mutableStateOf(false) }
     var banner by remember { mutableStateOf("") }
+    val leverPull = remember { androidx.compose.animation.core.Animatable(0f) }
+    val resultAt = remember { mutableLongStateOf(0L) }
     val measurer = rememberTextMeasurer()
     val them = engine.theirName
     LaunchedEffect(Unit) { while (true) withFrameMillis { frame.longValue = it } }
@@ -108,6 +120,7 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
         done = false; banner = ""
         spinStart.longValue = frame.longValue
         Sfx.play(Sound.LEVER)
+        launch { leverPull.animateTo(1f, tween(200)); leverPull.animateTo(0f, tween(520)) }
         var t = 0L
         var next = 0
         while (t < SPIN_MS) {
@@ -115,6 +128,7 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
             if (next < SlotRules.REELS && t >= reelStop(next)) { Sfx.play(Sound.STOP); next++ } else if (t % 110L == 0L) Sfx.play(Sound.REEL)
         }
         done = true
+        resultAt.longValue = frame.longValue
         val bet = if (s.lastBet > 0) s.lastBet else 1
         when {
             s.jackpot -> { banner = "JACKPOT!"; Sfx.play(Sound.JACKPOT); delay(500); Sfx.play(Sound.CASH) }
@@ -155,16 +169,31 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
                 Credit("YOU", myCredits, s.mySpins, s.myTurn && s.phase == GPhase.PLAYING, Color(0xFF22D3EE), Modifier.weight(1f))
                 Credit(them.uppercase(), theirCredits, s.theirSpins, !s.myTurn && s.phase == GPhase.PLAYING, Color(0xFFF472B6), Modifier.weight(1f))
             }
-            // the machine
-            Box(Modifier.fillMaxWidth().aspectRatio(5f / 3f + 0.22f)) {
-                Canvas(Modifier.fillMaxSize()) { drawMachine(s, frame.longValue, spinStart.longValue, done, measurer) }
-                if (banner.isNotEmpty()) {
-                    val big = banner == "JACKPOT!" || banner == "BIG WIN!"
-                    Text(
-                        banner, color = Gold, fontWeight = FontWeight.Black, fontSize = if (big) 40.sp else 30.sp, textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center).clip(RoundedCornerShape(20.dp)).background(Color(0xE60B0624)).border(3.dp, Gold, RoundedCornerShape(20.dp)).padding(horizontal = 24.dp, vertical = 12.dp),
-                    )
+            val canPlay = s.phase == GPhase.PLAYING && s.myTurn && done
+            val canSpin = canPlay && s.stage == "BET"
+            val canCollect = canPlay && s.stage == "WIN"
+            // the machine, with its lever on the right-hand side
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f).aspectRatio(1.36f)) {
+                    Canvas(Modifier.fillMaxSize()) { drawMachine(s, frame.longValue, spinStart.longValue, done, measurer) }
+                    if (banner.isNotEmpty()) {
+                        val big = banner == "JACKPOT!" || banner == "BIG WIN!"
+                        Text(
+                            banner, color = Gold, fontWeight = FontWeight.Black, fontSize = if (big) 40.sp else 30.sp, textAlign = TextAlign.Center,
+                            modifier = Modifier.align(Alignment.Center).clip(RoundedCornerShape(20.dp)).background(Color(0xE60B0624)).border(3.dp, Gold, RoundedCornerShape(20.dp)).padding(horizontal = 24.dp, vertical = 12.dp),
+                        )
+                    }
                 }
+                Lever(leverPull.value, canSpin, Modifier.width(46.dp).fillMaxHeight()) { engine.spin() }
+            }
+            // the coin tray at the foot of the machine
+            CoinTray(s.myCredits, if (done && s.stage != "BET" && s.total > 0) frame.longValue - resultAt.longValue else -1L, frame)
+            // the digital meters, like the glowing red numbers on a real machine
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Led("CREDITS", "$myCredits", Modifier.weight(1.3f))
+                Led("BET / LINE", "${s.bet}", Modifier.weight(1f))
+                Led("TOTAL BET", "${SlotRules.cost(s.bet)}", Modifier.weight(1f))
+                Led("WIN", if (done && s.stage != "BET") "${if (s.stage == "WIN") s.pending else s.total}" else "0", Modifier.weight(1f), win = done && s.total > 0 && s.stage != "BET")
             }
             // what the last spin did
             Text(
@@ -176,17 +205,25 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
                     s.spinNo == 0 -> "Place your bet and pull the lever!"
                     s.total > 0 -> "${if (s.lastBy == 1) "You" else them} won ${s.total}"
                     else -> "No win that time"
-                },
-                color = Gold, fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = TextAlign.Center,
+                } + if (s.phase == GPhase.PLAYING && !s.myTurn && done) "   ·   ⏳ $them's turn" else "",
+                color = Gold, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.Center,
             )
-            // the controls
-            if (s.phase == GPhase.PLAYING) when {
-                !done -> Unit
-                s.stage == "BET" && s.myTurn -> BetPanel(s, engine)
-                s.stage == "WIN" && s.myTurn -> WinPanel(s, engine)
-                s.stage == "BET" -> Text("⏳ $them is on the machine…", color = Color.White.copy(alpha = 0.85f))
-                s.stage == "WIN" -> Text("⏳ $them is deciding whether to gamble…", color = Color.White.copy(alpha = 0.85f))
+            // the button deck: bet, max bet, the big SPIN button, then COLLECT and GAMBLE after a win
+            val free = s.freeSpins > 0
+            val affordable = SlotRules.BETS.indices.filter { SlotRules.cost(SlotRules.BETS[it]) <= s.myCredits }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                GoldButton("BET\n${s.bet}", { if (affordable.isNotEmpty()) engine.setBet(affordable[(affordable.indexOf(s.betIndex) + 1).mod(affordable.size)]) }, Modifier.weight(1f), enabled = canSpin && !free && affordable.size > 1)
+                GoldButton("MAX\nBET", { if (affordable.isNotEmpty()) { engine.setBet(affordable.last()); engine.spin() } }, Modifier.weight(1f), enabled = canSpin && !free && affordable.isNotEmpty())
+                GoldButton(if (free) "FREE\nSPIN" else "SPIN", { engine.spin() }, Modifier.weight(1.5f), enabled = canSpin, big = true, red = true, lit = canSpin)
+                GoldButton("COLLECT", { engine.collect() }, Modifier.weight(1.2f), enabled = canCollect, lit = canCollect)
             }
+            val canGamble = canCollect && s.gambles < SlotRules.MAX_GAMBLES && s.pending > 0
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GoldButton("♥ GAMBLE RED  ×2", { engine.gamble(true) }, Modifier.weight(1f), enabled = canGamble, red = true)
+                GoldButton("♠ GAMBLE BLACK  ×2", { engine.gamble(false) }, Modifier.weight(1f), enabled = canGamble, dark = true)
+            }
+            if (canCollect && s.gambles < SlotRules.MAX_GAMBLES && s.pending > 0) Text("Gamble: guess the colour of the hidden card to double your win (${SlotRules.MAX_GAMBLES - s.gambles} left), or COLLECT it.", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, textAlign = TextAlign.Center)
+            if (s.card != 0 && s.cardWon && canCollect) Text("The card was ${if (s.card == 1) "RED ♥" else "BLACK ♠"}: doubled!", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
             if (s.freeSpins > 0 && s.phase == GPhase.PLAYING) Text("⭐ ${s.freeSpins} FREE SPINS LEFT (wins doubled)", color = Color(0xFF86EFAC), fontWeight = FontWeight.Black)
             TextButton(onClick = { payDialog = true }) { Text("📋 Paytable", color = Gold) }
         }
@@ -226,42 +263,105 @@ private fun Credit(label: String, credits: Int, spins: Int, active: Boolean, col
     }
 }
 
+/** A chunky gold casino button: bevelled, with a glow when it is the thing to press, and dull bronze when it can't be pressed. */
 @Composable
-private fun BetPanel(s: SlotsState, engine: SlotsEngine) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (s.freeSpins == 0) {
-            Text("BET PER LINE   ·   a spin costs ${SlotRules.cost(s.bet)}", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for ((i, b) in SlotRules.BETS.withIndex()) {
-                    val ok = SlotRules.cost(b) <= s.myCredits
-                    val sel = i == s.betIndex
-                    Box(
-                        Modifier.size(width = 62.dp, height = 46.dp).clip(RoundedCornerShape(12.dp))
-                            .background(if (sel) Brush.verticalGradient(listOf(Gold, Color(0xFFD97706))) else Brush.verticalGradient(listOf(Color(0xFF1F2937), Color(0xFF111827))))
-                            .border(2.dp, if (sel) Color.White else Gold.copy(alpha = if (ok) 0.6f else 0.15f), RoundedCornerShape(12.dp))
-                            .clickable(enabled = ok) { Sfx.play(Sound.TICK); engine.setBet(i) },
-                        contentAlignment = Alignment.Center,
-                    ) { Text("$b", color = if (sel) Color(0xFF111827) else if (ok) Gold else Color.White.copy(alpha = 0.25f), fontWeight = FontWeight.Black, fontSize = 20.sp) }
-                }
-            }
-        }
-        FunkyButton(if (s.freeSpins > 0) "⭐ FREE SPIN (${s.freeSpins} left)" else "🎰  SPIN  (${SlotRules.cost(s.bet)})", { engine.spin() }, Modifier.fillMaxWidth(), listOf(Color(0xFFDC2626), Color(0xFFF59E0B)), fontSize = 22.sp)
+private fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false, red: Boolean = false, dark: Boolean = false, lit: Boolean = false) {
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "gold").animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "g").value
+    val shape = RoundedCornerShape(if (big) 40.dp else 16.dp)
+    val face = when {
+        !enabled -> listOf(Color(0xFF6B5A3A), Color(0xFF4A3D26))
+        red -> listOf(Color(0xFFFF6B5A), Color(0xFFC81E1E), Color(0xFF7F1010))
+        dark -> listOf(Color(0xFF6B7280), Color(0xFF1F2937), Color(0xFF030712))
+        else -> listOf(Color(0xFFFFF0A0), Color(0xFFF2B705), Color(0xFFB8860B))
+    }
+    val textColour = when { !enabled -> Color(0xFF8B7B58); red || dark -> Color.White; else -> Color(0xFF4A2A00) }
+    Box(
+        modifier.heightIn(min = if (big) 76.dp else 56.dp)
+            .graphicsLayer { val k = if (pressed && enabled) 0.94f else 1f; scaleX = k; scaleY = k }
+            .then(if (enabled && lit) Modifier.border(3.dp, Color(0xFFFFF59D).copy(alpha = 0.35f + 0.65f * pulse), shape) else Modifier)
+            .clip(shape)
+            .background(Brush.verticalGradient(face))
+            .border(2.dp, if (enabled) Color(0xFFFFFBEB).copy(alpha = 0.85f) else Color(0xFF3B2F1B), shape)
+            .clickable(interactionSource = source, indication = null, enabled = enabled) { Sfx.play(Sound.TICK); onClick() }
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        // the bright bevel along the top
+        Box(Modifier.fillMaxWidth(0.82f).height(if (big) 14.dp else 8.dp).align(Alignment.TopCenter).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = if (enabled) 0.35f else 0.08f)))
+        Text(text, color = textColour, fontWeight = FontWeight.Black, fontSize = if (big) 20.sp else 13.sp, textAlign = TextAlign.Center, lineHeight = if (big) 22.sp else 14.sp)
     }
 }
 
+/** A glowing red digital readout, like the meters on a real machine. */
 @Composable
-private fun WinPanel(s: SlotsState, engine: SlotsEngine) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("🏆 ${s.pending} credits to collect", color = Gold, fontWeight = FontWeight.Black, fontSize = 18.sp)
-        FunkyButton("💰  COLLECT ${s.pending}", { engine.collect() }, Modifier.fillMaxWidth(), listOf(Color(0xFF16A34A), Color(0xFF0E9F6E)), fontSize = 20.sp)
-        if (s.gambles < SlotRules.MAX_GAMBLES) {
-            Text("or GAMBLE it: guess the colour of the hidden card to double it (${SlotRules.MAX_GAMBLES - s.gambles} tries left) – get it wrong and it's gone!", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp, textAlign = TextAlign.Center)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FunkyButton("♥ RED  x2", { engine.gamble(true) }, Modifier.weight(1f), listOf(Color(0xFFDC2626), Color(0xFF991B1B)), fontSize = 18.sp)
-                FunkyButton("♠ BLACK  x2", { engine.gamble(false) }, Modifier.weight(1f), listOf(Color(0xFF1F2937), Color(0xFF475569)), fontSize = 18.sp)
-            }
+private fun Led(label: String, value: String, modifier: Modifier = Modifier, win: Boolean = false) {
+    Column(
+        modifier.clip(RoundedCornerShape(10.dp)).background(Color(0xFF120404)).border(2.dp, Color(0xFFB8860B), RoundedCornerShape(10.dp)).padding(horizontal = 6.dp, vertical = 5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(label, color = Color(0xFFFDE68A), fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp, maxLines = 1)
+        Text(
+            value, color = if (win) Color(0xFFFFE066) else Color(0xFFFF3B2F), fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1,
+            style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, shadow = androidx.compose.ui.graphics.Shadow(if (win) Color(0xFFFFD23F) else Color(0xFFFF3B2F), Offset.Zero, 14f)),
+        )
+    }
+}
+
+/** The pull-down arm on the side of the machine, with its red ball. Tap it or drag it down to spin. */
+@Composable
+private fun Lever(pull: Float, enabled: Boolean, modifier: Modifier, onPull: () -> Unit) {
+    Canvas(
+        modifier
+            .pointerInput(enabled) { detectTapGestures { if (enabled) onPull() } }
+            .pointerInput(enabled) {
+                var dragged = 0f
+                detectVerticalDragGestures(onDragStart = { dragged = 0f }, onDragEnd = { if (enabled && dragged > 40f) onPull() }) { _, dy -> dragged += dy }
+            },
+    ) {
+        val cx = size.width * 0.5f
+        val baseY = size.height * 0.62f
+        val travel = size.height * 0.30f
+        val ballY = size.height * 0.16f + pull * travel
+        // the slot the arm moves in, and the mounting plate
+        drawRoundRect(Color(0xFF1F2937), Offset(cx - size.width * 0.12f, size.height * 0.10f), Size(size.width * 0.24f, size.height * 0.62f), CornerRadius(12f))
+        drawRoundRect(Brush.verticalGradient(listOf(Color(0xFFFDE68A), Color(0xFFB45309))), Offset(cx - size.width * 0.32f, baseY - 4f), Size(size.width * 0.64f, size.height * 0.16f), CornerRadius(14f))
+        // the arm itself: a steel shaft from the pivot up to the ball
+        drawLine(Color(0xFF475569), Offset(cx, baseY + 4f), Offset(cx, ballY), size.width * 0.16f, StrokeCap.Round)
+        drawLine(Color(0xFFE2E8F0), Offset(cx - size.width * 0.03f, baseY), Offset(cx - size.width * 0.03f, ballY), size.width * 0.045f, StrokeCap.Round)
+        val r = size.width * 0.34f
+        drawCircle(Color.Black.copy(alpha = 0.3f), r, Offset(cx + 3f, ballY + 5f))
+        drawCircle(Brush.radialGradient(listOf(Color(0xFFFFB4A8), Color(0xFFDC2626), Color(0xFF7F1D1D)), Offset(cx - r * 0.3f, ballY - r * 0.3f), r * 1.4f), r, Offset(cx, ballY))
+        if (enabled) drawCircle(Color(0xFFFFF59D).copy(alpha = 0.55f), r * 1.18f, Offset(cx, ballY), style = Stroke(3f))
+    }
+}
+
+/** The metal tray under the machine where the coins land; the pile grows with your credits and coins rattle in when you win. */
+@Composable
+private fun CoinTray(credits: Int, sinceWin: Long, frame: androidx.compose.runtime.MutableLongState) {
+    Canvas(Modifier.fillMaxWidth().height(58.dp)) {
+        val w = size.width; val h = size.height
+        val tray = Path().apply { moveTo(w * 0.08f, h * 0.28f); lineTo(w * 0.92f, h * 0.28f); lineTo(w * 0.98f, h * 0.96f); lineTo(w * 0.02f, h * 0.96f); close() }
+        drawPath(tray, Brush.verticalGradient(listOf(Color(0xFF9CA3AF), Color(0xFF4B5563), Color(0xFF1F2937))))
+        drawPath(tray, Color.White.copy(alpha = 0.4f), style = Stroke(2f))
+        drawRoundRect(Color(0xFF111827), Offset(w * 0.12f, h * 0.36f), Size(w * 0.76f, h * 0.5f), CornerRadius(10f))
+        // the pile of coins
+        val coins = (credits / 40).coerceIn(2, 46)
+        for (i in 0 until coins) {
+            val col = i % 14; val row = i / 14
+            val x = w * 0.16f + col * (w * 0.68f / 14f) + (row % 2) * 6f
+            val y = h * 0.80f - row * 9f - (if (col % 3 == 0) 3f else 0f)
+            drawOval(Color(0xFFB8860B), Offset(x, y), Size(18f, 9f)); drawOval(Color(0xFFFFD23F), Offset(x, y - 2f), Size(18f, 8f)); drawOval(Color(0xFFFFF3A0), Offset(x + 3f, y), Size(8f, 3f))
         }
-        if (s.card != 0 && s.cardWon) Text("The card was ${if (s.card == 1) "RED ♥" else "BLACK ♠"}: you doubled it!", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
+        // coins rattling in after a win
+        if (sinceWin in 0..1600) for (k in 0 until 18) {
+            val t = ((sinceWin - k * 60L) / 700f).coerceIn(0f, 1f)
+            if (t <= 0f || t >= 1f) continue
+            val x = w * (0.2f + 0.6f * ((k * 37) % 100) / 100f)
+            drawOval(Color(0xFFFFD23F), Offset(x, -h * 0.2f + t * h * 1.0f), Size(18f, 10f)); drawOval(Color(0xFFB8860B), Offset(x, -h * 0.2f + t * h * 1.0f), Size(18f, 10f), style = Stroke(1.5f))
+        }
+        @Suppress("UNUSED_VARIABLE") val unused = frame.longValue
     }
 }
 
@@ -317,8 +417,8 @@ private fun DrawScope.drawMachine(s: SlotsState, nowMs: Long, spinStart: Long, d
         drawCircle(if (on) Color(0xFFFEF08A) else Color(0xFF92400E), 3.2f, p)
     }
     // the reels
-    val rx = gx + gw * 0.04f; val ry = gy + gh * 0.07f
-    val rw = gw * 0.92f; val rh = gh * 0.86f
+    val rx = gx + gw * 0.09f; val ry = gy + gh * 0.22f
+    val rw = gw * 0.82f; val rh = gh * 0.73f
     val cw = rw / SlotRules.REELS; val ch = rh / SlotRules.ROWS
     val t = (nowMs - spinStart)
     val shownGrid = if (s.spinNo == 0) PREVIEW else s.grid
@@ -360,6 +460,50 @@ private fun DrawScope.drawMachine(s: SlotsState, nowMs: Long, spinStart: Long, d
     }
     drawLine(Color.Black.copy(alpha = 0.6f), Offset(rx + rw, ry), Offset(rx + rw, ry + rh), 3f)
     for (row in 1 until SlotRules.ROWS) drawLine(Color.Black.copy(alpha = 0.18f), Offset(rx, ry + row * ch), Offset(rx + rw, ry + row * ch), 2f)
+    // the pay table across the top of the machine, with the symbols that have just paid lit up
+    run {
+        val px = gx + gw * 0.03f; val py = gy + gh * 0.025f; val pw = gw * 0.94f; val ph = gh * 0.165f
+        drawRoundRect(Color(0xFF1A0A05), Offset(px, py), Size(pw, ph), CornerRadius(14f))
+        drawRoundRect(Color(0xFFD4A017), Offset(px, py), Size(pw, ph), CornerRadius(14f), style = Stroke(3f))
+        val lit = if (done && s.stage != "BET") s.lines.map { it.symbol }.toSet() else emptySet()
+        val syms = "SWDBGOLC"
+        val cellW = pw / syms.length
+        val small = TextStyle(fontSize = (ph * 0.36f).toSp())
+        val num = TextStyle(fontSize = (ph * 0.24f).toSp(), color = Color(0xFFFDE68A), fontWeight = FontWeight.Black)
+        for ((i, c) in syms.withIndex()) {
+            val cx = px + cellW * (i + 0.5f)
+            val on = c in lit
+            val flash = if (on) 0.6f + 0.4f * sin(nowMs / 120f) else 1f
+            if (on) drawRoundRect(Color(0xFFFFD23F).copy(alpha = 0.30f * flash), Offset(px + cellW * i + 2f, py + 3f), Size(cellW - 4f, ph - 6f), CornerRadius(10f))
+            val g = m.measure(SlotRules.EMOJI.getValue(c), small)
+            drawText(g, topLeft = Offset(cx - g.size.width / 2f, py + ph * 0.06f), alpha = if (on) 1f else 0.85f)
+            val label = m.measure(if (c == 'W') "WILD" else "×${SlotRules.pay(c, 5)}", num)
+            drawText(label, topLeft = Offset(cx - label.size.width / 2f, py + ph * 0.60f), alpha = if (on) 1f else 0.8f)
+        }
+    }
+    // the payline numbers down both sides: a line lights up when it pays
+    run {
+        val paying = if (done && s.stage != "BET") s.lines.map { it.line }.toSet() else emptySet()
+        val tabR = minOf(cw * 0.15f, ch * 0.14f)
+        val numStyle = TextStyle(fontSize = (tabR * 1.25f).toSp(), color = Color(0xFF111827), fontWeight = FontWeight.Black)
+        for (side in 0..1) {
+            val reel = if (side == 0) 0 else SlotRules.REELS - 1
+            for (row in 0 until SlotRules.ROWS) {
+                val here = (0 until SlotRules.LINES).filter { SlotRules.PAYLINES[it][reel] == row }
+                for ((k, li) in here.withIndex()) {
+                    val x = if (side == 0) gx + gw * 0.045f else gx + gw * 0.955f
+                    val y = ry + row * ch + ch * (k + 1f) / (here.size + 1f)
+                    val col = LineColours[li % LineColours.size]
+                    val on = li in paying
+                    val flash = if (on) 0.6f + 0.4f * sin(nowMs / 130f) else 0.45f
+                    drawCircle(col.copy(alpha = flash), tabR, Offset(x, y))
+                    drawCircle(Color(0xFF111827).copy(alpha = 0.6f), tabR, Offset(x, y), style = Stroke(1.6f))
+                    val g = m.measure("${li + 1}", numStyle)
+                    drawText(g, topLeft = Offset(x - g.size.width / 2f, y - g.size.height / 2f))
+                }
+            }
+        }
+    }
     // the winning lines, once the reels have stopped
     if (done && s.stage != "BET" && s.lines.isNotEmpty()) {
         val flash = 0.55f + 0.45f * sin(nowMs / 140f)

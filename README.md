@@ -150,7 +150,9 @@ for applause and a buzzing "throat" run through the formants of a mouth for voic
 each. You choose a bet per line (1, 2, 5 or 10; a spin costs nine lines' worth) and pull the lever, and the host's phone does all the random drawing so nobody can cheat.
 Symbols pay from the left: cherries 4/12/40 for 3/4/5 up to sevens 50/150/500 (five 7s, or five wilds, is the jackpot); a pair of cherries pays a little; ⭐ wilds stand in for any
 symbol; three or more 💰 scatters pay a prize and give 8, 12 or 20 free spins in which every win is doubled. After any win you can collect it or gamble it on a hidden red or
-black card (up to three doublings in a row). The machine returns about 91% of what is staked in the long run, and a test checks that. The reels whirr and stop one by one with a bounce,
+black card (up to three doublings in a row). The machine now looks and works like a proper casino machine: a gold cabinet with chasing bulbs, a **pay table across the top** (the symbols that just paid light up),
+coloured **payline numbers** down both sides, a **pull-down lever** with a red ball (tap it or drag it down), glowing red **digital meters** (credits, bet per line, total bet, win), a **coin tray**
+that fills with your credits and rattles coins in when you win, and a deck of bevelled **gold buttons**: BET (cycles your bet), MAX BET (biggest bet and spin), a big red SPIN, COLLECT, and the red and black GAMBLE buttons. The machine returns about 91% of what is staked in the long run, and a test checks that. The reels whirr and stop one by one with a bounce,
 winning lines light up in different colours, and big wins and jackpots rain coins.
 
 **Title cards.** Every game now opens with its own title card (its picture, name and a line about it on the game's colours) and its own short jingle, so each one starts with a character of its own.
