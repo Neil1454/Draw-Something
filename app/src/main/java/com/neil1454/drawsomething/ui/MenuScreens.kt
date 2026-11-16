@@ -953,7 +953,12 @@ private fun ArcadeLobby(
     SyncLobby(ui, connected, kind, help, {
         ChipRow(if (kind == GameKind.INVADERS) "Waves" else "Levels", listOf("3", "5", "7"), listOf(3, 5, 7).indexOf(set.arcadeWaves).coerceAtLeast(0)) { onSettings(set.copy(arcadeWaves = listOf(3, 5, 7)[it])) }
         ChipRow("Lives each", listOf("2", "3", "5"), listOf(2, 3, 5).indexOf(set.arcadeLives).coerceAtLeast(1)) { onSettings(set.copy(arcadeLives = listOf(2, 3, 5)[it])) }
-    }) { onStart(kind, JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives)) }
+        if (kind == GameKind.ARKANOID) {
+            ChipRow("Paddle size", listOf("Normal", "Small", "Tiny"), set.arkBat) { onSettings(set.copy(arkBat = it)) }
+            ChipRow("Ball pace", listOf("Normal", "Fast", "Frantic"), set.arkPace) { onSettings(set.copy(arkPace = it)) }
+            ToggleChip("⬇ Falling wall (the bricks creep down every so often)", set.arkWall) { onSettings(set.copy(arkWall = it)) }
+        }
+    }) { onStart(kind, JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives).put("bat", set.arkBat).put("pace", set.arkPace).put("wall", set.arkWall)) }
 }
 
 @Composable

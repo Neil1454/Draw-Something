@@ -36,7 +36,11 @@ fun ArkanoidHelp() {
         Text("• Whoever touched the ball last scores the points for every brick it breaks.")
         Text("• Grey bricks take two or three hits, gold bricks can't be broken, and red bricks explode the bricks around them.")
         Text("• Bricks drop the classic power-up capsules: catch them with a paddle. E expand your paddle, L lasers (keep your finger down), C catch (a sticky paddle: lift your finger and tap the pad to let the ball go), D disruption (three balls), S slow motion, B break (an exit opens on the right: slide your paddle off the edge to skip the round), P player (an extra life for the team), F fireball that burns straight through, ×2 double points for you. A new paddle power replaces the last one.")
-        Text("• Watch out for the two with a flashing yellow warning edge: N shrinks the paddle that catches it, and » makes the ball much faster for a while.")
+        Text("• H is a shield: a glowing floor that bounces back the next ball you would have dropped (once).")
+        Text("• Watch out for the three with a flashing yellow warning edge: N shrinks the paddle that catches it, » makes the ball much faster for a while, and ⇄ reverses the controls of whoever catches it for a few seconds.")
+        Text("• Purple ? bricks are mystery bricks: they always drop a capsule, and are worth an extra 100.")
+        Text("• The host can pick a Small or Tiny paddle, a Fast or Frantic ball, and a Falling wall that creeps down a row every so often. Let a brick get pushed off the bottom and the team loses a life.")
+        Text("• There are nine different walls to clear, and the last round is always the boss.")
         Text("• Strange drifting enemies wander down the screen and knock the ball about. Hit or shoot them for 100 points. Colour bricks are worth 50 to 120, silver bricks 50 × the round, steel 80 × the round.")
         Text("• The last round is a boss, DOH. Hit him again and again with the ball or lasers, and dodge the bombs he drops: a bomb that lands on a paddle costs the team a life.")
         Text("• The ball also gets faster the longer a rally goes on (shown as SPEED at the top), and starts quicker on every new level. Dropping it resets the speed.")
@@ -55,7 +59,7 @@ private fun rowColour(y: Float): Color =
 private fun dropColour(k: Char): Color = when (k) {
     'E' -> Color(0xFF3B82F6); 'D' -> Color(0xFF06B6D4); 'L' -> Color(0xFFEF4444); 'C' -> Color(0xFF22C55E)
     'S' -> Color(0xFFF59E0B); 'B' -> Color(0xFFEC4899); 'P' -> Color(0xFFE5E7EB); 'F' -> Color(0xFFF97316)
-    'X' -> Color(0xFFFACC15); 'N' -> Color(0xFFB91C1C); 'Z' -> Color(0xFFEA580C); else -> Color(0xFFF472B6)
+    'X' -> Color(0xFFFACC15); 'N' -> Color(0xFFB91C1C); 'Z' -> Color(0xFFEA580C); 'H' -> Color(0xFF38BDF8); 'R' -> Color(0xFF7E22CE); else -> Color(0xFFF472B6)
 }
 
 /** Every level has its own look: the sky, the glow and the floor change. */
@@ -117,6 +121,7 @@ private fun DrawScope.drawBrick(col: Int, row: Int, ch: Char, now: Long, accent:
         '3' -> Color(0xFF64748B)
         '9' -> Color(0xFFEAB308)
         'E' -> Color(0xFFDC2626)
+        'Q' -> Color(0xFF7C3AED)
         else -> RowColours[row.coerceIn(0, RowColours.lastIndex)]
     }
     val r = CornerRadius(0.75f)
@@ -154,6 +159,12 @@ private fun DrawScope.drawBrick(col: Int, row: Int, ch: Char, now: Long, accent:
             drawCircle(Brush.radialGradient(listOf(Color(0xFFFDE047), Color(0xFFDC2626), Color.Transparent), c, 2.2f * pulse), 2.2f * pulse, c)
             drawCircle(Color(0xFF450A0A), 0.65f, c)
         }
+        'Q' -> {
+            val c = Offset(x + w / 2f, y + h / 2f)
+            val pulse = 0.5f + 0.5f * sin(t * 5f + col)
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFFDE047).copy(alpha = 0.7f * pulse), Color.Transparent), c, 3.2f), 3.2f, c)
+            for (k in 0..3) drawLine(Color.White.copy(alpha = 0.25f), Offset(x + 0.6f + k * 2.4f, y + h), Offset(x + 0.6f + k * 2.4f + 1.6f, y), 0.3f)
+        }
         else -> {}
     }
     // the glow of the level's accent on the very top row
@@ -162,9 +173,9 @@ private fun DrawScope.drawBrick(col: Int, row: Int, ch: Char, now: Long, accent:
 
 private fun lerp(a: Color, b: Color, t: Float) = Color(a.red + (b.red - a.red) * t, a.green + (b.green - a.green) * t, a.blue + (b.blue - a.blue) * t, a.alpha)
 
-private fun DrawScope.drawPaddle(v: ShipView, smooth: Smooth, key: String, col: Color, now: Long, dt: Float, mine: Boolean) {
+private fun DrawScope.drawPaddle(v: ShipView, smooth: Smooth, key: String, col: Color, now: Long, dt: Float, mine: Boolean, bat: Float, reversed: Boolean) {
     val x = smooth.follow("$key-x", v.x, dt, 30f)
-    val w = smooth.follow("$key-w", if (v.narrow) ArkanoidRules.PADDLE_NARROW else if (v.triple) ArkanoidRules.PADDLE_WIDE else ArkanoidRules.PADDLE_W, dt, 14f)
+    val w = smooth.follow("$key-w", if (v.narrow) ArkanoidRules.PADDLE_NARROW else if (v.triple) ArkanoidRules.PADDLE_WIDE else ArkanoidRules.PADDLE_W, dt, 14f) * bat
     val y = ArkanoidRules.PADDLE_Y
     val t = now / 1000f
     val left = x - w / 2f
@@ -188,6 +199,7 @@ private fun DrawScope.drawPaddle(v: ShipView, smooth: Smooth, key: String, col: 
         val on = 0.4f + 0.6f * sin(t * 6f - k * 0.9f).coerceAtLeast(0f)
         drawCircle(col.copy(alpha = on), 0.32f, Offset(lx, y + 0.1f))
     }
+    if (reversed) drawRoundRect(Color(0xFFA855F7).copy(alpha = 0.5f + 0.5f * sin(t * 14f)), Offset(left - 0.8f, y - 2.6f), Size(w + 1.6f, 5.6f), CornerRadius(3f), style = Stroke(0.4f))
     if (v.rapid) {
         // laser cannons, with a muzzle flash
         for (sx in listOf(left + 1.4f, left + w - 1.4f)) {
@@ -256,8 +268,8 @@ private fun DrawScope.drawDrop(d: DropView, f: ArcadeFrame, m: androidx.compose.
     drawRoundRect(Brush.verticalGradient(listOf(lerp(col, Color.White, 0.5f), col, lerp(col, Color.Black, 0.4f)), y - 2f, y + 2.2f), Offset(d.x - w / 2f, y - 2f), Size(w, 4.2f), CornerRadius(2.1f))
     drawRoundRect(Color.White.copy(alpha = 0.55f), Offset(d.x - w / 2f + 0.8f, y - 1.6f), Size(w - 1.6f, 1.1f), CornerRadius(0.6f))
     drawRoundRect(Color.White, Offset(d.x - w / 2f, y - 2f), Size(w, 4.2f), CornerRadius(2.1f), style = Stroke(0.3f))
-    if (d.kind == 'N' || d.kind == 'Z') drawRoundRect(Color(0xFFFDE047).copy(alpha = 0.5f + 0.5f * sin(t * 12f)), Offset(d.x - w / 2f - 0.5f, y - 2.5f), Size(w + 1f, 5.2f), CornerRadius(2.6f), style = Stroke(0.35f))
-    val label = when (d.kind) { 'X' -> "×2"; 'N' -> "⇹"; 'Z' -> "»"; else -> d.kind.toString() }
+    if (d.kind == 'N' || d.kind == 'Z' || d.kind == 'R') drawRoundRect(Color(0xFFFDE047).copy(alpha = 0.5f + 0.5f * sin(t * 12f)), Offset(d.x - w / 2f - 0.5f, y - 2.5f), Size(w + 1f, 5.2f), CornerRadius(2.6f), style = Stroke(0.35f))
+    val label = when (d.kind) { 'X' -> "×2"; 'N' -> "⇹"; 'Z' -> "»"; 'R' -> "⇄"; else -> d.kind.toString() }
     val r = m.measure(label, TextStyle(fontSize = 3.3f.toSp(), color = Color.White, fontWeight = FontWeight.Black))
     if (spin > 0.75f) drawText(r, topLeft = Offset(d.x - r.size.width / 2f, y - r.size.height / 2f + 0.1f))
 }
@@ -319,19 +331,26 @@ fun ArkanoidScreen(
                 drawLine(Color.White, Offset(b.x, y + 2.4f), Offset(b.x, y), 0.45f)
                 drawCircle(Color(0xFFFCA5A5).copy(alpha = 0.7f), 0.9f, Offset(b.x, y))
             }
+            if (s.shield) {
+                val gl = 0.55f + 0.3f * sin(f.nowMs / 150f)
+                drawRect(Color(0xFF38BDF8).copy(alpha = 0.18f), Offset(0f, Arcade.H - 5f), Size(Arcade.W, 5f))
+                drawLine(Color(0xFF7DD3FC).copy(alpha = gl), Offset(0f, Arcade.H - 3f), Offset(Arcade.W, Arcade.H - 3f), 0.9f)
+            }
             if (s.exitOpen) drawExit(f.nowMs)
             for (en in s.enemies) drawEnemy(en, f.nowMs)
             s.boss?.let { drawBoss(it, f.nowMs, s.balls.firstOrNull()?.x ?: 50f) }
             for (b in s.bombs) drawBomb(b.x, b.y + b.vy * minOf(f.ageSec, 0.1f), f.nowMs)
             for (d in s.drops) drawDrop(d, f, measurer)
             for (b in s.balls) drawBall(b, f, s.fireball)
-            drawPaddle(c.theirs, smooth, "theirs", f.theirCol, f.nowMs, f.dt, false)
-            drawPaddle(c.mine, smooth, "mine", f.mineCol, f.nowMs, f.dt, true)
+            drawPaddle(c.theirs, smooth, "theirs", f.theirCol, f.nowMs, f.dt, false, s.bat, s.theirReversed)
+            drawPaddle(c.mine, smooth, "mine", f.mineCol, f.nowMs, f.dt, true, s.bat, s.myReversed)
             // team power-ups that are running
             var tx = 4f
             if (s.slow) { drawText(measurer.measure("🐢 SLOW", TextStyle(fontSize = 3.4f.toSp(), color = Color(0xFF7DD3FC), fontWeight = FontWeight.Black)), topLeft = Offset(tx, 4f)); tx += 22f }
             if (s.fireball) { drawText(measurer.measure("🔥 FIREBALL", TextStyle(fontSize = 3.4f.toSp(), color = Color(0xFFFDBA74), fontWeight = FontWeight.Black)), topLeft = Offset(tx, 4f)); tx += 28f }
             if (s.fast) drawText(measurer.measure("⚠ FAST BALL", TextStyle(fontSize = 3.4f.toSp(), color = Color(0xFFFCA5A5), fontWeight = FontWeight.Black)), topLeft = Offset(tx, 4f))
+            if (s.myReversed) drawText(measurer.measure("🔀 CONTROLS REVERSED", TextStyle(fontSize = 3.6f.toSp(), color = Color(0xFFD8B4FE), fontWeight = FontWeight.Black)), topLeft = Offset(14f, 112f))
+            if (s.wallIn in 0..99) drawText(measurer.measure("⬇ WALL ${s.wallIn}s", TextStyle(fontSize = 3.2f.toSp(), color = if (s.wallIn <= 5) Color(0xFFFCA5A5) else Color(0xFFCBD5E1).copy(alpha = 0.85f), fontWeight = FontWeight.Black)), topLeft = Offset(Arcade.W - 26f, 8f))
             if (s.speed > 1.04f) drawText(measurer.measure("SPEED ×%.1f".format(s.speed), TextStyle(fontSize = 3.2f.toSp(), color = Color(0xFFFDE68A).copy(alpha = 0.9f), fontWeight = FontWeight.Black)), topLeft = Offset(Arcade.W - 26f, 4f))
         },
     )

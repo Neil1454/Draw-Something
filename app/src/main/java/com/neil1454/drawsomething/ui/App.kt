@@ -252,7 +252,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.GUESSWHO -> JSONObject().put("deck", set.gwDeck).put("size", set.gwSize).put("auto", set.gwAuto).put("manual", set.gwManual).put("smart", set.gwSmart)
             GameKind.HILO -> JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)
             GameKind.DRAUGHTS, GameKind.LUDO -> JSONObject()
-            GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.ARKANOID -> JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives)
+            GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.ARKANOID -> JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives).put("bat", set.arkBat).put("pace", set.arkPace).put("wall", set.arkWall)
             GameKind.MONOPOLY -> JSONObject().put("len", set.monopolyLen).put("lap", set.monopolyLap)
             GameKind.TETRIS -> JSONObject().put("mode", set.tetrisMode).put("lvl", set.tetrisLevel)
                 .put("mins", set.tetrisMins).put("gifts", set.tetrisGifts).put("tl", set.tetrisLines)

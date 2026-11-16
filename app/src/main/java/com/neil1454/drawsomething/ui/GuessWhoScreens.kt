@@ -220,7 +220,7 @@ private fun QuestionChip(q: com.neil1454.drawsomething.core.GwQuestion, done: Gw
     val asked = done != null
     Row(
         modifier.clip(shape)
-            .background(if (asked) Color(0x22FFFFFF) else Brush.verticalGradient(listOf(Color(0xFF3B3F8F), Color(0xFF272A66))))
+            .background(Brush.verticalGradient(if (asked) listOf(Color(0x22FFFFFF), Color(0x22FFFFFF)) else listOf(Color(0xFF3B3F8F), Color(0xFF272A66))))
             .border(if (best) 3.dp else 1.dp, if (best) Color(0xFFFFD23F) else Color.White.copy(alpha = if (asked) 0.15f else 0.35f), shape)
             .clickable(enabled = !asked, onClick = onClick).padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),

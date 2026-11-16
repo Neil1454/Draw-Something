@@ -45,13 +45,18 @@ object ArkanoidRules {
     fun brickScore(armour: Int, row: Int, level: Int) = when (armour) { 1 -> 50 * level; 2 -> 80 * level; else -> 50 + 10 * (row % 8) }
 
     fun ballSpeed(level: Int): Float = min(104f, 62f + 6f * (level - 1))
+    /** Paddle size choices (Normal, Small, Tiny) and ball pace choices (Normal, Fast, Frantic). */
+    val BAT_SCALE = floatArrayOf(1f, 0.72f, 0.52f)
+    val PACE_MUL = floatArrayOf(1f, 1.2f, 1.42f)
+    /** How long between the wall creeping down a row (when that option is on), by pace. */
+    val WALL_MS = longArrayOf(30_000L, 24_000L, 18_000L)
     fun idx(col: Int, row: Int) = row * COLS + col
 
     /** The brick layout for a level (1 upwards): '.' empty, '1' '2' '3' = hits to break, '9' unbreakable gold, 'E' explosive. */
     fun layout(level: Int): String {
         val a = CharArray(COLS * ROWS) { '.' }
         fun put(c: Int, r: Int, ch: Char) { if (c in 0 until COLS && r in 0 until ROWS) a[idx(c, r)] = ch }
-        when ((level - 1) % 5) {
+        when ((level - 1) % 9) {
             0 -> for (r in 1..5) for (c in 0 until COLS) put(c, r, '1')
             1 -> for (r in 1..6) for (c in 0 until COLS) if ((c + r) % 2 == 0) put(c, r, if (r == 1) '2' else '1')
             2 -> for (r in 1..6) for (c in (5 - r)..(4 + r)) put(c, r, if ((c + r) % 3 == 0) '2' else '1')
@@ -60,13 +65,39 @@ object ArkanoidRules {
                 for (r in 3..6) { put(0, r, '9'); put(COLS - 1, r, '9') }
                 put(4, 3, 'E'); put(5, 3, 'E')
             }
+            5 -> {
+                // a diamond with a mystery brick at its heart
+                for (r in 1..8) { val half = if (r <= 4) r else 9 - r; for (c in (5 - half)..(4 + half)) put(c, r, if (c == 5 - half || c == 4 + half) '2' else '1') }
+                put(4, 4, 'Q'); put(5, 4, 'Q'); put(4, 5, 'Q'); put(5, 5, 'Q')
+            }
+            6 -> {
+                // stripes between gold pillars, with mystery bricks along the top
+                for (r in 1..7) for (c in 0 until COLS) if (c % 2 == 0) put(c, r, if (r % 3 == 0) '2' else '1')
+                for (r in 3..7) { put(2, r, '9'); put(7, r, '9') }
+                for (c in 0 until COLS step 3) put(c, 1, 'Q')
+                put(4, 8, 'E'); put(6, 8, 'E')
+            }
+            7 -> {
+                // a space invader made of bricks
+                val rows = listOf("..1....1..", "...1..1...", "..111111..", ".11Q11Q11.", "1111111111", "1.111111.1", "1.1....1.1", "...11.11..")
+                for ((r, line) in rows.withIndex()) for ((c, ch) in line.withIndex()) if (ch != '.') put(c, r + 1, if (ch == '1' && (r == 4)) '2' else ch)
+                put(0, 5, '9'); put(9, 5, '9')
+            }
+            8 -> {
+                // a fortress: steel walls, silver inside, explosive towers and a mystery core
+                for (r in 1..8) for (c in 0 until COLS) put(c, r, if (r == 1 || r == 8 || c == 0 || c == COLS - 1) '3' else '2')
+                for (r in 3..6) for (c in 3..6) put(c, r, '1')
+                put(4, 4, 'Q'); put(5, 4, 'Q'); put(4, 5, 'Q'); put(5, 5, 'Q')
+                put(1, 2, 'E'); put(8, 2, 'E'); put(1, 7, 'E'); put(8, 7, 'E')
+                for (c in 2..7 step 5) put(c, 8, '9')
+            }
             else -> {
                 for (r in 1..8) for (c in 0 until COLS) put(c, r, if (r <= 2) '3' else if (r % 3 == 0) '2' else '1')
                 for ((c, r) in listOf(2 to 5, 7 to 5, 3 to 6, 6 to 6)) put(c, r, '9')
                 for ((c, r) in listOf(1 to 4, 8 to 4, 4 to 7, 5 to 7)) put(c, r, 'E')
             }
         }
-        if (level > 5) for (r in 1..2) for (c in 0 until COLS) if (a[idx(c, r)] == '1') a[idx(c, r)] = '2'
+        if (level > 9) for (r in 1..2) for (c in 0 until COLS) if (a[idx(c, r)] == '1') a[idx(c, r)] = '2'
         return String(a)
     }
 
@@ -90,6 +121,13 @@ data class ArkanoidState(
     val fast: Boolean = false,
     /** How much faster than the level's starting speed the ball is now (1.0 at the start of a rally). */
     val speed: Float = 1f,
+    /** The paddle size option (1 normal, smaller is harder), the shield under the paddles, and whether my paddle / their paddle has reversed controls. */
+    val bat: Float = 1f,
+    val shield: Boolean = false,
+    val myReversed: Boolean = false,
+    val theirReversed: Boolean = false,
+    /** Seconds until the wall creeps down (the Falling wall option), or -1 when that is off. */
+    val wallIn: Int = -1,
     /** The exit (from a Break capsule) is open, the wandering enemies, and the boss and its bombs on the last round. */
     val exitOpen: Boolean = false,
     val enemies: List<EnemyView> = emptyList(),
@@ -162,6 +200,13 @@ class ArkanoidEngine(
     private var fireUntil = 0L
     private var fastUntil = 0L
     private var rally = 0
+    private var batScale = 1f
+    private var pace = 0
+    private var wall = false
+    private var nextShift = 0L
+    private var shield = false
+    private val rawX = floatArrayOf(0f, 30f, 70f)
+    private val reverseUntil = LongArray(3)
     private var over = false
     private var why = ""
 
@@ -170,13 +215,17 @@ class ArkanoidEngine(
         act(JSONObject().put("a", "in").put("x", Arcade.r1(x)).put("f", if (fire) 1 else 0))
     }
 
-    private fun halfWidth(p: Int) = (if (t < ships[p].narrowUntil) R.PADDLE_NARROW else if (t < ships[p].tripleUntil) R.PADDLE_WIDE else R.PADDLE_W) / 2f
+    private fun halfWidth(p: Int) = (if (t < ships[p].narrowUntil) R.PADDLE_NARROW else if (t < ships[p].tripleUntil) R.PADDLE_WIDE else R.PADDLE_W) * batScale / 2f
 
     private fun addScore(p: Int, pts: Int) { ships[p].score += if (t < ships[p].doubleUntil) pts * 2 else pts }
 
     override fun hostBegin(opts: JSONObject) {
         levels = opts.optInt("waves", 5).coerceIn(1, 9)
         lives = opts.optInt("lives", Arcade.START_LIVES).coerceIn(1, 5)
+        batScale = R.BAT_SCALE[opts.optInt("bat", 0).coerceIn(0, 2)]
+        pace = opts.optInt("pace", 0).coerceIn(0, 2)
+        wall = opts.optBoolean("wall", false)
+        rawX[1] = 30f; rawX[2] = 70f; reverseUntil.fill(0L); shield = false
         ships[1].reset(30f, R.PADDLE_Y); ships[2].reset(70f, R.PADDLE_Y)
         level = opts.optInt("from", 1).coerceIn(1, levels); t = 0L; elapsed = 0L; over = false; why = ""; bursts.clear(); burstId = 0; dropId = 0
         lastOwner = 1; rally = 0; enemyId = 0
@@ -195,7 +244,8 @@ class ArkanoidEngine(
         if (bossOn) { bricks[R.idx(0, 6)] = '9'; bricks[R.idx(R.COLS - 1, 6)] = '9'; bossHp = R.BOSS_HP + 2 * (levels - 3); bossX = 50f; nextBomb = t + Arcade.READY_MS + 3000L }
         balls.clear(); drops.clear(); lasers.clear(); enemies.clear(); bombs.clear()
         nextEnemy = t + Arcade.READY_MS + 9000L; breakUntil = 0L
-        serveAt = -1L; slowUntil = 0L; fireUntil = 0L; fastUntil = 0L; rally = 0
+        serveAt = -1L; slowUntil = 0L; fireUntil = 0L; fastUntil = 0L; rally = 0; shield = false; reverseUntil.fill(0L)
+        nextShift = t + Arcade.READY_MS + R.WALL_MS[pace]
         serveOwner = if (level % 2 == 1) 1 else 2
         stage = "READY"; stageUntil = t + Arcade.READY_MS
     }
@@ -204,7 +254,9 @@ class ArkanoidEngine(
         if (state.c.phase != GPhase.PLAYING || over) return
         if (a.getString("a") != "in") return
         val s = ships[if (fromHost) 1 else 2]
-        s.tx = a.optDouble("x", s.x.toDouble()).toFloat().coerceIn(3f, Arcade.W - 3f)
+        val p = if (fromHost) 1 else 2
+        rawX[p] = a.optDouble("x", s.x.toDouble()).toFloat().coerceIn(3f, Arcade.W - 3f)
+        s.tx = if (t < reverseUntil[p]) Arcade.W - rawX[p] else rawX[p]
         s.firing = a.optInt("f", 0) == 1
     }
 
@@ -234,6 +286,7 @@ class ArkanoidEngine(
             val s = ships[p]
             val hw = halfWidth(p)
             val move = R.PADDLE_SPEED * dt
+            s.tx = if (t < reverseUntil[p]) Arcade.W - rawX[p] else rawX[p]
             s.x = (s.x + (s.tx - s.x).coerceIn(-move, move)).coerceIn(hw, Arcade.W - hw)
             s.y = R.PADDLE_Y
             tapped[p] = s.firing && !wasFiring[p]
@@ -266,11 +319,12 @@ class ArkanoidEngine(
             if (serveAt < 0L) serveAt = t + 900L
             else if (t >= serveAt) {
                 val a = (random.nextFloat() - 0.5f) * 0.9f
-                val sp = R.ballSpeed(level)
+                val sp = R.ballSpeed(level) * R.PACE_MUL[pace]
                 balls.add(Ball(ships[serveOwner].x, R.PADDLE_Y - 3f, sp * sin(a), -sp * cos(a), serveOwner))
                 serveAt = -1L
             }
         }
+        if (wall && !bossOn && t >= nextShift) { nextShift = t + R.WALL_MS[pace]; shiftWall(); if (over) return }
         moveLasers(dt)
         moveBalls(dt)
         moveDrops(dt)
@@ -294,6 +348,16 @@ class ArkanoidEngine(
         if (elapsed > R.TIME_CAP_MS) finish("time")
     }
 
+    /** The wall creeps down one row. Anything that reaches the bottom row and gets pushed off costs the team a life. */
+    private fun shiftWall() {
+        var hit = false
+        for (c in 0 until R.COLS) { val i = R.idx(c, R.ROWS - 1); if (bricks[i] != '.') { if (bricks[i] != '9') hit = true; burst(c * R.BW + R.BW / 2f, R.TOP + (R.ROWS - 1) * R.BH, "bm") } }
+        for (r in R.ROWS - 1 downTo 1) for (c in 0 until R.COLS) { bricks[R.idx(c, r)] = bricks[R.idx(c, r - 1)]; armour[R.idx(c, r)] = armour[R.idx(c, r - 1)] }
+        for (c in 0 until R.COLS) { bricks[R.idx(c, 0)] = '.'; armour[R.idx(c, 0)] = 0 }
+        burst(50f, R.TOP, "bm")
+        if (hit) { lives--; burst(ships[1].x, R.PADDLE_Y, "pl"); if (lives <= 0) finish("lives") }
+    }
+
     private fun finish(reason: String) { over = true; why = reason; stage = "END" }
 
     private fun brickAt(x: Float, y: Float): Int {
@@ -306,7 +370,7 @@ class ArkanoidEngine(
     private fun moveBalls(dt: Float) {
         val slow = t < slowUntil
         val fire = t < fireUntil
-        val sp = min(150f, R.ballSpeed(level) * (1f + min(R.RALLY_CAP, rally * R.RALLY_STEP)) * (if (slow) 0.7f else 1f) * (if (t < fastUntil) 1.35f else 1f))
+        val sp = min(170f, R.ballSpeed(level) * R.PACE_MUL[pace] * (1f + min(R.RALLY_CAP, rally * R.RALLY_STEP * (1f + 0.4f * pace))) * (if (slow) 0.7f else 1f) * (if (t < fastUntil) 1.35f else 1f))
         var anyLost = false
         val it = balls.iterator()
         while (it.hasNext()) {
@@ -389,6 +453,10 @@ class ArkanoidEngine(
                     if (py - R.BALL_R >= R.BOSS_Y + 6f) b.vy = abs(b.vy) else if (py + R.BALL_R <= R.BOSS_Y - 6f) b.vy = -abs(b.vy) else b.vx = -b.vx
                     b.x = px; b.y = py
                     hitBoss(b.owner, 1)
+                }
+                if (shield && b.vy > 0f && b.y + R.BALL_R >= Arcade.H - 3f) {
+                    shield = false; b.vy = -abs(b.vy); b.y = Arcade.H - 3f - R.BALL_R
+                    burst(b.x, Arcade.H - 3f, "pw")
                 }
                 if (b.y > Arcade.H + 3f) { lost = true; break }
             }
@@ -510,6 +578,8 @@ class ArkanoidEngine(
             'F' -> fireUntil = t + 7_000L
             'X' -> s.doubleUntil = t + 10_000L
             'B' -> breakUntil = t + 12_000L
+            'H' -> shield = true
+            'R' -> reverseUntil[p] = t + 7_000L
             'P' -> if (lives < Arcade.MAX_LIVES) lives++ else s.score += 100
             'D' -> {
                 val src = ArrayList(balls)
@@ -532,6 +602,7 @@ class ArkanoidEngine(
         when (bricks[i]) {
             '9' -> burst(cx, cy, "gd")
             '2', '3' -> { bricks[i] = bricks[i] - 1; addScore(owner, 5); burst(cx, cy, "hp") }
+            'Q' -> destroy(i, owner, true)
             'E' -> explode(col, row, owner)
             '1' -> destroy(i, owner, true)
         }
@@ -540,10 +611,11 @@ class ArkanoidEngine(
     private fun destroy(i: Int, owner: Int, mayDrop: Boolean) {
         val col = i % R.COLS
         val row = i / R.COLS
+        val mystery = bricks[i] == 'Q'
         bricks[i] = '.'
-        addScore(owner, R.brickScore(armour[i], row, level))
+        addScore(owner, R.brickScore(armour[i], row, level) + if (mystery) 100 else 0)
         burst(col * R.BW + R.BW / 2f, R.TOP + row * R.BH + R.BH / 2f, "bk")
-        if (mayDrop && random.nextInt(100) < 16) dropCapsule(col * R.BW + R.BW / 2f, R.TOP + row * R.BH + R.BH)
+        if (mystery || (mayDrop && random.nextInt(100) < 16)) dropCapsule(col * R.BW + R.BW / 2f, R.TOP + row * R.BH + R.BH)
     }
 
     /** A power-up capsule starts to fall. Mostly helpful, with a few that make life harder (N shrinks the catcher's paddle, Z speeds the ball up). */
@@ -551,7 +623,7 @@ class ArkanoidEngine(
         val sb = StringBuilder("EEDDLLSSCCFXX")
         if (!bossOn) sb.append("BB")
         if (lives < Arcade.MAX_LIVES) sb.append("PP")
-        sb.append("NZ")
+        sb.append("NZRH")
         drops.add(Drop(++dropId, x, y, sb[random.nextInt(sb.length)]))
     }
 
@@ -592,6 +664,9 @@ class ArkanoidEngine(
             .put("rd", max(0L, stageUntil - t).toInt()).put("tm", elapsed)
             .put("sl", t < slowUntil).put("fb", t < fireUntil).put("fz", t < fastUntil).put("ry", rally)
             .put("ex", t < breakUntil).put("en", en)
+            .put("bt", batScale.toDouble()).put("pc", pace).put("sd", shield)
+            .put("rv", JSONArray().put(t < reverseUntil[1]).put(t < reverseUntil[2]))
+            .put("wl", if (wall && !bossOn) ((nextShift - t).coerceAtLeast(0L) / 1000L).toInt() else -1)
             .put("bs", if (bossOn) JSONArray().put(Arcade.r1(bossX)).put(bossHp).put(R.BOSS_HP + 2 * (levels - 3)) else JSONArray())
             .put("bm", ArcadeCodec.bullets(bombs))
             .put("ov", over).put("why", why)
@@ -599,7 +674,7 @@ class ArkanoidEngine(
 
     override fun adopt(s: JSONObject) {
         val br = s.optString("br", "")
-        if (br.length != R.COLS * R.ROWS || br.any { it !in ".1239E" }) return
+        if (br.length != R.COLS * R.ROWS || br.any { it !in ".1239EQ" }) return
         val ov = s.optBoolean("ov", false)
         val a = ArcadeCodec.readShip(s.optJSONArray(if (isHost) "s1" else "s2"))
         val b = ArcadeCodec.readShip(s.optJSONArray(if (isHost) "s2" else "s1"))
@@ -621,7 +696,7 @@ class ArkanoidEngine(
             for (i in 0 until minOf(arr.length(), 24)) {
                 val e = arr.optJSONArray(i) ?: continue
                 val k = e.optInt(3, 0).toChar()
-                if (k !in "EDLSCBPFXNZ") continue
+                if (k !in "EDLSCBPFXNZHR") continue
                 dv += DropView(e.optInt(0), e.optDouble(1).toFloat().coerceIn(0f, 100f), e.optDouble(2).toFloat().coerceIn(0f, 150f), k)
             }
         }
@@ -639,8 +714,12 @@ class ArkanoidEngine(
                 s.optJSONArray("en")?.let { arr -> for (i in 0 until minOf(arr.length(), 6)) { val e = arr.optJSONArray(i) ?: continue; add(EnemyView(e.optInt(0), e.optDouble(1).toFloat().coerceIn(0f, 100f), e.optDouble(2).toFloat().coerceIn(-10f, 150f), e.optInt(3, 0).coerceIn(0, 2))) } }
             },
             boss = s.optJSONArray("bs")?.takeIf { it.length() >= 3 }?.let { BossView(it.optDouble(0).toFloat().coerceIn(0f, 100f), it.optInt(1).coerceIn(0, 60), it.optInt(2, R.BOSS_HP).coerceIn(1, 60)) },
-            bombs = ArcadeCodec.readBullets(s.optJSONArray("bm"), 8), speed = 1f + min(R.RALLY_CAP, s.optInt("ry", 0).coerceIn(0, 200) * R.RALLY_STEP),
+            bombs = ArcadeCodec.readBullets(s.optJSONArray("bm"), 8), speed = R.PACE_MUL[s.optInt("pc", 0).coerceIn(0, 2)] * (1f + min(R.RALLY_CAP, s.optInt("ry", 0).coerceIn(0, 200) * R.RALLY_STEP * (1f + 0.4f * s.optInt("pc", 0).coerceIn(0, 2)))),
             remaining = br.count { it != '.' && it != '9' },
+            bat = s.optDouble("bt", 1.0).toFloat().coerceIn(0.4f, 1f), shield = s.optBoolean("sd", false),
+            myReversed = s.optJSONArray("rv")?.optBoolean(if (isHost) 0 else 1, false) ?: false,
+            theirReversed = s.optJSONArray("rv")?.optBoolean(if (isHost) 1 else 0, false) ?: false,
+            wallIn = s.optInt("wl", -1).coerceIn(-1, 300),
         )
     }
 
@@ -682,17 +761,18 @@ class ArkanoidBrain(private val e: ArkanoidEngine, skill: Skill, random: Random)
             val aim = (50f - target) * 0.08f
             target += aim + wobble * (if (skill == Skill.EASY) 7f else if (skill == Skill.NORMAL) 3f else 1f)
         } else {
-            val drop = s.drops.filter { it.y > 60f && it.kind != 'N' && it.kind != 'Z' }.minByOrNull { abs(it.x - me.x) }
+            val drop = s.drops.filter { it.y > 60f && it.kind != 'N' && it.kind != 'Z' && it.kind != 'R' }.minByOrNull { abs(it.x - me.x) }
             target = drop?.x ?: if (s.balls.isEmpty()) me.x else 50f
         }
         // power-ups are worth a detour when no ball is about to arrive
-        if (ball == null || ball.y < 70f) s.drops.filter { it.y > 40f && it.kind != 'N' && it.kind != 'Z' }.minByOrNull { abs(it.x - me.x) }?.let { target = it.x }
+        if (ball == null || ball.y < 70f) s.drops.filter { it.y > 40f && it.kind != 'N' && it.kind != 'Z' && it.kind != 'R' }.minByOrNull { abs(it.x - me.x) }?.let { target = it.x }
         // dodge the boss's bombs when no ball needs me
         val bomb = s.bombs.filter { it.y > 85f && abs(it.x - me.x) < 9f }.maxByOrNull { it.y }
         if (bomb != null && (ball == null || abs(landing(ball) - me.x) > 14f || ball.y < 80f)) target = if (bomb.x >= me.x) bomb.x - 13f else bomb.x + 13f
         // a sticky paddle is holding a ball: lift and tap to let it go
         val holding = s.balls.any { it.stuck }
         flip = !flip
-        e.input(target.coerceIn(5f, 95f), !(holding && flip))
+        val aim = target.coerceIn(5f, 95f)
+        e.input(if (s.myReversed) Arcade.W - aim else aim, !(holding && flip))
     }
 }

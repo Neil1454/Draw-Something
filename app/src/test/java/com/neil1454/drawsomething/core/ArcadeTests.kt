@@ -3,6 +3,7 @@ package com.neil1454.drawsomething.core
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -308,14 +309,51 @@ class ArkanoidTest {
             p.host.state.drops.forEach { kinds.add(it.kind) }
         }
         assertTrue("wandering enemies showed up", enemies > 0)
-        assertTrue("capsules fell: $kinds", kinds.isNotEmpty() && kinds.all { it in "EDLSCBPFXNZ" })
+        assertTrue("capsules fell: $kinds", kinds.isNotEmpty() && kinds.all { it in "EDLSCBPFXNZHR" })
+    }
+
+    private fun optsPair(opts: JSONObject): SyncPair<ArkanoidEngine> {
+        val p = SyncPair({ n, o, h, s, r, c -> ArkanoidEngine(n, o, h, s, r, c) }, 3)
+        p.host.start(opts)
+        p.pump()
+        return p
+    }
+
+    @Test fun smallerPaddlesAndFasterPaceAreSharedWithBothPhones() {
+        val p = optsPair(JSONObject().put("waves", 3).put("lives", 3).put("bat", 2).put("pace", 2))
+        assertEquals(ArkanoidRules.BAT_SCALE[2], p.client.state.bat, 0.01f)
+        assertTrue("the fast pace shows in the speed", p.client.state.speed > 1.3f)
+        val q = optsPair(JSONObject().put("waves", 3).put("lives", 3))
+        assertEquals(1f, q.client.state.bat, 0.01f)
+        assertEquals(1f, q.client.state.speed, 0.01f)
+        // bad numbers are clamped rather than crashing
+        optsPair(JSONObject().put("waves", 3).put("bat", 9).put("pace", -4))
+    }
+
+    @Test fun theFallingWallCreepsDownAndEventuallyCostsLives() {
+        val p = optsPair(JSONObject().put("waves", 3).put("lives", 5).put("wall", true).put("pace", 2))
+        val before = p.host.state.bricks
+        assertTrue(p.host.state.wallIn in 0..99)
+        var guard = 0
+        // keep the ball in play with the computer, long enough for the wall to move several times
+        val a = ArkanoidBrain(p.host, Skill.HARD, kotlin.random.Random(1))
+        val b = ArkanoidBrain(p.client, Skill.HARD, kotlin.random.Random(2))
+        while (guard++ < 2000) { a.think(p.now); b.think(p.now); p.advance(33) }
+        assertNotEquals("the wall moved", before, p.host.state.bricks)
+        assertTrue(p.host.state.bricks.length == ArkanoidRules.COLS * ArkanoidRules.ROWS)
+    }
+
+    @Test fun everyLevelPatternIsDifferentAndHasMysteryBricksSomewhere() {
+        val all = (1..9).map { ArkanoidRules.layout(it) }
+        assertEquals(9, all.toSet().size)
+        assertTrue(all.any { 'Q' in it })
     }
 
     @Test fun layoutsAreWellFormedForEveryLevel() {
         for (level in 1..9) {
             val l = ArkanoidRules.layout(level)
             assertEquals(ArkanoidRules.COLS * ArkanoidRules.ROWS, l.length)
-            assertTrue(l.all { it in ".1239E" })
+            assertTrue(l.all { it in ".1239EQ" })
             assertTrue("level $level has breakable bricks", ArkanoidRules.remaining(l.toCharArray()) > 0)
         }
     }

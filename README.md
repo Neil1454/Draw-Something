@@ -141,6 +141,11 @@ The classic **power-up capsules** fall from broken bricks (catch them with a pad
 the final round (when there are three or more rounds) you face **DOH**, a boss with a health bar who drops bombs: a bomb that lands on a paddle costs the team a
 life. Lives are shared by the team; the higher score wins.
 
+**Harder, if you want it.** The host can choose a **Small or Tiny paddle**, a **Fast or Frantic ball** (a higher starting speed that builds up quicker
+during a rally), and a **Falling wall** that creeps down a row every 30, 24 or 18 seconds: if a brick gets pushed off the bottom row the team loses a life.
+There are now **nine different walls** (including a diamond, stripes between gold pillars, an invader and a fortress), purple **mystery bricks** that always drop
+a capsule, an **H shield** capsule (a glowing floor that saves the next dropped ball), and a nasty **⇄ reverse** capsule that flips the controls of whoever catches it.
+
 ### Vibration
 
 Every game now buzzes with the action: each sound effect has a matching feel (a tick for a tap, a rumble for an explosion,
