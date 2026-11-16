@@ -42,11 +42,12 @@ class Ship(var x: Float, var y: Float) {
     var tripleUntil = 0L
     var narrowUntil = 0L
     var doubleUntil = 0L
+    var catchUntil = 0L
     var cooldown = 0f
 
     fun reset(x: Float, y: Float) {
         this.x = x; this.y = y; tx = x; ty = y; firing = false; lives = Arcade.START_LIVES; score = 0; alive = true
-        respawnAt = 0L; invulnUntil = 0L; rapidUntil = 0L; tripleUntil = 0L; narrowUntil = 0L; doubleUntil = 0L; cooldown = 0f
+        respawnAt = 0L; invulnUntil = 0L; rapidUntil = 0L; tripleUntil = 0L; narrowUntil = 0L; doubleUntil = 0L; catchUntil = 0L; cooldown = 0f
     }
 
     /** Glide towards where the finger is, no faster than the ship can fly, staying in the allowed band. */
@@ -62,7 +63,7 @@ class Ship(var x: Float, var y: Float) {
 
     fun flags(now: Long): Int =
         (if (alive) 1 else 0) or (if (now < invulnUntil) 2 else 0) or (if (now < rapidUntil) 4 else 0) or (if (now < tripleUntil) 8 else 0) or
-            (if (now < narrowUntil) 16 else 0) or (if (now < doubleUntil) 32 else 0)
+            (if (now < narrowUntil) 16 else 0) or (if (now < doubleUntil) 32 else 0) or (if (now < catchUntil) 64 else 0)
 }
 
 class Bullet(var x: Float, var y: Float, var vx: Float, var vy: Float, val owner: Int, var kind: Int = 0)
@@ -83,6 +84,8 @@ data class ShipView(
     /** Arkanoid: a shrunken paddle, and a paddle earning double points. */
     val narrow: Boolean = false,
     val doubled: Boolean = false,
+    /** Arkanoid: a sticky paddle that catches the ball. */
+    val sticky: Boolean = false,
 )
 
 data class BulletView(val x: Float, val y: Float, val vx: Float, val vy: Float, val owner: Int, val kind: Int)
@@ -98,7 +101,7 @@ object ArcadeCodec {
         return ShipView(
             x = a.optDouble(0, 50.0).toFloat().coerceIn(0f, Arcade.W), y = a.optDouble(1, 130.0).toFloat().coerceIn(0f, Arcade.H),
             lives = a.optInt(2, 0).coerceIn(0, 9), score = a.optInt(3, 0).coerceIn(0, 10_000_000),
-            alive = f and 1 != 0, invulnerable = f and 2 != 0, rapid = f and 4 != 0, triple = f and 8 != 0, narrow = f and 16 != 0, doubled = f and 32 != 0,
+            alive = f and 1 != 0, invulnerable = f and 2 != 0, rapid = f and 4 != 0, triple = f and 8 != 0, narrow = f and 16 != 0, doubled = f and 32 != 0, sticky = f and 64 != 0,
         )
     }
 

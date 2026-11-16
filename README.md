@@ -117,11 +117,19 @@ down on the pad also fires (and, in Arkanoid, fires the lasers). The pad is low 
 
 ### Arkanoid
 
-Slide your finger left and right on the pad under the screen to move your paddle. Every level has its own look (deep space, neon city, volcano, arctic, jungle), with glossy bevelled bricks, a sweeping shine, metallic paddles with running lights, glowing balls with trails and a flaming fireball. Bricks come in colours (one hit), grey (two or three hits), gold (unbreakable)
-and red (explodes its neighbours). Power-ups fall from broken bricks: **W** wide paddle, **L** lasers (keep your finger down),
-**M** three balls, **S** slow motion, **F** fireball, **♥** extra life, **×2** double points for you. Two bad ones have a flashing yellow warning edge:
-**N** shrinks the paddle that catches it and **»** makes the ball much faster for a while. The ball also **speeds up the longer a rally goes on** (up to 1.5 times,
-shown as SPEED at the top; dropping the ball resets it) and every level starts faster. Lives are shared by the team; the higher score wins.
+Slide your finger along the pad under the screen to move your paddle. Bricks come in colours (worth 50 to 120 by row, as in the arcade original), silver
+(two hits, worth 50 times the round), steel (three hits, 80 times the round), gold (unbreakable) and red (explodes its neighbours).
+
+The classic **power-up capsules** fall from broken bricks (catch them with a paddle; a new paddle power replaces the last one):
+**E** expand · **L** lasers (keep your finger down) · **C** catch (a sticky paddle that holds the ball: lift your finger and tap the pad to let go) ·
+**D** disruption (three balls) · **S** slow · **B** break (an exit opens on the right edge: slide your paddle off it to skip the round) ·
+**P** player (an extra life for the team). Extras: **F** fireball, **×2** double points. Two bad ones have a flashing yellow warning edge:
+**N** shrinks the paddle that catches it and **»** makes the ball much faster for a while.
+
+**Enemies** (spinning orbs, cones and molecules) drift down the screen and knock the ball about: hit or shoot them for 100 points. The ball
+**speeds up the longer a rally goes on** (up to 1.5 times, shown as SPEED at the top; dropping the ball resets it), and every level starts faster. On
+the final round (when there are three or more rounds) you face **DOH**, a boss with a health bar who drops bombs: a bomb that lands on a paddle costs the team a
+life. Lives are shared by the team; the higher score wins.
 
 ### Vibration
 

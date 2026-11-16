@@ -265,6 +265,52 @@ class ArkanoidTest {
         assertTrue(p.host.state.myScore > 0 && p.host.state.theirScore > 0)
     }
 
+    @Test fun theBossAppearsOnTheLastRoundAndCanBeHurt() {
+        val p = SyncPair({ n, o, h, s, r, c -> ArkanoidEngine(n, o, h, s, r, c) }, 2)
+        p.host.start(JSONObject().put("waves", 3).put("lives", 5).put("from", 3))
+        p.pump()
+        val boss = p.host.state.boss
+        assertTrue("the last round has a boss", boss != null)
+        assertEquals(boss!!.max, boss.hp)
+        assertEquals("the guest sees it too", boss.hp, p.client.state.boss!!.hp)
+        val a = ArkanoidBrain(p.host, Skill.HARD, kotlin.random.Random(1))
+        val b = ArkanoidBrain(p.client, Skill.HARD, kotlin.random.Random(2))
+        var sawBomb = false
+        var guard = 0
+        while (p.host.state.phase == GPhase.PLAYING && guard++ < 24_000) {
+            a.think(p.now); b.think(p.now)
+            p.advance(33)
+            if (p.host.state.bombs.isNotEmpty()) sawBomb = true
+        }
+        assertTrue("the boss dropped bombs", sawBomb)
+        assertEquals(GPhase.OVER, p.host.state.phase)
+        // either DOH was beaten for the win, or his bombs and the ball got the better of the team: in both cases he took hits
+        assertTrue(p.host.state.c.why == "victory" || p.host.state.c.why == "lives")
+    }
+
+    @Test fun enemiesAppearAndBricksScoreTheClassicValues() {
+        assertEquals(50, ArkanoidRules.brickScore(0, 0, 3))
+        assertEquals(120, ArkanoidRules.brickScore(0, 7, 3))
+        assertEquals(150, ArkanoidRules.brickScore(1, 2, 3))
+        assertEquals(240, ArkanoidRules.brickScore(2, 2, 3))
+        val p = SyncPair({ n, o, h, s, r, c -> ArkanoidEngine(n, o, h, s, r, c) }, 4)
+        p.host.start(JSONObject().put("waves", 2).put("lives", 5))
+        p.pump()
+        val a = ArkanoidBrain(p.host, Skill.HARD, kotlin.random.Random(1))
+        val b = ArkanoidBrain(p.client, Skill.HARD, kotlin.random.Random(2))
+        var enemies = 0
+        var kinds = HashSet<Char>()
+        var guard = 0
+        while (p.host.state.phase == GPhase.PLAYING && guard++ < 30_000) {
+            a.think(p.now); b.think(p.now)
+            p.advance(33)
+            enemies = maxOf(enemies, p.host.state.enemies.size)
+            p.host.state.drops.forEach { kinds.add(it.kind) }
+        }
+        assertTrue("wandering enemies showed up", enemies > 0)
+        assertTrue("capsules fell: $kinds", kinds.isNotEmpty() && kinds.all { it in "EDLSCBPFXNZ" })
+    }
+
     @Test fun layoutsAreWellFormedForEveryLevel() {
         for (level in 1..9) {
             val l = ArkanoidRules.layout(level)

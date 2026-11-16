@@ -35,8 +35,10 @@ fun ArkanoidHelp() {
         Text("• Slide your finger left and right to move your paddle. Hit the ball with the edge of the paddle to send it off at an angle.")
         Text("• Whoever touched the ball last scores the points for every brick it breaks.")
         Text("• Grey bricks take two or three hits, gold bricks can't be broken, and red bricks explode the bricks around them.")
-        Text("• Bricks drop power-ups: catch them with a paddle. W wide paddle, L lasers (keep your finger down), M three balls, S slow motion, F fireball that burns straight through, ♥ an extra life for the team, ×2 double points for you.")
+        Text("• Bricks drop the classic power-up capsules: catch them with a paddle. E expand your paddle, L lasers (keep your finger down), C catch (a sticky paddle: lift your finger and tap the pad to let the ball go), D disruption (three balls), S slow motion, B break (an exit opens on the right: slide your paddle off the edge to skip the round), P player (an extra life for the team), F fireball that burns straight through, ×2 double points for you. A new paddle power replaces the last one.")
         Text("• Watch out for the two with a flashing yellow warning edge: N shrinks the paddle that catches it, and » makes the ball much faster for a while.")
+        Text("• Strange drifting enemies wander down the screen and knock the ball about. Hit or shoot them for 100 points. Colour bricks are worth 50 to 120, silver bricks 50 × the round, steel 80 × the round.")
+        Text("• The last round is a boss, DOH. Hit him again and again with the ball or lasers, and dodge the bombs he drops: a bomb that lands on a paddle costs the team a life.")
         Text("• The ball also gets faster the longer a rally goes on (shown as SPEED at the top), and starts quicker on every new level. Dropping it resets the speed.")
         Text("• The lives are shared. You only lose one when the last ball drops. Clear every level to win together, and the higher score wins the bragging rights.")
     }
@@ -51,9 +53,9 @@ private fun rowColour(y: Float): Color =
     RowColours[((y - ArkanoidRules.TOP) / ArkanoidRules.BH).toInt().coerceIn(0, RowColours.lastIndex)]
 
 private fun dropColour(k: Char): Color = when (k) {
-    'W' -> Color(0xFF38BDF8); 'L' -> Color(0xFFEF4444); 'M' -> Color(0xFF22C55E)
-    'S' -> Color(0xFFA855F7); 'F' -> Color(0xFFF97316); 'X' -> Color(0xFFFACC15)
-    'N' -> Color(0xFFB91C1C); 'Z' -> Color(0xFFEA580C); else -> Color(0xFFF472B6)
+    'E' -> Color(0xFF3B82F6); 'D' -> Color(0xFF06B6D4); 'L' -> Color(0xFFEF4444); 'C' -> Color(0xFF22C55E)
+    'S' -> Color(0xFFF59E0B); 'B' -> Color(0xFFEC4899); 'P' -> Color(0xFFE5E7EB); 'F' -> Color(0xFFF97316)
+    'X' -> Color(0xFFFACC15); 'N' -> Color(0xFFB91C1C); 'Z' -> Color(0xFFEA580C); else -> Color(0xFFF472B6)
 }
 
 /** Every level has its own look: the sky, the glow and the floor change. */
@@ -194,6 +196,10 @@ private fun DrawScope.drawPaddle(v: ShipView, smooth: Smooth, key: String, col: 
             drawCircle(Color(0xFFEF4444).copy(alpha = 0.35f), 2.2f, Offset(sx, y - 5f))
         }
     }
+    if (v.sticky) {
+        drawRoundRect(Color(0xFF22C55E).copy(alpha = 0.85f), Offset(left + 0.6f, y - 2.7f), Size(w - 1.2f, 1.1f), CornerRadius(0.55f))
+        for (k in 0 until 4) drawCircle(Color(0xFF86EFAC), 0.45f, Offset(left + w * (0.2f + 0.2f * k), y - 3.3f - 0.4f * sin(t * 5f + k)))
+    }
     if (v.narrow) drawRoundRect(Color(0xFFEF4444).copy(alpha = 0.45f + 0.3f * sin(t * 14f)), Offset(left - 0.4f, y - 2.2f), Size(w + 0.8f, 4.8f), CornerRadius(2.4f), style = Stroke(0.5f))
     if (v.doubled) for (k in 0 until 3) drawCircle(Color(0xFFFACC15).copy(alpha = 0.7f), 0.5f, Offset(x + sin(t * 3f + k * 2.1f) * w * 0.4f, y - 3.2f - ((t * 6f + k) % 3f)))
     if (v.triple) drawRoundRect(Color(0xFF38BDF8).copy(alpha = 0.35f + 0.2f * sin(t * 8f)), Offset(left - 0.4f, y - 2.2f), Size(w + 0.8f, 4.8f), CornerRadius(2.4f), style = Stroke(0.45f))
@@ -251,7 +257,7 @@ private fun DrawScope.drawDrop(d: DropView, f: ArcadeFrame, m: androidx.compose.
     drawRoundRect(Color.White.copy(alpha = 0.55f), Offset(d.x - w / 2f + 0.8f, y - 1.6f), Size(w - 1.6f, 1.1f), CornerRadius(0.6f))
     drawRoundRect(Color.White, Offset(d.x - w / 2f, y - 2f), Size(w, 4.2f), CornerRadius(2.1f), style = Stroke(0.3f))
     if (d.kind == 'N' || d.kind == 'Z') drawRoundRect(Color(0xFFFDE047).copy(alpha = 0.5f + 0.5f * sin(t * 12f)), Offset(d.x - w / 2f - 0.5f, y - 2.5f), Size(w + 1f, 5.2f), CornerRadius(2.6f), style = Stroke(0.35f))
-    val label = when (d.kind) { 'H' -> "♥"; 'X' -> "×2"; 'N' -> "⇹"; 'Z' -> "»"; else -> d.kind.toString() }
+    val label = when (d.kind) { 'X' -> "×2"; 'N' -> "⇹"; 'Z' -> "»"; else -> d.kind.toString() }
     val r = m.measure(label, TextStyle(fontSize = 3.3f.toSp(), color = Color.White, fontWeight = FontWeight.Black))
     if (spin > 0.75f) drawText(r, topLeft = Offset(d.x - r.size.width / 2f, y - r.size.height / 2f + 0.1f))
 }
@@ -292,6 +298,10 @@ fun ArkanoidScreen(
                 "gd" -> { fx.glow(x, y, now, Color(0xFFEAB308)); fx.explode(x, y, now, Color(0xFFFDE047), 4, 0.4f); Sfx.play(Sound.TAP) }
                 "bm" -> { fx.explode(x, y, now, Color(0xFFF97316), 34, 1.9f); fx.explode(x, y, now, Color(0xFFFDE047), 18, 1.2f); fx.shake(now, 2.0f, 420); fx.text(x, y - 3f, now, "BOOM!", Color(0xFFFDBA74)); Sfx.play(Sound.EXPLODE) }
                 "pd" -> { fx.glow(x, y, now, th.accent); fx.explode(x, y, now, Color.White, 5, 0.5f); Sfx.play(Sound.DROP) }
+                "ct" -> { fx.glow(x, y, now, Color(0xFF22C55E)); fx.text(x, y - 5f, now, "CAUGHT", Color(0xFF86EFAC), 3.4f, 800L); Sfx.play(Sound.TAP) }
+                "en" -> { fx.explode(x, y, now, Color(0xFFC084FC), 16, 1.2f); fx.text(x, y - 3f, now, "+100", Color(0xFFE9D5FF), 3.8f, 900L); Sfx.play(Sound.POP) }
+                "bh" -> { fx.explode(x, y, now, Color(0xFFFCA5A5), 12, 1.1f); fx.shake(now, 1.3f, 250); fx.text(x, y + 4f, now, "HIT!", Color(0xFFFDE047), 4.2f, 700L); Sfx.play(Sound.THUD) }
+                "wp" -> { fx.text(Arcade.W / 2f, 70f, now, "WARP! ROUND SKIPPED", Color(0xFFF9A8D4), 6f, 1500L); fx.glow(x, y, now, Color(0xFFEC4899)); Sfx.play(Sound.WIN) }
             }
         },
         background = { f -> drawBackdrop(th, f.nowMs, c.mine.lives <= 1 && s.balls.any { it.y > 108f }) },
@@ -309,6 +319,10 @@ fun ArkanoidScreen(
                 drawLine(Color.White, Offset(b.x, y + 2.4f), Offset(b.x, y), 0.45f)
                 drawCircle(Color(0xFFFCA5A5).copy(alpha = 0.7f), 0.9f, Offset(b.x, y))
             }
+            if (s.exitOpen) drawExit(f.nowMs)
+            for (en in s.enemies) drawEnemy(en, f.nowMs)
+            s.boss?.let { drawBoss(it, f.nowMs, s.balls.firstOrNull()?.x ?: 50f) }
+            for (b in s.bombs) drawBomb(b.x, b.y + b.vy * minOf(f.ageSec, 0.1f), f.nowMs)
             for (d in s.drops) drawDrop(d, f, measurer)
             for (b in s.balls) drawBall(b, f, s.fireball)
             drawPaddle(c.theirs, smooth, "theirs", f.theirCol, f.nowMs, f.dt, false)
@@ -321,4 +335,91 @@ fun ArkanoidScreen(
             if (s.speed > 1.04f) drawText(measurer.measure("SPEED ×%.1f".format(s.speed), TextStyle(fontSize = 3.2f.toSp(), color = Color(0xFFFDE68A).copy(alpha = 0.9f), fontWeight = FontWeight.Black)), topLeft = Offset(Arcade.W - 26f, 4f))
         },
     )
+}
+
+private fun DrawScope.drawExit(now: Long) {
+    val t = now / 1000f
+    val y0 = ArkanoidRules.PADDLE_Y - 9f
+    val h = 16f
+    // a gap in the right-hand rail with arrows that point the way out
+    drawRect(Color(0xFFEC4899).copy(alpha = 0.18f + 0.15f * sin(t * 6f)), Offset(Arcade.W - 6f, y0), Size(6f, h))
+    drawRect(Color(0xFF020617), Offset(Arcade.W - 2.6f, y0), Size(2.6f, h))
+    for (k in 0..2) {
+        val p = ((t * 2.2f + k * 0.33f) % 1f)
+        val ax = Arcade.W - 18f + p * 14f
+        val path = androidx.compose.ui.graphics.Path().apply { moveTo(ax, y0 + 3f); lineTo(ax + 3f, y0 + h / 2f); lineTo(ax, y0 + h - 3f) }
+        drawPath(path, Color(0xFFF9A8D4).copy(alpha = 1f - p), style = Stroke(0.9f))
+    }
+    drawLine(Color(0xFFEC4899), Offset(Arcade.W - 6f, y0), Offset(Arcade.W, y0), 0.6f); drawLine(Color(0xFFEC4899), Offset(Arcade.W - 6f, y0 + h), Offset(Arcade.W, y0 + h), 0.6f)
+}
+
+private fun DrawScope.drawEnemy(e: com.neil1454.drawsomething.core.EnemyView, now: Long) {
+    val t = now / 1000f
+    val c = Offset(e.x, e.y)
+    drawCircle(Brush.radialGradient(listOf(Color(0x66C084FC), Color.Transparent), c, 7f), 7f, c)
+    when (e.kind) {
+        0 -> { // a spinning orb with a ring round it
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFF5D0FE), Color(0xFFA855F7), Color(0xFF581C87)), Offset(c.x - 0.8f, c.y - 0.8f), 3.4f), 3f, c)
+            drawOval(Color(0xFFE9D5FF).copy(alpha = 0.8f), Offset(c.x - 4.4f, c.y - 1.1f + sin(t * 4f) * 0.6f), Size(8.8f, 2.2f), style = Stroke(0.4f))
+        }
+        1 -> { // a cone
+            val p = androidx.compose.ui.graphics.Path().apply { moveTo(c.x, c.y - 3.6f); lineTo(c.x + 3.2f, c.y + 3f); lineTo(c.x - 3.2f, c.y + 3f); close() }
+            drawPath(p, Brush.verticalGradient(listOf(Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFF92400E)), c.y - 4f, c.y + 3f))
+            drawPath(p, Color(0xFF451A03), style = Stroke(0.35f))
+            drawOval(Color(0xFFFFFBEB).copy(alpha = 0.7f), Offset(c.x - 2.4f + sin(t * 5f), c.y + 1.8f), Size(4.8f, 1.4f))
+        }
+        else -> { // a molecule: three balls in a spinning triangle
+            for (k in 0..2) {
+                val a = t * 3f + k * 2.094f
+                val p = Offset(c.x + cos(a) * 2.6f, c.y + sin(a) * 2.6f)
+                drawLine(Color(0xFF86EFAC), c, p, 0.5f)
+                drawCircle(Brush.radialGradient(listOf(Color(0xFFD9F99D), Color(0xFF22C55E)), p, 1.8f), 1.8f, p)
+            }
+            drawCircle(Color(0xFFF0FDF4), 1.2f, c)
+        }
+    }
+}
+
+private fun DrawScope.drawBomb(x: Float, y: Float, now: Long) {
+    val t = now / 1000f
+    for (k in 1..4) drawCircle(Color(0xFFEF4444).copy(alpha = 0.3f - k * 0.06f), 1.6f - k * 0.25f, Offset(x, y - k * 2.2f))
+    drawCircle(Brush.radialGradient(listOf(Color(0xCCEF4444), Color.Transparent), Offset(x, y), 6f), 6f, Offset(x, y))
+    drawCircle(Brush.radialGradient(listOf(Color(0xFFFDE047), Color(0xFFEF4444), Color(0xFF7F1D1D)), Offset(x - 0.5f, y - 0.5f), 2.4f), 2f, Offset(x, y))
+    drawLine(Color(0xFFFDE047), Offset(x, y - 2f), Offset(x + sin(t * 20f), y - 3.4f), 0.4f)
+}
+
+private fun DrawScope.drawBoss(b: com.neil1454.drawsomething.core.BossView, now: Long, lookAt: Float) {
+    val t = now / 1000f
+    val cx = b.x
+    val cy = ArkanoidRules.BOSS_Y
+    val frac = b.hp / b.max.toFloat()
+    val hurt = if (frac < 0.35f) 0.5f + 0.5f * sin(t * 14f) else 0f
+    // a big moving shadow and glow
+    drawOval(Color.Black.copy(alpha = 0.35f), Offset(cx - 11f, cy + 5f), Size(22f, 6f))
+    drawCircle(Brush.radialGradient(listOf(Color(0x55EF4444), Color.Transparent), Offset(cx, cy), 20f), 20f, Offset(cx, cy))
+    // the head: a stone-and-steel face
+    val head = androidx.compose.ui.graphics.Path().apply {
+        moveTo(cx - 10f, cy - 6f); lineTo(cx + 10f, cy - 6f); lineTo(cx + 11.5f, cy + 1f); lineTo(cx + 7f, cy + 7f); lineTo(cx - 7f, cy + 7f); lineTo(cx - 11.5f, cy + 1f); close()
+    }
+    drawPath(head, Brush.verticalGradient(listOf(Color(0xFF94A3B8), Color(0xFF475569), Color(0xFF1E293B)), cy - 6f, cy + 7f))
+    drawPath(head, Color.Black.copy(alpha = 0.6f), style = Stroke(0.6f))
+    // brow plates and rivets
+    drawRect(Color(0xFF334155), Offset(cx - 9f, cy - 5f), Size(18f, 2.2f))
+    for (rx in listOf(-8f, -4f, 0f, 4f, 8f)) drawCircle(Color(0xFFCBD5E1), 0.4f, Offset(cx + rx, cy - 3.9f))
+    // eyes that watch the ball, and glow redder as DOH gets hurt
+    val look = ((lookAt - cx) / 50f).coerceIn(-1f, 1f) * 0.9f
+    for (ex in listOf(-4.4f, 4.4f)) {
+        drawOval(Color(0xFF020617), Offset(cx + ex - 2.4f, cy - 2.4f), Size(4.8f, 3.6f))
+        drawCircle(Color(0xFFEF4444).copy(alpha = 0.55f + 0.45f * hurt), 1.5f, Offset(cx + ex + look, cy - 0.6f))
+        drawCircle(Color(0xFFFEE2E2), 0.5f, Offset(cx + ex + look - 0.3f, cy - 0.9f))
+    }
+    // a mouth grille that the bombs come out of
+    drawRect(Color(0xFF020617), Offset(cx - 5f, cy + 3f), Size(10f, 3.2f))
+    for (k in 0..4) drawLine(Color(0xFF64748B), Offset(cx - 4f + k * 2f, cy + 3f), Offset(cx - 4f + k * 2f, cy + 6.2f), 0.35f)
+    // cracks as the health runs down
+    if (frac < 0.7f) drawLine(Color.Black.copy(alpha = 0.7f), Offset(cx - 6f, cy - 6f), Offset(cx - 3f, cy - 1f), 0.4f)
+    if (frac < 0.4f) drawLine(Color.Black.copy(alpha = 0.7f), Offset(cx + 7f, cy - 6f), Offset(cx + 4f, cy + 1f), 0.4f)
+    // the health bar
+    drawRoundRect(Color.Black.copy(alpha = 0.6f), Offset(cx - 11f, cy - 10f), Size(22f, 2.2f), CornerRadius(1.1f))
+    drawRoundRect(if (frac > 0.5f) Color(0xFF22C55E) else if (frac > 0.25f) Color(0xFFF59E0B) else Color(0xFFEF4444), Offset(cx - 10.6f, cy - 9.6f), Size(21.2f * frac, 1.4f), CornerRadius(0.7f))
 }
