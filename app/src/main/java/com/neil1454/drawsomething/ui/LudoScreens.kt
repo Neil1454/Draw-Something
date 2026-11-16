@@ -98,6 +98,17 @@ fun LudoScreen(
     LaunchedEffect(s.moves) {
         if (s.moves > 0) Sfx.play(when (s.event) { "capture" -> Sound.EXPLODE; "home" -> Sound.CHIME; "out" -> Sound.POP; else -> Sound.TAP })
     }
+    // make a fuss of the big moments
+    run {
+        val word = when (s.event) {
+            "capture" -> if (s.eventByMe) "SENT HOME!" else "OUCH! SENT HOME!"
+            "home" -> if (s.eventByMe) "🏠 HOME!" else "THEY'RE HOME"
+            "out" -> if (s.eventByMe) "A SIX: OUT YOU COME!" else ""
+            "triple" -> "THREE SIXES: TURN LOST!"
+            else -> ""
+        }
+        BigWord(if (s.moves > 0) s.moves + s.rolls * 1000 else 0, word, if (s.eventByMe) Funk.Lime else Funk.Pink, if (word.isEmpty()) null else if (s.event == "home") Sound.CHEER else if (s.event == "capture" && !s.eventByMe) Sound.GASP else if (s.event == "capture") Sound.CHEER else null)
+    }
     val status = when {
         over -> "GAME OVER"
         s.myTurn && s.canRoll -> "👉  TAP THE DICE TO ROLL  👈"

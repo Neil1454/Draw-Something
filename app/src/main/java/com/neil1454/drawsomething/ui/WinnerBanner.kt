@@ -47,6 +47,14 @@ fun WinnerBanner(result: Int, partnerName: String, solo: Boolean, modifier: Modi
     val fade = remember(result) { Animatable(1f) }
     var clock by remember(result) { mutableLongStateOf(0L) }
     LaunchedEffect(result) {
+        // the crowd: cheering and applause for a win, a sympathetic "oooh" for a loss, polite clapping for a draw
+        when (result) {
+            1 -> { com.neil1454.drawsomething.sound.Sfx.play(com.neil1454.drawsomething.core.Sound.CHEER); delay(900); com.neil1454.drawsomething.sound.Sfx.play(com.neil1454.drawsomething.core.Sound.APPLAUSE) }
+            2 -> com.neil1454.drawsomething.sound.Sfx.play(com.neil1454.drawsomething.core.Sound.GROAN)
+            else -> com.neil1454.drawsomething.sound.Sfx.play(com.neil1454.drawsomething.core.Sound.APPLAUSE)
+        }
+    }
+    LaunchedEffect(result) {
         enter.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessLow))
     }
     LaunchedEffect(result) {

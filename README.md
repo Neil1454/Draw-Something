@@ -157,6 +157,11 @@ symbols pop and twinkle while each winning line draws itself across from the lef
 and when the first three reels already show two scatters the last two creep to a stop inside a flashing frame (with a rising sound) in case a third turns up. The SPIN button turns into STOP while the reels are going, to stop them early. The machine returns about 91% of what is staked in the long run, and a test checks that. The reels whirr and stop one by one with a bounce,
 winning lines light up in different colours, and big wins and jackpots rain coins.
 
+**A place for every game.** The games no longer all share one purple background. Each is played somewhere of its own, drawn in code and gently animated: Pig on a green felt table
+under a swaying lamp, Draughts, Othello and Ludo on a wooden table top, Battleships out at sea, Minesweeper on a radar screen, Quick Draw in a neon arcade, Pairs in a playroom, Connect 4 in arcade blue,
+the holiday quiz on a beach at sunset, Trivia in a television studio with sweeping spotlights, and Pictionary on a slate of chalk doodles. Score popups now slam in with a burst of light, and big moments
+get a **big word across the screen** ("CAPTURED!", "👑 KINGED!", "CORNER TAKEN!", "SENT HOME!") and a reaction from the crowd; every game ends with the crowd cheering, clapping or groaning.
+
 **Title cards.** Every game now opens with its own title card (its picture, name and a line about it on the game's colours) and its own short jingle, so each one starts with a character of its own.
 
 ### Blackjack

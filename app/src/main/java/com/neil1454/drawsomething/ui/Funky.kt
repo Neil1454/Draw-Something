@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -362,13 +363,25 @@ private fun soundFor(p: Popup): Sound {
         "💥" in t || "💣" in t -> Sound.EXPLODE
         "💦" in t || t.uppercase().contains("MISS") -> Sound.SPLASH
         "🏆" in t || "🎉" in t -> Sound.WIN
-        "❌" in t || "😬" in t || "🐍" in t -> Sound.BAD
+        "🐍" in t -> Sound.GROAN
+        "❌" in t || "😬" in t -> Sound.BAD
         "✅" in t -> Sound.GOOD
-        "🏦" in t || "✨" in t -> Sound.COIN
+        "🏦" in t -> Sound.CASH
+        "✨" in t || "⭐" in t -> Sound.SPARKLE
         "💨" in t -> Sound.WHOOSH
         p.color == Funk.Red || p.color == Funk.Orange -> Sound.BAD
         p.color == Funk.Sun -> Sound.COIN
         else -> Sound.POP
+    }
+}
+
+/** The big moments (a bust, a jackpot, a sunk ship...) get the crowd as well. */
+private fun crowdFor(p: Popup): Sound? {
+    val t = p.text.uppercase()
+    return when {
+        "BUST" in t || "SNAKE" in t || "BOOM" in t -> Sound.GASP
+        "SUNK" in t || "🔥" in t || "FULL ROW" in t || "FOUR!" in t || "DOUBLES" in t || "STREAK" in t || "COMBO" in t || "PERFECT" in t -> Sound.CHEER
+        else -> null
     }
 }
 
@@ -377,29 +390,49 @@ private fun PopupText(p: Popup, w: Dp, h: Dp, onDone: (Long) -> Unit) {
     val prog = remember { Animatable(0f) }
     LaunchedEffect(p.id) {
         Sfx.play(soundFor(p))
-        prog.animateTo(1f, tween(1500, easing = LinearOutSlowInEasing))
+        crowdFor(p)?.let { Sfx.play(it) }
+        prog.animateTo(1f, tween(1700, easing = LinearOutSlowInEasing))
         onDone(p.id)
     }
     val a = prog.value
-    val pop = if (a < 0.15f) 0.6f + (a / 0.15f) * 0.6f else 1.2f - (a - 0.15f) * 0.25f
-    Text(
-        p.text,
-        Modifier
-            .offset(x = w * p.xFrac - 90.dp, y = h * p.yFrac - (110f * a).dp)
-            .width(180.dp)
-            .graphicsLayer {
+    // it slams in big, settles, then floats up and fades
+    val pop = when {
+        a < 0.10f -> 2.0f - (a / 0.10f) * 0.9f
+        a < 0.18f -> 1.1f + ((a - 0.10f) / 0.08f) * 0.15f
+        else -> 1.25f - (a - 0.18f) * 0.3f
+    }
+    val big = p.text.length <= 14
+    Box(Modifier.offset(x = w * p.xFrac - 130.dp, y = h * p.yFrac - (110f * a).dp).width(260.dp), contentAlignment = Alignment.Center) {
+        // a ring of light and a starburst behind the words
+        Canvas(Modifier.size(150.dp)) {
+            val c = Offset(size.width / 2f, size.height / 2f)
+            val fade = (1f - a * 2.2f).coerceIn(0f, 1f)
+            if (fade > 0f) {
+                drawCircle(p.color.copy(alpha = 0.55f * fade), size.width * (0.2f + a * 1.3f), c, style = androidx.compose.ui.graphics.drawscope.Stroke(6f * fade + 1f))
+                for (k in 0 until 10) {
+                    val ang = k * (2f * PI.toFloat() / 10f)
+                    val r0 = size.width * (0.25f + a * 0.6f); val r1 = size.width * (0.40f + a * 1.1f)
+                    drawLine(p.color.copy(alpha = 0.7f * fade), Offset(c.x + cos(ang) * r0, c.y + sin(ang) * r0), Offset(c.x + cos(ang) * r1, c.y + sin(ang) * r1), 4f)
+                }
+            }
+        }
+        Text(
+            p.text,
+            Modifier.graphicsLayer {
                 scaleX = pop
                 scaleY = pop
+                rotationZ = if (a < 0.18f) (0.18f - a) * -40f else 0f
                 alpha = (1f - a * a * a).coerceIn(0f, 1f)
             },
-        textAlign = TextAlign.Center,
-        style = TextStyle(
-            color = p.color,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Black,
-            shadow = Shadow(Color(0xCC000000), Offset(0f, 4f), 8f),
-        ),
-    )
+            textAlign = TextAlign.Center,
+            style = TextStyle(
+                color = p.color,
+                fontSize = if (big) 34.sp else 26.sp,
+                fontWeight = FontWeight.Black,
+                shadow = Shadow(Color(0xE6000000), Offset(0f, 5f), 12f),
+            ),
+        )
+    }
 }
 
 // ======================================================================== full-screen mode

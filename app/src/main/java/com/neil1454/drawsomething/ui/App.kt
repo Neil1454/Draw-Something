@@ -175,6 +175,18 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
             val minesOn = mines != null && mines.phase != MinesPhase.LOBBY
             val seaOn = sea != null && sea.phase != SeaPhase.LOBBY
             val inContest = contest != null || minesOn || seaOn
+            // each game is played in a place of its own (a felt table, a wooden table, out at sea, a quiz studio...)
+            run {
+                val stageKind: GameKind? = when {
+                    contest != null -> contest.kind
+                    minesOn -> GameKind.MINES
+                    seaOn -> GameKind.SEA
+                    showdown != null -> null
+                    game != null && board != null -> GameKind.DRAW
+                    else -> null
+                }
+                if (stageKind != null) GameStage(stageKind)
+            }
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalShowdownContinue provides (if (showdown != null && inContest) vm::showdownContinue else null),
             ) {

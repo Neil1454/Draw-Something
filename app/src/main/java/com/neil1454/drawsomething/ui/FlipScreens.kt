@@ -58,6 +58,18 @@ fun FlipScreen(
 ) {
     val over = s.phase == GPhase.OVER
     LaunchedEffect(s.moves) { if (s.moves > 0) Sfx.play(Sound.FLIP) }
+    // make a fuss of the big moments: a corner taken, or a long line of discs turned over
+    run {
+        val corner = s.last >= 0 && s.last in setOf(0, s.n - 1, s.n * (s.n - 1), s.n * s.n - 1)
+        val byMe = !s.myTurn
+        val word = when {
+            s.moves == 0 -> ""
+            corner -> if (byMe) "CORNER TAKEN!" else "THEY TOOK A CORNER!"
+            s.flipped.size >= 6 -> "${s.flipped.size} FLIPPED!"
+            else -> ""
+        }
+        BigWord(s.moves, word, if (byMe) Funk.Lime else Funk.Pink, if (word.isEmpty()) null else if (byMe) Sound.CHEER else Sound.GASP)
+    }
     val theirDisc = if (s.myDisc == '1') '2' else '1'
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight

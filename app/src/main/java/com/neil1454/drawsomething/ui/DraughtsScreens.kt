@@ -73,6 +73,18 @@ fun DraughtsScreen(
     val movable = s.legal.map { it / 64 }.toSet()
     val dests = if (selected >= 0) s.legal.filter { it / 64 == selected }.map { it % 64 } else emptyList()
     LaunchedEffect(s.chain, s.myTurn) { if (s.chain >= 0) selected = s.chain }
+    // make a fuss of captures and new kings
+    run {
+        val byMe = if (s.chain >= 0) s.myTurn else !s.myTurn
+        val word = when {
+            s.moves == 0 -> ""
+            s.crowned -> "👑 KINGED!"
+            s.captured >= 0 && s.chain >= 0 -> "JUMP AGAIN!"
+            s.captured >= 0 -> if (byMe) "CAPTURED!" else "OUCH! CAPTURED!"
+            else -> ""
+        }
+        BigWord(s.moves, word, if (byMe) Funk.Lime else Funk.Pink, if (word.isEmpty()) null else if (s.crowned) Sound.SPARKLE else if (byMe) Sound.CHEER else Sound.GASP)
+    }
     val flip = !s.iAmHost // each player sees their own pieces at the bottom
     val myMan = if (s.iAmHost) 'a' else 'b'
 

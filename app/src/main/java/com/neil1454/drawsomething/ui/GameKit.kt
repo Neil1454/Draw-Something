@@ -36,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -187,5 +189,45 @@ fun EndOverlay(
             FunkyButton("🎮  Choose another game", onBackToGames, Modifier.fillMaxWidth(), listOf(Funk.Violet, Funk.Pink))
             TextButton(onClick = onLeave) { Text("Leave") }
         }
+    }
+}
+
+/**
+ * A big word slammed across the middle of the screen for a moment ("CAPTURED!", "KINGED!", "CORNER!"), with a burst of light and a sound, to make a
+ * fuss of the things that matter in a game. Shown each time [trigger] changes to something above zero while [text] is not empty. It never blocks touches.
+ */
+@Composable
+fun BigWord(trigger: Int, text: String, color: Color, sound: Sound? = null) {
+    val prog = remember { androidx.compose.animation.core.Animatable(1f) }
+    var shown by remember { mutableStateOf("") }
+    var shownColor by remember { mutableStateOf(color) }
+    LaunchedEffect(trigger) {
+        if (trigger <= 0 || text.isEmpty()) return@LaunchedEffect
+        shown = text; shownColor = color
+        if (sound != null) Sfx.play(sound)
+        prog.snapTo(0f)
+        prog.animateTo(1f, tween(1500, easing = androidx.compose.animation.core.LinearOutSlowInEasing))
+    }
+    val a = prog.value
+    if (a >= 1f || shown.isEmpty()) return
+    val pop = if (a < 0.12f) 2.2f - (a / 0.12f) * 1.2f else 1f + 0.05f * kotlin.math.sin(a * 40f) * (1f - a)
+    Box(Modifier.fillMaxSize().zIndex(20f), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+            val fade = (1f - a * 1.6f).coerceIn(0f, 1f)
+            if (fade > 0f) {
+                drawRect(shownColor.copy(alpha = 0.10f * fade))
+                for (k in 0 until 14) {
+                    val ang = k * (2f * Math.PI.toFloat() / 14f) + a
+                    val r0 = size.minDimension * (0.12f + a * 0.3f); val r1 = size.minDimension * (0.22f + a * 0.75f)
+                    drawLine(shownColor.copy(alpha = 0.6f * fade), androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(ang) * r0, c.y + kotlin.math.sin(ang) * r0), androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(ang) * r1, c.y + kotlin.math.sin(ang) * r1), 7f)
+                }
+            }
+        }
+        Text(
+            shown, color = shownColor, fontWeight = FontWeight.Black, fontSize = 40.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 44.sp,
+            style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color(0xF0000000), androidx.compose.ui.geometry.Offset(0f, 6f), 16f)),
+            modifier = Modifier.padding(horizontal = 20.dp).graphicsLayer { scaleX = pop; scaleY = pop; alpha = (1f - a * a * a).coerceIn(0f, 1f); rotationZ = if (a < 0.12f) (0.12f - a) * -60f else 0f },
+        )
     }
 }
