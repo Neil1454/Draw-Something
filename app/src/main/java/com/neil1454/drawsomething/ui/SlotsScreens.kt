@@ -186,10 +186,10 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
             Text("🎰  LUCKY SEVENS  🎰", color = Gold, fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 3.sp)
         }
     }
-    val scores: @Composable () -> Unit = {
+    val scores: @Composable (Boolean) -> Unit = { compact ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Credit("YOU", myCredits, s.mySpins, s.myTurn && s.phase == GPhase.PLAYING, Color(0xFF22D3EE), Modifier.weight(1f))
-            Credit(them.uppercase(), theirCredits, s.theirSpins, !s.myTurn && s.phase == GPhase.PLAYING, Color(0xFFF472B6), Modifier.weight(1f))
+            Credit("YOU", myCredits, s.mySpins, s.myTurn && s.phase == GPhase.PLAYING, Color(0xFF22D3EE), Modifier.weight(1f), compact)
+            Credit(them.uppercase(), theirCredits, s.theirSpins, !s.myTurn && s.phase == GPhase.PLAYING, Color(0xFFF472B6), Modifier.weight(1f), compact)
         }
     }
     /** The cabinet, drawn at exactly [w] x [h], with its lever beside it. */
@@ -210,12 +210,12 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
         }
     }
     val tray: @Composable () -> Unit = { CoinTray(s.myCredits, if (done && s.stage != "BET" && s.total > 0) frame.longValue - resultAt.longValue else -1L, frame) }
-    val meters: @Composable () -> Unit = {
+    val meters: @Composable (Boolean) -> Unit = { compact ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Led("CREDITS", "$myCredits", Modifier.weight(1.3f))
-            Led("BET / LINE", "${s.bet}", Modifier.weight(1f))
-            Led("TOTAL BET", "${SlotRules.cost(s.bet)}", Modifier.weight(1f))
-            Led("WIN", "$shownWin", Modifier.weight(1f), win = done && s.total > 0 && s.stage != "BET")
+            Led("CREDITS", "$myCredits", Modifier.weight(1.3f), compact = compact)
+            Led("BET / LINE", "${s.bet}", Modifier.weight(1f), compact = compact)
+            Led("TOTAL BET", "${SlotRules.cost(s.bet)}", Modifier.weight(1f), compact = compact)
+            Led("WIN", "$shownWin", Modifier.weight(1f), win = done && s.total > 0 && s.stage != "BET", compact = compact)
         }
     }
     val status: @Composable () -> Unit = {
@@ -232,23 +232,23 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
             color = Gold, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.Center,
         )
     }
-    val deck: @Composable () -> Unit = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    val deck: @Composable (Boolean) -> Unit = { compact ->
+        Column(verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                GoldButton("BET\n${s.bet}", { if (affordable.isNotEmpty()) engine.setBet(affordable[(affordable.indexOf(s.betIndex) + 1).mod(affordable.size)]) }, Modifier.weight(1f), enabled = canSpin && !free && affordable.size > 1)
-                GoldButton("MAX\nBET", { if (affordable.isNotEmpty()) { engine.setBet(affordable.last()); engine.spin() } }, Modifier.weight(1f), enabled = canSpin && !free && affordable.isNotEmpty())
+                GoldButton("BET\n${s.bet}", { if (affordable.isNotEmpty()) engine.setBet(affordable[(affordable.indexOf(s.betIndex) + 1).mod(affordable.size)]) }, Modifier.weight(1f), enabled = canSpin && !free && affordable.size > 1, compact = compact)
+                GoldButton("MAX\nBET", { if (affordable.isNotEmpty()) { engine.setBet(affordable.last()); engine.spin() } }, Modifier.weight(1f), enabled = canSpin && !free && affordable.isNotEmpty(), compact = compact)
                 // while the reels are spinning the SPIN button becomes STOP, for impatient players
-                GoldButton(if (!done) "STOP" else if (free) "FREE\nSPIN" else "SPIN", { if (!done) { if (quickAt.longValue == 0L) quickAt.longValue = frame.longValue } else engine.spin() }, Modifier.weight(1.5f), enabled = canSpin || (!done && quickAt.longValue == 0L), big = true, red = true, lit = canSpin)
-                GoldButton("COLLECT", { engine.collect() }, Modifier.weight(1.2f), enabled = canCollect, lit = canCollect)
+                GoldButton(if (!done) "STOP" else if (free) "FREE\nSPIN" else "SPIN", { if (!done) { if (quickAt.longValue == 0L) quickAt.longValue = frame.longValue } else engine.spin() }, Modifier.weight(1.5f), enabled = canSpin || (!done && quickAt.longValue == 0L), big = true, red = true, lit = canSpin, compact = compact)
+                GoldButton("COLLECT", { engine.collect() }, Modifier.weight(1.2f), enabled = canCollect, lit = canCollect, compact = compact)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GoldButton("♥ GAMBLE RED  ×2", { engine.gamble(true) }, Modifier.weight(1f), enabled = canGamble, red = true)
-                GoldButton("♠ GAMBLE BLACK  ×2", { engine.gamble(false) }, Modifier.weight(1f), enabled = canGamble, dark = true)
+                GoldButton("♥ GAMBLE RED  ×2", { engine.gamble(true) }, Modifier.weight(1f), enabled = canGamble, red = true, compact = compact)
+                GoldButton("♠ GAMBLE BLACK  ×2", { engine.gamble(false) }, Modifier.weight(1f), enabled = canGamble, dark = true, compact = compact)
             }
-            if (canGamble) Text("Gamble: guess the colour of the hidden card to double your win (${SlotRules.MAX_GAMBLES - s.gambles} left), or COLLECT it.", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, textAlign = TextAlign.Center)
+            if (canGamble && !compact) Text("Gamble: guess the colour of the hidden card to double your win (${SlotRules.MAX_GAMBLES - s.gambles} left), or COLLECT it.", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, textAlign = TextAlign.Center)
             if (s.card != 0 && s.cardWon && canCollect) Text("The card was ${if (s.card == 1) "RED ♥" else "BLACK ♠"}: doubled!", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
             if (s.freeSpins > 0 && s.phase == GPhase.PLAYING) Text("⭐ ${s.freeSpins} FREE SPINS LEFT (wins doubled)", color = Color(0xFF86EFAC), fontWeight = FontWeight.Black)
-            TextButton(onClick = { payDialog = true }) { Text("📋 Paytable", color = Gold) }
+            TextButton(onClick = { payDialog = true }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp)) { Text("📋 Paytable", color = Gold, fontSize = if (compact) 12.sp else 14.sp) }
         }
     }
 
@@ -266,10 +266,10 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
         }
         if (!landscape) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                sign(); scores()
+                sign(); scores(false)
                 val mw = screenW - 20.dp - 46.dp
                 machine(mw, mw / 1.36f)
-                tray(); meters(); status(); deck()
+                tray(); meters(false); status(); deck(false)
             }
         } else {
             // on its side the machine is as big as the screen allows, and everything else is in a column beside it
@@ -282,7 +282,8 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
                     tray()
                 }
                 Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    sign(); scores(); meters(); status(); deck()
+                    // everything the player presses fits on the screen without scrolling
+                    scores(true); meters(true); status(); deck(true)
                 }
             }
         }
@@ -311,20 +312,19 @@ fun SlotsScreen(s: SlotsState, engine: SlotsEngine, onPlayAgain: () -> Unit, onB
 }
 
 @Composable
-private fun Credit(label: String, credits: Int, spins: Int, active: Boolean, col: Color, modifier: Modifier) {
+private fun Credit(label: String, credits: Int, spins: Int, active: Boolean, col: Color, modifier: Modifier, compact: Boolean = false) {
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF0B0F1E)).border(if (active) 3.dp else 1.5.dp, if (active) col else col.copy(alpha = 0.35f), RoundedCornerShape(12.dp)).padding(8.dp),
+        modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF0B0F1E)).border(if (active) 3.dp else 1.5.dp, if (active) col else col.copy(alpha = 0.35f), RoundedCornerShape(12.dp)).padding(if (compact) 4.dp else 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(label, color = col, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1)
-        Text("$credits", color = Color(0xFF86EFAC), fontSize = 26.sp, fontWeight = FontWeight.Black, style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace))
-        Text("$spins spins left", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
+        Text("$credits", color = Color(0xFF86EFAC), fontSize = if (compact) 18.sp else 26.sp, fontWeight = FontWeight.Black, style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace))
+        if (!compact) Text("$spins spins left", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp) else Text("$spins left", color = Color.White.copy(alpha = 0.6f), fontSize = 9.sp)
     }
 }
 
-/** A chunky gold casino button: bevelled, with a glow when it is the thing to press, and dull bronze when it can't be pressed. */
 @Composable
-private fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false, red: Boolean = false, dark: Boolean = false, lit: Boolean = false) {
+private fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false, red: Boolean = false, dark: Boolean = false, lit: Boolean = false, compact: Boolean = false) {
     val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "gold").animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "g").value
@@ -337,32 +337,32 @@ private fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = M
     }
     val textColour = when { !enabled -> Color(0xFF8B7B58); red || dark -> Color.White; else -> Color(0xFF4A2A00) }
     Box(
-        modifier.heightIn(min = if (big) 76.dp else 56.dp)
+        modifier.heightIn(min = if (compact) (if (big) 56.dp else 42.dp) else if (big) 76.dp else 56.dp)
             .graphicsLayer { val k = if (pressed && enabled) 0.94f else 1f; scaleX = k; scaleY = k }
             .then(if (enabled && lit) Modifier.border(3.dp, Color(0xFFFFF59D).copy(alpha = 0.35f + 0.65f * pulse), shape) else Modifier)
             .clip(shape)
             .background(Brush.verticalGradient(face))
             .border(2.dp, if (enabled) Color(0xFFFFFBEB).copy(alpha = 0.85f) else Color(0xFF3B2F1B), shape)
             .clickable(interactionSource = source, indication = null, enabled = enabled) { Sfx.play(Sound.TICK); onClick() }
-            .padding(horizontal = 6.dp, vertical = 8.dp),
+            .padding(horizontal = 6.dp, vertical = if (compact) 4.dp else 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         // the bright bevel along the top
-        Box(Modifier.fillMaxWidth(0.82f).height(if (big) 14.dp else 8.dp).align(Alignment.TopCenter).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = if (enabled) 0.35f else 0.08f)))
-        Text(text, color = textColour, fontWeight = FontWeight.Black, fontSize = if (big) 20.sp else 13.sp, textAlign = TextAlign.Center, lineHeight = if (big) 22.sp else 14.sp)
+        Box(Modifier.fillMaxWidth(0.82f).height(if (compact) 6.dp else if (big) 14.dp else 8.dp).align(Alignment.TopCenter).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = if (enabled) 0.35f else 0.08f)))
+        Text(text, color = textColour, fontWeight = FontWeight.Black, fontSize = if (big) (if (compact) 17.sp else 20.sp) else (if (compact) 11.sp else 13.sp), textAlign = TextAlign.Center, lineHeight = if (big) 20.sp else 12.sp)
     }
 }
 
 /** A glowing red digital readout, like the meters on a real machine. */
 @Composable
-private fun Led(label: String, value: String, modifier: Modifier = Modifier, win: Boolean = false) {
+private fun Led(label: String, value: String, modifier: Modifier = Modifier, win: Boolean = false, compact: Boolean = false) {
     Column(
-        modifier.clip(RoundedCornerShape(10.dp)).background(Color(0xFF120404)).border(2.dp, Color(0xFFB8860B), RoundedCornerShape(10.dp)).padding(horizontal = 6.dp, vertical = 5.dp),
+        modifier.clip(RoundedCornerShape(10.dp)).background(Color(0xFF120404)).border(2.dp, Color(0xFFB8860B), RoundedCornerShape(10.dp)).padding(horizontal = 6.dp, vertical = if (compact) 2.dp else 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(label, color = Color(0xFFFDE68A), fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp, maxLines = 1)
         Text(
-            value, color = if (win) Color(0xFFFFE066) else Color(0xFFFF3B2F), fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1,
+            value, color = if (win) Color(0xFFFFE066) else Color(0xFFFF3B2F), fontSize = if (compact) 15.sp else 20.sp, fontWeight = FontWeight.Black, maxLines = 1,
             style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, shadow = androidx.compose.ui.graphics.Shadow(if (win) Color(0xFFFFD23F) else Color(0xFFFF3B2F), Offset.Zero, 14f)),
         )
     }
