@@ -141,7 +141,10 @@ boxes, but only if you both agree. The most money wins. The prizes in the boxes 
 **Deal or No Deal** has been given the full studio treatment: lit prize boards, red 3D boxes, and every box you choose or open comes up in the middle of the screen,
 shakes with a drum roll and bursts open in a flash of light as the prize card rises out and counts up (blue sparkles for a small prize, a gasp for a big one; tap to skip).
 After each round the phone rings, and rings, until you pick it up; then the Banker's tune plays, a drum roll builds and his offer lights up before you choose DEAL or NO DEAL. The
-tune is an original piece in the same spirit, not the television theme, and every sound (phone, creaking lid, drum roll, cash) is generated in code like the rest of the app.
+tune is an original piece in the same spirit, not the television theme (which is copyrighted). While the Banker talks you hear a muffled voice down a bad phone line, the boxes knock and creak
+before they burst open, a crowd applauds a small prize or groans at a big one, big words appear on screen ("OUCH! A BIG ONE GONE!"), the box numbers are always shown, and a quiet, tense game-show
+tune plays underneath. None of it is a recording: the sounds are built in code (`Studio.kt`) the way real ones are made, from struck-metal bells, plucked strings, brass, drums, a hundred separate claps
+for applause and a buzzing "throat" run through the formants of a mouth for voices, with a little room reverb. All the game's sounds were re-made this way, so nothing sounds like an old games console any more.
 
 **Slot Machine** is shared: you take turns on the same five-reel, three-row machine with nine paylines (across, V, upside-down V, two zig-zags and two bumps), 1,000 credits
 each. You choose a bet per line (1, 2, 5 or 10; a spin costs nine lines' worth) and pull the lever, and the host's phone does all the random drawing so nobody can cheat.
