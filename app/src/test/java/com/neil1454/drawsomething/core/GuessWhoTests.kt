@@ -9,9 +9,9 @@ import org.junit.Test
 import kotlin.random.Random
 
 class GuessWhoTest {
-    private fun pair(seed: Int = 1, size: Int = 0): SyncPair<GuessWhoEngine> {
+    private fun pair(seed: Int = 1, size: Int = 0, manual: Boolean = false): SyncPair<GuessWhoEngine> {
         val p = SyncPair({ n, o, h, s, r, c -> GuessWhoEngine(n, o, h, s, r, c) }, seed)
-        p.host.start(JSONObject().put("size", size).put("auto", true))
+        p.host.start(JSONObject().put("size", size).put("auto", true).put("manual", manual))
         p.pump()
         return p
     }
@@ -96,7 +96,7 @@ class GuessWhoTest {
 
     @Test fun twoComputerPlayersFinishAGameWithRightAndWrongGuessesPossible() {
         for (seed in 1..6) {
-            val p = pair(seed = seed, size = 1)
+            val p = pair(seed = seed, size = 1, manual = seed % 2 == 0)
             val a = GuessWhoBrain(p.host, Skill.HARD, Random(seed))
             val b = GuessWhoBrain(p.client, Skill.NORMAL, Random(seed + 40))
             var guard = 0
@@ -108,6 +108,54 @@ class GuessWhoTest {
             assertNotEquals(0, p.host.state.result)
             assertEquals(p.host.state.result.let { if (it == 1) 2 else 1 }, p.client.state.result)
         }
+    }
+
+    @Test fun theOtherPlayerAnswersByHandAndLiesAreRefused() {
+        val p = pair(seed = 8, manual = true)
+        val ids = p.host.state.ids
+        pickBoth(p, hostFace = ids[0], guestFace = ids[1])
+        val asker = if (p.host.state.myTurn) p.host else p.client
+        val answerer = if (asker === p.host) p.client else p.host
+        val q = GuessWhoData.QUESTIONS.indexOfFirst { it.text.contains("glasses") }
+        asker.ask(q); p.pump()
+        assertTrue("the question waits for an answer", asker.state.pending != null && asker.state.pending!!.byMe)
+        assertTrue(answerer.state.mustAnswer)
+        assertEquals("nothing is recorded until it is answered", 0, asker.state.history.size)
+        // the asker can't ask again or guess while the question is pending
+        asker.ask(q + 1); asker.guess(ids[1]); p.pump()
+        assertEquals(GPhase.PLAYING, asker.state.phase)
+        val truth = GuessWhoData.QUESTIONS[q].test(GuessWhoData.ALL[answerer.state.mySecret])
+        answerer.answer(!truth); p.pump()
+        assertTrue("a wrong answer is refused with a nudge", answerer.state.note.isNotEmpty() && answerer.state.mustAnswer)
+        answerer.answer(truth); p.pump()
+        assertEquals(1, asker.state.history.size)
+        assertEquals(truth, asker.state.history[0].yes)
+        assertEquals(null, asker.state.pending)
+        assertTrue("it is now the answerer's turn", answerer.state.myTurn)
+    }
+
+    @Test fun customQuestionsAreAnsweredOnTrust() {
+        val p = pair(seed = 9, manual = true)
+        val ids = p.host.state.ids
+        pickBoth(p, hostFace = ids[0], guestFace = ids[1])
+        val asker = if (p.host.state.myTurn) p.host else p.client
+        val answerer = if (asker === p.host) p.client else p.host
+        asker.askCustom("Do they look like a pirate?"); p.pump()
+        assertEquals("Do they look like a pirate?", answerer.state.pending!!.question)
+        answerer.answer(true); p.pump()
+        assertEquals(1, asker.state.history.size)
+        assertEquals("Do they look like a pirate?", asker.state.history[0].question)
+        assertEquals("custom questions don't flip faces by themselves", 0, asker.state.myQuestions.size)
+        asker.askCustom("x"); p.pump() // too short
+        assertEquals(null, asker.state.pending)
+    }
+
+    @Test fun theBestQuestionSplitsTheFacesNearlyInHalf() {
+        val faces = GuessWhoData.ALL.take(12)
+        val q = GuessWhoData.bestQuestion(faces, emptySet())!!
+        val yes = faces.count { GuessWhoData.QUESTIONS[q].test(it) }
+        assertTrue("$yes of 12", yes in 4..8)
+        assertEquals(null, GuessWhoData.bestQuestion(listOf(faces[0]), emptySet()))
     }
 
     @Test fun badMessagesAreIgnored() {

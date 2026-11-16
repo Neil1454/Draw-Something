@@ -93,10 +93,16 @@ your last die you're out. The computer player works out the odds of each bid, an
 
 ### Guess Who?
 
-Each player secretly picks one face from the same board (12, 18 or 24 faces, chosen by the host). Take turns asking one yes/no question from a
-list (hair colour and style, eyes, glasses, hat, beard, moustache, earrings); the answer comes back at once and the turn passes. Tap faces to
-flip them down; with **auto-flip** on (a lobby option) the faces your answers rule out flip down for you. When you're sure, make a guess:
-right wins, wrong loses on the spot. Each player's secret stays on their own phone until the game ends.
+Each player secretly picks one face from the same board (12, 18 or 24 faces, chosen by the host). Take turns asking a question and **the other player answers
+it themselves**: the question pops up with a big card showing their own face, and they tap **Yes** or **No**. The app makes sure the answers to the listed
+questions are true (a wrong tap shakes the card and asks you to look again), so nobody can fib their way to a win. You can also **type your own question**
+("Do they look friendly?"), which is answered on trust.
+
+The question list is grouped into **Hair colour, Hair style, Eyes and Face & style**, with big picture chips. With the **question helper** on (a lobby
+option), every chip shows how many of the faces still in play would be Yes and No, and a **💡 Best question** button picks the one that splits them most
+evenly. Asked questions show their answers, and the whole conversation appears as chat bubbles. Tap faces to flip them down (or turn on **auto-flip**, and the
+faces your answers rule out flip for you); a counter shows how many faces are left. When you're sure, make a guess: right wins, wrong loses on the spot.
+Each player's secret stays on their own phone until the game ends. The lobby also lets you switch off hand answers (questions are then answered automatically).
 
 ### Blackjack
 

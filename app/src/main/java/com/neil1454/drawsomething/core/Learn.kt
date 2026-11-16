@@ -378,7 +378,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                     last = s.history.size
                     s.history.lastOrNull()?.let { qa ->
                         val who = if (qa.asker == 1) "You ask" else "Player 2 asks"
-                        say("$who: ${GuessWhoData.QUESTIONS[qa.q].text} ${if (qa.yes) "YES" else "NO"}. ${if (qa.asker == 1) "Flip down every face that doesn't match." else "They flip down the faces that don't match."}" + tip(GW_TIPS, s.history.size))
+                        say("$who: ${qa.question} ${if (qa.yes) "YES" else "NO"}. ${if (qa.asker == 1) "Flip down every face that doesn't match." else "They flip down the faces that don't match."}" + tip(GW_TIPS, s.history.size))
                     }
                 }
                 if (s.phase == GPhase.OVER) {

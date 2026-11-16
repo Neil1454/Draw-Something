@@ -121,6 +121,8 @@ data class LobbySettings(
     val hiloOdds: Boolean = true,
     val bjRounds: Int = 1,
     val gwSize: Int = 0,
+    val gwManual: Boolean = true,
+    val gwSmart: Boolean = true,
     val kalahSeeds: Int = 1,
     val liarDice: Int = 1,
     val liarWild: Boolean = false,

@@ -987,13 +987,20 @@ private fun GuessWhoLobby(ui: UiState, connected: Boolean, onSettings: (LobbySet
     val set = ui.settings
     SyncLobby(ui, connected, GameKind.GUESSWHO, { GuessWhoHelp() }, {
         ChipRow("Faces on the board", com.neil1454.drawsomething.core.GuessWhoData.SIZES.map { it.toString() }, set.gwSize) { onSettings(set.copy(gwSize = it)) }
+        ToggleChip("🗣 You answer your partner's questions yourself", set.gwManual) { onSettings(set.copy(gwManual = it)) }
+        Text(
+            if (set.gwManual) "When you're asked something, you tap Yes or No about your own face (the app makes sure you're telling the truth). You can also type your own questions."
+            else "Questions are answered automatically, so the game moves faster.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+        )
+        ToggleChip("💡 Question helper (shows how each question splits the faces)", set.gwSmart) { onSettings(set.copy(gwSmart = it)) }
         ToggleChip("🪄 Auto-flip faces that can't be it", set.gwAuto) { onSettings(set.copy(gwAuto = it)) }
         Text(
             if (set.gwAuto) "After each answer the faces that don't fit flip down for you. You can still flip any face yourself."
             else "No help: flip faces down yourself as you work things out.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
         )
-    }) { onStart(GameKind.GUESSWHO, JSONObject().put("size", set.gwSize).put("auto", set.gwAuto)) }
+    }) { onStart(GameKind.GUESSWHO, JSONObject().put("size", set.gwSize).put("auto", set.gwAuto).put("manual", set.gwManual).put("smart", set.gwSmart)) }
 }
 
 @Composable

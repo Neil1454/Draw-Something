@@ -22,7 +22,7 @@ class GwChar(
     val glasses: Boolean, val hat: Boolean, val beard: Boolean, val moustache: Boolean, val earrings: Boolean,
 )
 
-class GwQuestion(val text: String, val test: (GwChar) -> Boolean)
+class GwQuestion(val text: String, val emoji: String, val short: String, val group: Int, val test: (GwChar) -> Boolean)
 
 object GuessWhoData {
     private fun c(id: Int, name: String, hair: Int, style: Int, eyes: Int, flags: String) =
@@ -41,25 +41,42 @@ object GuessWhoData {
     val HAIR_NAMES = listOf("black", "brown", "blonde", "red", "grey")
     val EYE_NAMES = listOf("brown", "blue", "green")
 
+    val GROUPS = listOf("🎨 Hair colour", "💇 Hair style", "👀 Eyes", "😎 Face and style")
+
     val QUESTIONS: List<GwQuestion> = buildList {
-        HAIR_NAMES.forEachIndexed { i, n -> add(GwQuestion("Do they have $n hair?") { it.hair == i && it.style != 3 }) }
-        add(GwQuestion("Do they have short hair?") { it.style == 0 })
-        add(GwQuestion("Do they have long hair?") { it.style == 1 })
-        add(GwQuestion("Do they have curly hair?") { it.style == 2 })
-        add(GwQuestion("Are they bald?") { it.style == 3 })
-        EYE_NAMES.forEachIndexed { i, n -> add(GwQuestion("Do they have $n eyes?") { it.eyes == i }) }
-        add(GwQuestion("Do they wear glasses?") { it.glasses })
-        add(GwQuestion("Do they wear a hat?") { it.hat })
-        add(GwQuestion("Do they have a beard?") { it.beard })
-        add(GwQuestion("Do they have a moustache?") { it.moustache })
-        add(GwQuestion("Do they wear earrings?") { it.earrings })
+        val hairEmoji = listOf("⚫", "🟤", "🟡", "🔴", "⚪")
+        HAIR_NAMES.forEachIndexed { i, n -> add(GwQuestion("Do they have $n hair?", hairEmoji[i], "${n.replaceFirstChar { it.uppercase() }} hair", 0) { it.hair == i && it.style != 3 }) }
+        add(GwQuestion("Do they have short hair?", "✂️", "Short hair", 1) { it.style == 0 })
+        add(GwQuestion("Do they have long hair?", "💁", "Long hair", 1) { it.style == 1 })
+        add(GwQuestion("Do they have curly hair?", "🌀", "Curly hair", 1) { it.style == 2 })
+        add(GwQuestion("Are they bald?", "🥚", "Bald", 1) { it.style == 3 })
+        val eyeEmoji = listOf("🟤", "🔵", "🟢")
+        EYE_NAMES.forEachIndexed { i, n -> add(GwQuestion("Do they have $n eyes?", eyeEmoji[i], "${n.replaceFirstChar { it.uppercase() }} eyes", 2) { it.eyes == i }) }
+        add(GwQuestion("Do they wear glasses?", "👓", "Glasses", 3) { it.glasses })
+        add(GwQuestion("Do they wear a hat?", "🎩", "Hat", 3) { it.hat })
+        add(GwQuestion("Do they have a beard?", "🧔", "Beard", 3) { it.beard })
+        add(GwQuestion("Do they have a moustache?", "👨", "Moustache", 3) { it.moustache })
+        add(GwQuestion("Do they wear earrings?", "💎", "Earrings", 3) { it.earrings })
     }
+
+    /** The question that comes closest to splitting [faces] in half (so it rules out the most, whatever the answer). */
+    fun bestQuestion(faces: List<GwChar>, asked: Set<Int>): Int? =
+        QUESTIONS.indices.filter { it !in asked }.maxByOrNull { q -> val y = faces.count { QUESTIONS[q].test(it) }; minOf(y, faces.size - y) }
+            ?.takeIf { q -> val y = faces.count { QUESTIONS[q].test(it) }; y in 1 until faces.size }
 
     /** Which board sizes the host can pick. */
     val SIZES = listOf(12, 18, 24)
 }
 
-class GwQA(val asker: Int, val q: Int, val yes: Boolean)
+/** One question and its answer. [q] is -1 for a question somebody typed themselves ([text] then says what it was). */
+class GwQA(val asker: Int, val q: Int, val yes: Boolean, val text: String = "") {
+    val question get() = if (q in GuessWhoData.QUESTIONS.indices) GuessWhoData.QUESTIONS[q].text else text
+}
+
+/** A question waiting for its answer. [byMe] true means I asked it. */
+class GwPending(val byMe: Boolean, val q: Int, val text: String) {
+    val question get() = if (q in GuessWhoData.QUESTIONS.indices) GuessWhoData.QUESTIONS[q].text else text
+}
 
 data class GuessWhoState(
     val phase: GPhase = GPhase.LOBBY,
@@ -73,6 +90,11 @@ data class GuessWhoState(
     /** Every question so far, with [GwQA.asker] 1 = me and 2 = them. */
     val history: List<GwQA> = emptyList(),
     val autoFlip: Boolean = true,
+    /** The question I am waiting on (or must answer), whether players answer by hand, and a gentle nudge if I answered wrongly. */
+    val pending: GwPending? = null,
+    val manual: Boolean = true,
+    val smart: Boolean = true,
+    val note: String = "",
     val result: Int = 0,
     /** At the end: both secret faces, and who made the last guess and which face. */
     val theirSecret: Int = -1,
@@ -84,7 +106,8 @@ data class GuessWhoState(
     val phaseOver get() = phase == GPhase.OVER
     val myScore get() = if (result == 1) 1 else 0
     val theirScore get() = if (result == 2) 1 else 0
-    val myQuestions get() = history.filter { it.asker == 1 }
+    val myQuestions get() = history.filter { it.asker == 1 && it.q >= 0 }
+    val mustAnswer get() = pending != null && !pending.byMe
 }
 
 class GuessWhoEngine(
@@ -110,6 +133,10 @@ class GuessWhoEngine(
         act(JSONObject().put("a", "pick").put("c", id))
     }
     fun ask(q: Int) = act(JSONObject().put("a", "ask").put("q", q))
+    /** Ask a question of my own (answered by hand, on trust). */
+    fun askCustom(text: String) = act(JSONObject().put("a", "askc").put("t", text))
+    /** Answer the question I was asked about my own face. */
+    fun answer(yes: Boolean) = act(JSONObject().put("a", "ans").put("y", yes))
     fun guess(id: Int) = act(JSONObject().put("a", "guess").put("c", id))
 
     // ---- the host's private game
@@ -125,10 +152,18 @@ class GuessWhoEngine(
     private var guessId = -1
     private var why = ""
     private var gameId = 0
+    private var manual = true
+    private var smart = true
+    private var pendingBy = 0
+    private var pendingQ = -1
+    private var pendingText = ""
+    private var note = ""
 
     override fun hostBegin(opts: JSONObject) {
         val n = GuessWhoData.SIZES.getOrElse(opts.optInt("size", 0)) { 12 }
         autoFlip = opts.optBoolean("auto", true)
+        manual = opts.optBoolean("manual", true); smart = opts.optBoolean("smart", true)
+        pendingBy = 0; pendingQ = -1; pendingText = ""; note = ""
         ids = ArrayList(GuessWhoData.ALL.map { it.id }.shuffled(random).take(n).sorted())
         secret.fill(-1); history.clear(); stage = "PICK"; over = false; winner = 0; guessBy = 0; guessId = -1; why = ""
         turn = if (random.nextBoolean()) 1 else 2
@@ -147,15 +182,37 @@ class GuessWhoEngine(
                 if (secret[1] >= 0 && secret[2] >= 0) stage = "PLAY"
                 publish()
             }
-            "ask" -> if (stage == "PLAY" && turn == p) {
+            "ask" -> if (stage == "PLAY" && turn == p && pendingBy == 0) {
                 val q = a.optInt("q", -1)
                 if (q !in GuessWhoData.QUESTIONS.indices || history.any { it.asker == p && it.q == q }) return
-                val target = GuessWhoData.ALL[secret[3 - p]]
-                history.add(GwQA(p, q, GuessWhoData.QUESTIONS[q].test(target)))
-                turn = 3 - p
+                if (manual) {
+                    pendingBy = p; pendingQ = q; pendingText = ""; note = ""
+                } else {
+                    val target = GuessWhoData.ALL[secret[3 - p]]
+                    history.add(GwQA(p, q, GuessWhoData.QUESTIONS[q].test(target)))
+                    turn = 3 - p
+                }
                 publish()
             }
-            "guess" -> if (stage == "PLAY" && turn == p) {
+            "askc" -> if (stage == "PLAY" && turn == p && pendingBy == 0 && manual) {
+                val text = StakeWire.clean(a.optString("t", "")).take(80)
+                if (text.length < 3 || history.count { it.asker == p && it.q < 0 } >= 6) return
+                pendingBy = p; pendingQ = -1; pendingText = text; note = ""
+                publish()
+            }
+            "ans" -> if (stage == "PLAY" && pendingBy != 0 && p == 3 - pendingBy) {
+                val yes = a.optBoolean("y", false)
+                if (pendingQ >= 0) {
+                    // answers about the standard questions have to be true for the answerer's own face
+                    val truth = GuessWhoData.QUESTIONS[pendingQ].test(GuessWhoData.ALL[secret[p]])
+                    if (yes != truth) { note = "Not quite! Look at your own face again."; publish(); return }
+                }
+                history.add(GwQA(pendingBy, pendingQ, yes, pendingText))
+                pendingBy = 0; pendingQ = -1; pendingText = ""; note = ""
+                turn = p
+                publish()
+            }
+            "guess" -> if (stage == "PLAY" && turn == p && pendingBy == 0) {
                 val c = a.optInt("c", -1)
                 if (c !in ids) return
                 guessBy = p; guessId = c
@@ -168,10 +225,12 @@ class GuessWhoEngine(
 
     override fun hostSnapshot(): JSONObject {
         val h = JSONArray()
-        for (e in history) h.put(JSONArray().put(e.asker).put(e.q).put(if (e.yes) 1 else 0))
+        for (e in history) h.put(JSONArray().put(e.asker).put(e.q).put(if (e.yes) 1 else 0).put(e.text))
         return JSONObject()
             .put("st", stage).put("ids", JSONArray(ids)).put("pk", JSONArray().put(secret[1] >= 0).put(secret[2] >= 0))
             .put("tn", turn).put("h", h).put("af", autoFlip).put("gid", gameId)
+            .put("pq", if (pendingBy != 0) JSONArray().put(pendingBy).put(pendingQ).put(pendingText) else JSONArray())
+            .put("mn", manual).put("sm", smart).put("nt", note)
             .put("ov", over).put("wn", winner).put("gb", guessBy).put("gi", guessId).put("why", why)
             .put("sc", if (over) JSONArray().put(secret[1]).put(secret[2]) else JSONArray().put(-1).put(-1))
     }
@@ -190,9 +249,10 @@ class GuessWhoEngine(
             for (i in 0 until minOf(a.length(), 40)) {
                 val e = a.optJSONArray(i) ?: continue
                 val q = e.optInt(1, -1)
-                if (q !in GuessWhoData.QUESTIONS.indices) continue
+                val text = StakeWire.clean(e.optString(3, "")).take(80)
+                if (q !in GuessWhoData.QUESTIONS.indices && (q != -1 || text.isEmpty())) continue
                 val asker = e.optInt(0, 1).coerceIn(1, 2)
-                hist += GwQA(if (asker == me) 1 else 2, q, e.optInt(2, 0) == 1)
+                hist += GwQA(if (asker == me) 1 else 2, q, e.optInt(2, 0) == 1, text)
             }
         }
         val ov = s.optBoolean("ov", false)
@@ -203,6 +263,12 @@ class GuessWhoEngine(
             phase = if (ov) GPhase.OVER else GPhase.PLAYING, stage = s.optString("st", "PICK").take(5), ids = ids,
             mySecret = if (myPicked) localSecret else -1, myPicked = myPicked, theirPicked = theirPicked,
             myTurn = s.optInt("tn", 1) == me, history = hist, autoFlip = s.optBoolean("af", true),
+            pending = s.optJSONArray("pq")?.takeIf { it.length() >= 3 }?.let { pq ->
+                val qi = pq.optInt(1, -1)
+                val tx = StakeWire.clean(pq.optString(2, "")).take(80)
+                if (qi in GuessWhoData.QUESTIONS.indices || tx.isNotEmpty()) GwPending(pq.optInt(0, 1) == me, qi, tx) else null
+            },
+            manual = s.optBoolean("mn", true), smart = s.optBoolean("sm", true), note = StakeWire.clean(s.optString("nt", "")).take(60),
             result = if (!ov) 0 else if (wn == me) 1 else 2,
             theirSecret = if (ov) (sc?.optInt(2 - me, -1) ?: -1) else -1,
             guessBy = if (gb == 0) 0 else if (gb == me) 1 else 2, guessId = s.optInt("gi", -1),
@@ -223,6 +289,16 @@ class GuessWhoBrain(private val e: GuessWhoEngine, skill: Skill, random: Random)
     override fun think(now: Long) {
         val s = e.state
         if (s.phase != GPhase.PLAYING) return
+        // somebody asked me a question about my face: answer it truthfully
+        val pend = s.pending
+        if (s.stage == "PLAY" && pend != null && !pend.byMe) {
+            if (s.mySecret >= 0 && ready(now, "gwans${s.history.size}", 900, 2000)) {
+                val truth = if (pend.q in GuessWhoData.QUESTIONS.indices) GuessWhoData.QUESTIONS[pend.q].test(GuessWhoData.ALL[s.mySecret]) else random.nextBoolean()
+                e.answer(truth)
+            }
+            return
+        }
+        if (pend != null) return
         when (s.stage) {
             "PICK" -> if (!s.myPicked && s.ids.isNotEmpty() && ready(now, "gwpick", 700, 1800)) e.pick(s.ids[random.nextInt(s.ids.size)])
             "PLAY" -> if (s.myTurn && ready(now, "gwturn${s.history.size}", 1200, 2600)) {

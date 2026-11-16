@@ -1,6 +1,11 @@
 package com.neil1454.drawsomething.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -20,6 +25,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +55,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import com.neil1454.drawsomething.core.GwQA
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.neil1454.drawsomething.core.GPhase
@@ -61,7 +72,8 @@ fun GuessWhoHelp() {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Each of you secretly picks one face from the same board. Then take turns asking yes/no questions about the other player's face.")
         Text("• Pick your secret face first. Your partner can't see which one you chose.")
-        Text("• On your turn, ask one question (like \"Do they wear glasses?\"). The answer comes back straight away, and then it's their turn.")
+        Text("• On your turn, ask one question from the list (or type your own). Your partner looks at their face and taps Yes or No, then it's their turn to ask you.")
+        Text("• When you are asked something, answer about YOUR secret face. The app makes sure answers to the listed questions are true.")
         Text("• Tap faces to flip them down once you know they can't be it. With auto-flip on, the app flips the impossible faces for you.")
         Text("• When you're sure, tap \"Make a guess\" and tap a face. Get it right and you win. Get it wrong and you lose on the spot!")
     }
@@ -159,6 +171,123 @@ private fun SmallFace(c: GwChar, label: String, size: Dp) {
 }
 
 @Composable
+private fun AnswerCard(s: GuessWhoState, name: String, myFace: GwChar?, onAnswer: (Boolean) -> Unit) {
+    val q = s.pending ?: return
+    val shape = RoundedCornerShape(20.dp)
+    val shake = remember(s.note) { Animatable(0f) }
+    LaunchedEffect(s.note) { if (s.note.isNotEmpty()) { Sfx.play(Sound.BUZZ); shake.snapTo(1f); shake.animateTo(0f, tween(500)) } }
+    Column(
+        Modifier.fillMaxWidth().graphicsLayer { translationX = kotlin.math.sin(shake.value * 40f) * 18f * shake.value }
+            .clip(shape).background(Brush.verticalGradient(listOf(Color(0xFF312E81), Color(0xFF1E1B4B)))).border(3.dp, Color(0xFFFFD23F), shape).padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("🕵️ $name asks you:", color = Color(0xFFFFD23F), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(q.question, color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp, textAlign = TextAlign.Center)
+        if (myFace != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SmallFace(myFace, "Your face", 76.dp)
+                Text("Look at your own face, then answer honestly.", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, modifier = Modifier.weight(1f, fill = false))
+            }
+        }
+        if (s.note.isNotEmpty()) Text("⚠️ ${s.note}", color = Color(0xFFFCA5A5), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FunkyButton("✅  YES", { Sfx.play(Sound.GOOD); onAnswer(true) }, Modifier.weight(1f), listOf(Color(0xFF16A34A), Color(0xFF65A30D)), fontSize = 22.sp)
+            FunkyButton("❌  NO", { Sfx.play(Sound.TAP); onAnswer(false) }, Modifier.weight(1f), listOf(Color(0xFFDC2626), Color(0xFFEA580C)), fontSize = 22.sp)
+        }
+    }
+}
+
+@Composable
+private fun QuestionChip(q: com.neil1454.drawsomething.core.GwQuestion, done: GwQA?, best: Boolean, counts: Pair<Int, Int>?, modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    val asked = done != null
+    Row(
+        modifier.clip(shape)
+            .background(if (asked) Color(0x22FFFFFF) else Brush.verticalGradient(listOf(Color(0xFF3B3F8F), Color(0xFF272A66))))
+            .border(if (best) 3.dp else 1.dp, if (best) Color(0xFFFFD23F) else Color.White.copy(alpha = if (asked) 0.15f else 0.35f), shape)
+            .clickable(enabled = !asked, onClick = onClick).padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(q.emoji, fontSize = 24.sp)
+        Column(Modifier.weight(1f)) {
+            Text(q.short, color = if (asked) Color.White.copy(alpha = 0.5f) else Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
+            when {
+                asked -> Text(if (done!!.yes) "✅ Yes" else "❌ No", color = if (done.yes) Color(0xFF86EFAC) else Color(0xFFFCA5A5), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                counts != null -> Text("${counts.first} yes · ${counts.second} no", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+            }
+        }
+        if (best) Text("💡", fontSize = 16.sp)
+    }
+}
+
+@Composable
+private fun QuestionPicker(s: GuessWhoState, remaining: List<GwChar>, onAsk: (Int) -> Unit, onCustom: (String) -> Unit, onClose: () -> Unit) {
+    val used = s.myQuestions.associateBy { it.q }
+    val best = if (s.smart) GuessWhoData.bestQuestion(remaining, used.keys) else null
+    var custom by remember { mutableStateOf("") }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(shape = RoundedCornerShape(26.dp), color = Color(0xFF0F172A), modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.9f)) {
+            Column(Modifier.padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("❓ Ask a question", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Text(if (s.smart) "${remaining.size} faces left in play. The numbers show how many would be Yes and No." else "${remaining.size} faces left in play.", color = Color.White.copy(alpha = 0.65f), fontSize = 12.sp)
+                    }
+                    Text("✕", color = Color.White, fontSize = 22.sp, modifier = Modifier.clickable(onClick = onClose).padding(10.dp))
+                }
+                if (best != null) {
+                    val bq = GuessWhoData.QUESTIONS[best]
+                    FunkyButton("💡 Best question: ${bq.emoji} ${bq.short}", { onAsk(best) }, Modifier.fillMaxWidth().padding(vertical = 8.dp), listOf(Color(0xFFB45309), Color(0xFFF59E0B)), fontSize = 15.sp)
+                }
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GuessWhoData.GROUPS.forEachIndexed { gi, gname ->
+                        Text(gname, color = Color(0xFFFFD23F), fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp))
+                        GuessWhoData.QUESTIONS.withIndex().filter { it.value.group == gi }.chunked(2).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                row.forEach { (qi, q) ->
+                                    val counts = if (s.smart) remaining.count { q.test(it) }.let { y -> y to (remaining.size - y) } else null
+                                    QuestionChip(q, used[qi], best == qi, counts, Modifier.weight(1f)) { onAsk(qi) }
+                                }
+                                if (row.size == 1) Box(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                    if (s.manual) {
+                        Text("✏️ Ask your own", color = Color(0xFFFFD23F), fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
+                        Text("Anything you like. Your partner answers Yes or No, but the app can't check it, so it's on trust (and it won't flip faces for you).", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(value = custom, onValueChange = { custom = it.take(80) }, singleLine = true, label = { Text("e.g. Do they look friendly?") }, modifier = Modifier.weight(1f))
+                            FunkyButton("Ask", { onCustom(custom.trim()) }, Modifier, listOf(Color(0xFF7C3AED), Color(0xFFEC4899)), enabled = custom.trim().length >= 3, fontSize = 15.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Bubbles(s: GuessWhoState, theirName: String) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        s.history.takeLast(6).forEach { qa ->
+            val mine = qa.asker == 1
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(16.dp)).background(if (mine) Color(0x553B82F6) else Color(0x55FB923C)).padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Column(Modifier.weight(1f, fill = false)) {
+                        Text(if (mine) "You asked" else "$theirName asked", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
+                        Text(qa.question, color = Color.White, fontSize = 13.sp)
+                    }
+                    Text(if (qa.yes) "✅ YES" else "❌ NO", color = if (qa.yes) Color(0xFF86EFAC) else Color(0xFFFCA5A5), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun GuessWhoScreen(
     s: GuessWhoState,
     engine: GuessWhoEngine,
@@ -176,15 +305,18 @@ fun GuessWhoScreen(
     // the faces my answers rule out
     val auto = if (s.autoFlip) faces.filter { f -> s.myQuestions.any { GuessWhoData.QUESTIONS[it.q].test(f) != it.yes } }.map { it.id }.toSet() else emptySet()
     fun flipped(id: Int) = (id in auto) != (id in manual)
+    val remaining = faces.filter { !flipped(it.id) }
     // a big answer when a question comes back
     LaunchedEffect(s.history.size) {
         val last = s.history.lastOrNull() ?: return@LaunchedEffect
-        popup = (if (last.asker == 1) "You: " else "They asked: ") + GuessWhoData.QUESTIONS[last.q].text + "\n" + (if (last.yes) "✅ YES!" else "❌ NO!")
+        popup = (if (last.asker == 1) "You: " else "They asked: ") + last.question + "\n" + (if (last.yes) "✅ YES!" else "❌ NO!")
         Sfx.play(if (last.yes) Sound.GOOD else Sound.TAP)
         delay(2200)
         popup = null
     }
+    LaunchedEffect(s.pending?.question) { if (s.mustAnswer) Sfx.play(Sound.CARD) }
     val myFace = s.mySecret.takeIf { it >= 0 }?.let { GuessWhoData.ALL[it] }
+    val waiting = s.pending != null && s.pending.byMe
 
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF3B0764))))) {
         Column(
@@ -192,13 +324,15 @@ fun GuessWhoScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (myFace != null) SmallFace(myFace, "Your face", 54.dp)
+                if (myFace != null && !s.mustAnswer) SmallFace(myFace, "Your face", 54.dp)
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("🕵️ GUESS WHO?", color = Color(0xFFFFD23F), fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 2.sp)
                     Text(
                         when {
                             s.stage == "PICK" && !s.myPicked -> "Tap a face to choose it as YOUR secret face"
                             s.stage == "PICK" -> "Waiting for ${engine.theirName} to choose…"
+                            s.mustAnswer -> "${engine.theirName} is waiting for your answer"
+                            waiting -> "Waiting for ${engine.theirName} to answer…"
                             s.myTurn && guessMode -> "Tap the face you think is theirs"
                             s.myTurn -> "Your turn: ask a question, or make a guess"
                             else -> "${engine.theirName} is thinking…"
@@ -206,6 +340,12 @@ fun GuessWhoScreen(
                         color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, fontSize = 14.sp,
                     )
                 }
+            }
+            // somebody asked me something: it needs my answer before anything else
+            if (s.mustAnswer && s.phase == GPhase.PLAYING) AnswerCard(s, engine.theirName, myFace) { engine.answer(it) }
+            if (waiting) {
+                val dots by rememberInfiniteTransition(label = "dots").animateFloat(0f, 3.99f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "dotsv")
+                Text("⏳ ${s.pending!!.question}" + ".".repeat(dots.toInt() + 1), color = Color(0xFFFFD23F), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             }
             // the board
             BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -222,7 +362,7 @@ fun GuessWhoScreen(
                                         when {
                                             s.phase != GPhase.PLAYING -> Unit
                                             s.stage == "PICK" && !s.myPicked -> pending = f.id
-                                            s.stage == "PLAY" && s.myTurn && guessMode -> pending = f.id
+                                            s.stage == "PLAY" && s.myTurn && guessMode && s.pending == null -> pending = f.id
                                             s.stage == "PLAY" -> { if (f.id in manual) manual.remove(f.id) else manual.add(f.id); Sfx.play(Sound.FLIP) }
                                         }
                                     },
@@ -233,24 +373,18 @@ fun GuessWhoScreen(
                     }
                 }
             }
-            // what to do
             if (s.stage == "PLAY") {
-                if (s.myTurn) {
+                Text("🔎 ${remaining.size} of ${faces.size} faces still in play", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                if (s.myTurn && s.pending == null) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FunkyButton("❓ Ask a question", { guessMode = false; askOpen = true }, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), fontSize = 15.sp)
                         FunkyButton(if (guessMode) "✖ Cancel guess" else "🎯 Make a guess", { guessMode = !guessMode }, Modifier.weight(1f), if (guessMode) listOf(Funk.Pink, Funk.Red) else listOf(Funk.Orange, Funk.Red), fontSize = 15.sp)
                     }
-                } else {
+                } else if (!s.myTurn && s.pending == null) {
                     Text("⏳ Waiting for ${engine.theirName}…", color = Color.White.copy(alpha = 0.8f))
                 }
                 if (!s.autoFlip) Text("Tap faces to flip them down as you rule them out.", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
-                // what has been asked so far
-                s.history.takeLast(5).reversed().forEach { qa ->
-                    Text(
-                        (if (qa.asker == 1) "You asked" else "${engine.theirName} asked") + ": " + GuessWhoData.QUESTIONS[qa.q].text + "  " + (if (qa.yes) "✅" else "❌"),
-                        color = Color.White.copy(alpha = if (qa.asker == 1) 1f else 0.7f), fontSize = 12.sp,
-                    )
-                }
+                Bubbles(s, engine.theirName)
             }
         }
         popup?.let {
@@ -270,7 +404,7 @@ fun GuessWhoScreen(
                 playAgainLabel = "Play again", colors = listOf(Color(0xFF1D4ED8), Color(0xFFEC4899)),
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
                 how = when {
-                    s.guessBy == 1 && s.result == 1 -> "You named ${theirFace?.name} correctly after ${s.myQuestions.size} questions."
+                    s.guessBy == 1 && s.result == 1 -> "You named ${theirFace?.name} correctly after ${s.history.count { it.asker == 1 }} questions."
                     s.guessBy == 1 -> "You guessed ${GuessWhoData.ALL.getOrNull(s.guessId)?.name ?: "a face"} but it was ${theirFace?.name}. A wrong guess loses!"
                     s.result == 2 -> "${engine.theirName} named your face, ${myFace?.name}, correctly."
                     else -> "${engine.theirName} guessed ${GuessWhoData.ALL.getOrNull(s.guessId)?.name ?: "a face"} by mistake, so you win!"
@@ -302,23 +436,11 @@ fun GuessWhoScreen(
         )
     }
     if (askOpen) {
-        val used = s.myQuestions.map { it.q }.toSet()
-        AlertDialog(
-            onDismissRequest = { askOpen = false },
-            title = { Text("Ask a question") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    GuessWhoData.QUESTIONS.forEachIndexed { i, q ->
-                        val done = i in used
-                        Text(
-                            (if (done) "✔ " else "") + q.text, fontSize = 15.sp,
-                            color = if (done) Color.Gray else Color.Unspecified,
-                            modifier = Modifier.fillMaxWidth().clickable(enabled = !done) { askOpen = false; Sfx.play(Sound.TICK); engine.ask(i) }.padding(vertical = 8.dp),
-                        )
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { askOpen = false }) { Text("Close") } },
+        QuestionPicker(
+            s, remaining,
+            onAsk = { askOpen = false; Sfx.play(Sound.TICK); engine.ask(it) },
+            onCustom = { askOpen = false; Sfx.play(Sound.TICK); engine.askCustom(it) },
+            onClose = { askOpen = false },
         )
     }
 }
