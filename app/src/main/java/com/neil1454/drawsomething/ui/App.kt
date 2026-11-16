@@ -52,6 +52,8 @@ import com.neil1454.drawsomething.core.KalahEngine
 import com.neil1454.drawsomething.core.KalahState
 import com.neil1454.drawsomething.core.LiarDiceEngine
 import com.neil1454.drawsomething.core.LiarState
+import com.neil1454.drawsomething.core.DealNoDealEngine
+import com.neil1454.drawsomething.core.DndState
 import com.neil1454.drawsomething.core.HockeyEngine
 import com.neil1454.drawsomething.core.HockeyState
 import com.neil1454.drawsomething.core.HangmanEngine
@@ -256,6 +258,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.SHOWDOWN -> showdownOptions(ui)
             GameKind.KALAH -> JSONObject().put("seeds", set.kalahSeeds)
             GameKind.LIARSDICE -> JSONObject().put("dice", set.liarDice).put("wild", set.liarWild)
+            GameKind.DEALNODEAL -> JSONObject()
             GameKind.TRIVIA -> JSONObject().put("pack", set.triviaPack).put("len", set.triviaLen).put("bonus", set.triviaBonus).put("secs", com.neil1454.drawsomething.core.HolidayRules.SECONDS[set.triviaSecs.coerceIn(0, com.neil1454.drawsomething.core.HolidayRules.SECONDS.lastIndex)])
             GameKind.HOCKEY -> JSONObject().put("mode", set.hockeyMode).put("target", set.hockeyTarget)
             GameKind.HANGMAN -> JSONObject().put("mode", set.hangMode).put("rounds", set.hangRounds)
@@ -289,6 +292,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is CentipedeEngine && state is CentipedeState -> CentipedeScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is KalahEngine && state is KalahState -> KalahScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is LiarDiceEngine && state is LiarState -> LiarDiceScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is DealNoDealEngine && state is DndState -> DealNoDealScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HockeyEngine && state is HockeyState -> HockeyScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HangmanEngine && state is HangmanState -> HangmanScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is NoughtsEngine && state is NoughtsState -> NoughtsScreen(state, engine, again, vm::backToGames, vm::leave)

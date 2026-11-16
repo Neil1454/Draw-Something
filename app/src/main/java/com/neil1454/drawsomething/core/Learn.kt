@@ -104,6 +104,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> Unit
             GameKind.KALAH -> h.kalah.start(JSONObject().put("seeds", 0))
             GameKind.LIARSDICE -> h.liardice.start(JSONObject().put("dice", 0).put("wild", false))
+            GameKind.DEALNODEAL -> h.dealnodeal.start(JSONObject())
             GameKind.TRIVIA -> h.trivia.start(JSONObject().put("len", 0).put("secs", 30))
             GameKind.HOCKEY -> h.hockey.start(JSONObject().put("mode", 0).put("target", 0))
             GameKind.HANGMAN -> h.hangman.start(JSONObject().put("mode", 1).put("rounds", 0))
@@ -417,6 +418,20 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                             (if (s.fact.isNotBlank()) "\n💡 ${s.fact}" else ""),
                     )
                 }
+            }
+            GameKind.DEALNODEAL -> {
+                val s = duel.host.dealnodeal.state
+                if (s.moves != last) {
+                    last = s.moves
+                    when (s.evType) {
+                        "pick" -> if (s.evBy == 1) say("Each player keeps one sealed box. You chose box ${s.evBox}. Nobody knows what is inside!")
+                        "open" -> say("${if (s.evBy == 1) "You opened" else "Player 2 opened"} box ${s.evBox}: ${DndRules.money(s.evValue)}. That prize is now out of the game." + tip(listOf("Blue prizes are small, red ones are £1,000 or more. You want the red ones to stay in play.", "Every prize opened is NOT in either player's box.", "The Banker offers less than the average of what's left, especially early on."), s.round))
+                        "deal" -> say("${if (s.evBy == 1) "You took" else "Player 2 took"} the Banker's deal and left the game. Their box was opened: ${DndRules.money(s.evValue)}.")
+                        "swap", "keep" -> say(if (s.evType == "swap") "Both players agreed to swap boxes!" else "No swap: you keep your own boxes.")
+                    }
+                }
+                if (s.stage == "OFFER" && lastSeq != s.round) { lastSeq = s.round; say("📞 The Banker rings! Offers: you ${DndRules.money(s.myOffer)}, Player 2 ${DndRules.money(s.theirOffer)}. Deal or no deal? Each player chooses in secret and the answers are shown together.") }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.LIARSDICE -> {
                 val s = duel.host.liardice.state
@@ -766,6 +781,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
             GameKind.KALAH -> "🌰 Mancala: sow seeds round the board, grab extra turns and capture your rival's seeds. You are Player 1 (the bottom row)."
             GameKind.LIARSDICE -> "🎭 Liar's Dice: each player shakes hidden dice. Bid how many of a face are on the whole table, or call your rival a liar. You are Player 1."
+            GameKind.DEALNODEAL -> "🎁 Deal or No Deal: 22 sealed boxes with 1p to £250,000. Each player keeps one, you open the rest, and the Banker makes offers. You are Player 1."
             GameKind.TRIVIA -> "🧠 Trivia: a head-to-head general knowledge quiz. You are Player 1; the quickest correct answer wins the most points."
             GameKind.HOCKEY -> "🏒 Air Hockey: a real-time duel. Slide your mallet round your half and knock the puck into their goal. You are Player 1 (the bottom)."
             GameKind.HANGMAN -> "🪢 Hangman: take turns guessing letters of a hidden word before the drawing is finished. You are Player 1."

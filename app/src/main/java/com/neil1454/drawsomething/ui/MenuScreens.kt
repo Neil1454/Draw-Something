@@ -310,6 +310,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.GUESSWHO -> GuessWhoHelp()
                     GameKind.KALAH -> KalahHelp()
                     GameKind.LIARSDICE -> LiarDiceHelp()
+                    GameKind.DEALNODEAL -> DealNoDealHelp()
                     GameKind.TRIVIA -> TriviaHelp()
                     GameKind.HOCKEY -> HockeyHelp()
                     GameKind.HANGMAN -> HangmanHelp()
@@ -592,6 +593,7 @@ fun GameBrowser(
             GameKind.GUESSWHO -> GuessWhoLobby(ui, connected, onSettings, onStartSync)
             GameKind.KALAH -> KalahLobby(ui, connected, onSettings, onStartSync)
             GameKind.LIARSDICE -> LiarDiceLobby(ui, connected, onSettings, onStartSync)
+            GameKind.DEALNODEAL -> DealNoDealLobby(ui, connected, onSettings, onStartSync)
             GameKind.TRIVIA -> TriviaLobby(ui, connected, onSettings, onStartSync)
             GameKind.HOCKEY -> HockeyLobby(ui, connected, onSettings, onStartSync)
             GameKind.HANGMAN -> HangmanLobby(ui, connected, onSettings, onStartSync)
@@ -1037,6 +1039,13 @@ private fun TriviaLobby(ui: UiState, connected: Boolean, onSettings: (LobbySetti
             JSONObject().put("pack", packs.getOrNull(packIdx)?.id ?: "").put("len", set.triviaLen).put("secs", HolidayRules.SECONDS[secsIdx]).put("bonus", set.triviaBonus),
         )
     }
+}
+
+@Composable
+private fun DealNoDealLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    SyncLobby(ui, connected, GameKind.DEALNODEAL, { DealNoDealHelp() }, {
+        Text("22 boxes, from 1p to £250,000. Each of you keeps one box, you take turns opening the rest, and the Banker makes you both an offer after every round.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+    }) { onStart(GameKind.DEALNODEAL, JSONObject()) }
 }
 
 @Composable

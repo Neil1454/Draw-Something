@@ -27,6 +27,7 @@ import com.neil1454.drawsomething.core.BlackjackEngine
 import com.neil1454.drawsomething.core.GuessWhoEngine
 import com.neil1454.drawsomething.core.KalahEngine
 import com.neil1454.drawsomething.core.LiarDiceEngine
+import com.neil1454.drawsomething.core.DealNoDealEngine
 import com.neil1454.drawsomething.core.HockeyEngine
 import com.neil1454.drawsomething.core.HangmanEngine
 import com.neil1454.drawsomething.core.NoughtsEngine
@@ -749,6 +750,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             GuessWhoEngine(me, partner, host, sendG, clock = clock),
             KalahEngine(me, partner, host, sendG, clock = clock),
             LiarDiceEngine(me, partner, host, sendG, clock = clock),
+            DealNoDealEngine(me, partner, host, sendG, clock = clock),
             HolidayEngine(me, partner, host, sendG, clock = clock, quizKind = GameKind.TRIVIA),
             HockeyEngine(me, partner, host, sendG, clock = clock),
             HangmanEngine(me, partner, host, sendG, clock = clock),

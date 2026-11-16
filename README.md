@@ -30,6 +30,11 @@ and you can switch games without reconnecting.
 | 🕵️ **Guess Who?** | Each pick a secret face from a board of drawn characters. Take turns asking yes/no questions; flip down the faces that can't be it; name the other's face first. |
 | 🌰 **Mancala** | The ancient seed-sowing game (Kalah rules): sow round the board, win extra turns and capture your rival's seeds. Watch the seeds drop one by one. |
 | 🎭 **Liar's Dice** | Bluff with hidden dice. Bid on all the dice on the table, or call your rival a liar. Each phone rolls its own dice, so they stay secret. |
+| ❌ **Noughts and Crosses** | Classic 3 x 3, or Ultimate (nine small grids in one big one). A single game, best of 3 or best of 5. |
+| 🪢 **Hangman** | Duel (you take turns setting secret words, with optional hints) or Shared (random words, take turns guessing). |
+| 🏒 **Air Hockey and Pong** | A real-time duel. Slide a pad under the table to move your mallet (hockey) or paddle (pong). First to 5, 7 or 10. |
+| 🧠 **Trivia** | A head-to-head quiz with four topics: General Knowledge, Science & Nature, Pop Culture & Sport, and The UK Quiz. |
+| 🎁 **Deal or No Deal** | The UK TV game for two: pick a box, open the rest, and decide whether to take the Banker's offer. |
 
 ### The new board games
 
@@ -107,6 +112,30 @@ option), every chip shows how many of the faces still in play would be Yes and N
 evenly. Asked questions show their answers, and the whole conversation appears as chat bubbles. Tap faces to flip them down (or turn on **auto-flip**, and the
 faces your answers rule out flip for you); a counter shows how many faces are left. When you're sure, make a guess: right wins, wrong loses on the spot.
 Each player's secret stays on their own phone until the game ends. The lobby also lets you switch off hand answers (questions are then answered automatically).
+
+### Noughts and Crosses, Hangman, Air Hockey, Trivia and Deal or No Deal
+
+**Noughts and Crosses** has two versions. *Classic* is the usual 3 x 3 grid. *Ultimate* is nine small grids making one big grid: the square you play
+in decides which small grid your rival must play in next (if that grid is already finished they can play anywhere), you claim a small grid by getting three
+in a row inside it, and you win by claiming three in a row on the big grid. The host can play one game or a best of three or five; the player who goes first swaps each game.
+
+**Hangman** has two ways to play. In *Duel* you take turns being the setter: the setter secretly types a word (letters only, 3 to 14) and an optional hint, and the
+other player guesses letters or risks the whole word (a wrong word guess costs two lives). In *Shared* the app picks a random word and you take turns on one board: a
+right letter lets you go again, a wrong one costs you both a life and passes the turn. Eight wrong guesses and the stick figure is hanged. Solving a word scores 100 minus
+10 per mistake (never under 20); a word that stumps the guesser scores 60 for the setter. The secret word stays on the setter's phone until the round is over.
+
+**Air Hockey and Pong** is a real-time game where the host's phone runs the table. You are always at the bottom of your own screen (the guest's picture is
+turned round). In *Air Hockey* the mallet follows your finger on the pad under the table (two-way, within your own half) and the puck bounces off the walls into goals; a puck
+jammed in a corner is put back in the middle. In *Pong* your paddle slides along your end and the ball speeds up with every hit. First to 5, 7 or 10 wins.
+
+**Trivia** uses the same quiz engine as *Do you know your Holiday?* (first correct answer scores most, speed bonus, "give me more time", a bonus round for the
+questions you missed) with general knowledge topics. Each topic is a JSON file in `app/src/main/assets/trivia/`, in the same format as the holiday packs; drop another file in
+to add a topic.
+
+**Deal or No Deal** follows the UK show: 22 boxes from 1p to £250,000. You each keep one box, then take turns opening the other twenty (4, 4, 3, 3, 2, 2, 1, 1 per
+round). After each round the Banker offers each of you money (less than the average of the prizes left, rising towards it as the game goes on, with a bit of mood). You each
+secretly choose DEAL or NO DEAL and the answers are revealed together; a player who deals leaves the game and their box is opened. If you are both still in at the end, you may swap
+boxes, but only if you both agree. The most money wins. The prizes in the boxes are never sent to the other phone until they are opened.
 
 ### Blackjack
 
