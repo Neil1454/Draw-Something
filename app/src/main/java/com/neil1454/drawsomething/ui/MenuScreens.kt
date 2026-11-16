@@ -310,6 +310,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.GUESSWHO -> GuessWhoHelp()
                     GameKind.KALAH -> KalahHelp()
                     GameKind.LIARSDICE -> LiarDiceHelp()
+                    GameKind.HOCKEY -> HockeyHelp()
                     GameKind.HANGMAN -> HangmanHelp()
                     GameKind.NOUGHTS -> NoughtsHelp()
                 }
@@ -590,6 +591,7 @@ fun GameBrowser(
             GameKind.GUESSWHO -> GuessWhoLobby(ui, connected, onSettings, onStartSync)
             GameKind.KALAH -> KalahLobby(ui, connected, onSettings, onStartSync)
             GameKind.LIARSDICE -> LiarDiceLobby(ui, connected, onSettings, onStartSync)
+            GameKind.HOCKEY -> HockeyLobby(ui, connected, onSettings, onStartSync)
             GameKind.HANGMAN -> HangmanLobby(ui, connected, onSettings, onStartSync)
             GameKind.NOUGHTS -> NoughtsLobby(ui, connected, onSettings, onStartSync)
             GameKind.ARKANOID -> ArcadeLobby(ui, connected, GameKind.ARKANOID, { ArkanoidHelp() }, onSettings, onStartSync)
@@ -998,6 +1000,15 @@ private fun HangmanLobby(ui: UiState, connected: Boolean, onSettings: (LobbySett
         ChipRow("Who chooses the words?", listOf("Duel: we set words for each other", "Shared: random words, take turns"), set.hangMode) { onSettings(set.copy(hangMode = it)) }
         ChipRow("Words in the game", listOf("2", "4", "6"), set.hangRounds) { onSettings(set.copy(hangRounds = it)) }
     }) { onStart(GameKind.HANGMAN, JSONObject().put("mode", set.hangMode).put("rounds", set.hangRounds)) }
+}
+
+@Composable
+private fun HockeyLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.HOCKEY, { HockeyHelp() }, {
+        ChipRow("Game", listOf("🏒 Air Hockey", "🏓 Pong"), set.hockeyMode) { onSettings(set.copy(hockeyMode = it)) }
+        ChipRow("First to", listOf("5 goals", "7 goals", "10 goals"), set.hockeyTarget) { onSettings(set.copy(hockeyTarget = it)) }
+    }) { onStart(GameKind.HOCKEY, JSONObject().put("mode", set.hockeyMode).put("target", set.hockeyTarget)) }
 }
 
 @Composable

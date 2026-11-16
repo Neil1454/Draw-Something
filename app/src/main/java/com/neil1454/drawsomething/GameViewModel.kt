@@ -27,6 +27,7 @@ import com.neil1454.drawsomething.core.BlackjackEngine
 import com.neil1454.drawsomething.core.GuessWhoEngine
 import com.neil1454.drawsomething.core.KalahEngine
 import com.neil1454.drawsomething.core.LiarDiceEngine
+import com.neil1454.drawsomething.core.HockeyEngine
 import com.neil1454.drawsomething.core.HangmanEngine
 import com.neil1454.drawsomething.core.NoughtsEngine
 import com.neil1454.drawsomething.core.HiLoEngine
@@ -129,6 +130,8 @@ data class LobbySettings(
     val kalahSeeds: Int = 1,
     val liarDice: Int = 1,
     val liarWild: Boolean = false,
+    val hockeyMode: Int = 0,
+    val hockeyTarget: Int = 0,
     val hangMode: Int = 0,
     val hangRounds: Int = 0,
     val noughtsMode: Int = 0,
@@ -721,6 +724,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             GuessWhoEngine(me, partner, host, sendG, clock = clock),
             KalahEngine(me, partner, host, sendG, clock = clock),
             LiarDiceEngine(me, partner, host, sendG, clock = clock),
+            HockeyEngine(me, partner, host, sendG, clock = clock),
             HangmanEngine(me, partner, host, sendG, clock = clock),
             NoughtsEngine(me, partner, host, sendG, clock = clock),
             ShowdownEngine(me, partner, host, sendG, clock = clock).also { sd -> sd.launch = { k -> launchContest(k) }; sd.localStakes = _ui.value.myStakes },

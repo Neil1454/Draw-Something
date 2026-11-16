@@ -52,6 +52,8 @@ import com.neil1454.drawsomething.core.KalahEngine
 import com.neil1454.drawsomething.core.KalahState
 import com.neil1454.drawsomething.core.LiarDiceEngine
 import com.neil1454.drawsomething.core.LiarState
+import com.neil1454.drawsomething.core.HockeyEngine
+import com.neil1454.drawsomething.core.HockeyState
 import com.neil1454.drawsomething.core.HangmanEngine
 import com.neil1454.drawsomething.core.HangmanState
 import com.neil1454.drawsomething.core.NoughtsEngine
@@ -254,6 +256,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.SHOWDOWN -> showdownOptions(ui)
             GameKind.KALAH -> JSONObject().put("seeds", set.kalahSeeds)
             GameKind.LIARSDICE -> JSONObject().put("dice", set.liarDice).put("wild", set.liarWild)
+            GameKind.HOCKEY -> JSONObject().put("mode", set.hockeyMode).put("target", set.hockeyTarget)
             GameKind.HANGMAN -> JSONObject().put("mode", set.hangMode).put("rounds", set.hangRounds)
             GameKind.NOUGHTS -> JSONObject().put("mode", set.noughtsMode).put("series", set.noughtsSeries)
             GameKind.GUESSWHO -> JSONObject().put("deck", set.gwDeck).put("size", set.gwSize).put("auto", set.gwAuto).put("manual", set.gwManual).put("smart", set.gwSmart)
@@ -285,6 +288,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
         engine is CentipedeEngine && state is CentipedeState -> CentipedeScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is KalahEngine && state is KalahState -> KalahScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is LiarDiceEngine && state is LiarState -> LiarDiceScreen(state, engine, again, vm::backToGames, vm::leave)
+        engine is HockeyEngine && state is HockeyState -> HockeyScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is HangmanEngine && state is HangmanState -> HangmanScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is NoughtsEngine && state is NoughtsState -> NoughtsScreen(state, engine, again, vm::backToGames, vm::leave)
         engine is GuessWhoEngine && state is GuessWhoState -> GuessWhoScreen(state, engine, again, vm::backToGames, vm::leave)

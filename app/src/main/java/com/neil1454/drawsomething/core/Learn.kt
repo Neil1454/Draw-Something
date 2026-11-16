@@ -104,6 +104,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> Unit
             GameKind.KALAH -> h.kalah.start(JSONObject().put("seeds", 0))
             GameKind.LIARSDICE -> h.liardice.start(JSONObject().put("dice", 0).put("wild", false))
+            GameKind.HOCKEY -> h.hockey.start(JSONObject().put("mode", 0).put("target", 0))
             GameKind.HANGMAN -> h.hangman.start(JSONObject().put("mode", 1).put("rounds", 0))
             GameKind.NOUGHTS -> h.noughts.start(JSONObject().put("mode", 0).put("series", 0))
             GameKind.GUESSWHO -> h.guesswho.start(JSONObject().put("size", 0).put("auto", true))
@@ -385,6 +386,15 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                         s.stage == "REVEAL" || s.stage == "END" -> say(if (s.roundOutcome == 1) "🎉 The word was ${s.word}." else "💀 Out of lives. The word was ${s.word}.")
                     }
                 }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.HOCKEY -> {
+                val s = duel.host.hockey.state
+                if (s.goals != last) {
+                    last = s.goals
+                    if (s.goals == 0) say("You are the bottom player. Slide your finger on the pad to move your mallet. Whack the puck into the goal at the top.")
+                    else say(if (s.lastScorer == 1) "⚽ Goal for you! It's now ${s.myScore} – ${s.theirScore}." else "😬 Goal for Player 2. It's now ${s.myScore} – ${s.theirScore}." + tip(listOf("Hit the puck from behind so it goes towards their goal.", "Stay between the puck and your goal when it's in their half.", "Bounces off the side walls make shots harder to read."), s.goals))
+                } else if (s.stage == "PLAY" && s.elapsedMs in 2500..2700 && lastSeq != 1) { lastSeq = 1; say("The puck speeds up the harder you hit it, but friction slows it down again.") }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.LIARSDICE -> {
@@ -711,6 +721,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
         fun defaultSpeed(kind: GameKind): Float = when (kind) {
             GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.ARKANOID, GameKind.TETRIS -> 0.25f
             GameKind.QUICK, GameKind.HOLIDAY -> 0.5f
+            GameKind.HOCKEY -> 0.5f
             GameKind.DICE, GameKind.MEMORY, GameKind.HILO, GameKind.MINES, GameKind.SEA, GameKind.DRAW, GameKind.DROP -> 0.75f
             else -> 1f
         }
@@ -733,6 +744,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
             GameKind.KALAH -> "🌰 Mancala: sow seeds round the board, grab extra turns and capture your rival's seeds. You are Player 1 (the bottom row)."
             GameKind.LIARSDICE -> "🎭 Liar's Dice: each player shakes hidden dice. Bid how many of a face are on the whole table, or call your rival a liar. You are Player 1."
+            GameKind.HOCKEY -> "🏒 Air Hockey: a real-time duel. Slide your mallet round your half and knock the puck into their goal. You are Player 1 (the bottom)."
             GameKind.HANGMAN -> "🪢 Hangman: take turns guessing letters of a hidden word before the drawing is finished. You are Player 1."
             GameKind.NOUGHTS -> "❌ Noughts and Crosses: take turns putting your mark on the grid and get three in a row. You are Player 1."
             GameKind.GUESSWHO -> "🕵️ Guess Who?: each player secretly picks a face. Take turns asking yes/no questions and name the other's face first. You are Player 1."
