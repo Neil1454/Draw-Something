@@ -287,8 +287,9 @@ what has been revealed, so there is nothing to peek at.
 
 ## Battleships (battleships)
 
-Each player has a hidden fleet (4 ships on 8×8, 5 on 10×10) and **places every ship themselves**: tap a ship, then tap
-or drag it onto your sea (**Across/Down** turns it; tap a placed ship to pick it up; **Random** and **Clear** help). The ships
+Each player has a hidden fleet (4 ships on 8×8, 5 on 10×10) and **arranges their own fleet by moving the ships on screen**: your whole fleet starts out on your sea, so
+**drag** any ship to move it (it goes back if it would overlap another), **tap** a ship to turn it round, or press **Turn it** with your other finger while you
+hold one to turn it mid-move. **Shuffle** deals a new random layout. The ships
 are drawn as real ships: carrier, battleship, cruiser, submarine and destroyer. The lobby has a **Random fleets** switch to
 skip placing. Bombs drop in from the top of the screen with splashes, fire, smoke and sinking ships.
 Take turns firing at the other player's grid:
