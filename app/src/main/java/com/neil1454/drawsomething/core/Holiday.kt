@@ -232,8 +232,8 @@ class HolidayEngine(
     theirName: String,
     isHost: Boolean,
     send: (GMsg) -> Unit,
-    random: Random,
-    clock: () -> Long,
+    random: Random = Random.Default,
+    clock: () -> Long = { System.currentTimeMillis() },
     quizKind: GameKind,
 ) : SyncEngine(quizKind, myName, theirName, isHost, send, random, clock) {
 
