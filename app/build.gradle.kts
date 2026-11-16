@@ -14,8 +14,8 @@ android {
         applicationId = "com.neil1454.drawsomething"
         minSdk = 26
         targetSdk = 35
-        versionCode = 38
-        versionName = "3.2.1"
+        versionCode = 39
+        versionName = "3.2.2"
     }
 
     // A fixed key, so a new version installs over the old one instead of needing an uninstall.
