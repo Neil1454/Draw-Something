@@ -49,7 +49,7 @@ object ShowdownRules {
         GameKind.FLIP -> JSONObject().put("size", 1)
         GameKind.HILO -> JSONObject().put("rows", 0).put("odds", true)
         GameKind.BLACKJACK -> JSONObject().put("rounds", 0).put("tips", 0)
-        GameKind.GUESSWHO -> JSONObject().put("size", 0).put("auto", true)
+        GameKind.GUESSWHO -> JSONObject().put("deck", 0).put("size", 0).put("auto", true)
         GameKind.KALAH -> JSONObject().put("seeds", 0)
         GameKind.LIARSDICE -> JSONObject().put("dice", 0).put("wild", false)
         GameKind.INVADERS, GameKind.CENTIPEDE -> JSONObject().put("waves", 3).put("lives", 3)

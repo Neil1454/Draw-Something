@@ -249,7 +249,7 @@ private fun SyncGameRoot(engine: SyncEngine, state: Any?, ui: UiState, vm: GameV
             GameKind.SHOWDOWN -> showdownOptions(ui)
             GameKind.KALAH -> JSONObject().put("seeds", set.kalahSeeds)
             GameKind.LIARSDICE -> JSONObject().put("dice", set.liarDice).put("wild", set.liarWild)
-            GameKind.GUESSWHO -> JSONObject().put("size", set.gwSize).put("auto", set.gwAuto).put("manual", set.gwManual).put("smart", set.gwSmart)
+            GameKind.GUESSWHO -> JSONObject().put("deck", set.gwDeck).put("size", set.gwSize).put("auto", set.gwAuto).put("manual", set.gwManual).put("smart", set.gwSmart)
             GameKind.HILO -> JSONObject().put("rows", set.hiloRows).put("odds", set.hiloOdds)
             GameKind.DRAUGHTS, GameKind.LUDO -> JSONObject()
             GameKind.INVADERS, GameKind.CENTIPEDE, GameKind.ARKANOID -> JSONObject().put("waves", set.arcadeWaves).put("lives", set.arcadeLives)

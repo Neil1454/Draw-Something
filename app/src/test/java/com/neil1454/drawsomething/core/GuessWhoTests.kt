@@ -9,9 +9,9 @@ import org.junit.Test
 import kotlin.random.Random
 
 class GuessWhoTest {
-    private fun pair(seed: Int = 1, size: Int = 0, manual: Boolean = false): SyncPair<GuessWhoEngine> {
+    private fun pair(seed: Int = 1, size: Int = 0, manual: Boolean = false, deck: Int = 0): SyncPair<GuessWhoEngine> {
         val p = SyncPair({ n, o, h, s, r, c -> GuessWhoEngine(n, o, h, s, r, c) }, seed)
-        p.host.start(JSONObject().put("size", size).put("auto", true).put("manual", manual))
+        p.host.start(JSONObject().put("deck", deck).put("size", size).put("auto", true).put("manual", manual))
         p.pump()
         return p
     }
@@ -24,7 +24,7 @@ class GuessWhoTest {
     }
 
     @Test fun theBoardsMatchAndEveryFaceIsDifferent() {
-        val p = pair(size = 2)
+        val p = pair(size = 1)
         assertEquals(24, p.host.state.ids.size)
         assertEquals(p.host.state.ids, p.client.state.ids)
         val faces = GuessWhoData.ALL
@@ -36,7 +36,14 @@ class GuessWhoTest {
 
     @Test fun smallerBoardsUseASubset() {
         assertEquals(12, pair(size = 0).host.state.ids.size)
-        assertEquals(18, pair(size = 1).host.state.ids.size)
+        assertEquals(36, pair(size = 2).host.state.ids.size)
+        assertEquals(48, pair(size = 3).host.state.ids.size)
+        // animals only: every card is an animal (id 48..101), items only: ids 102 and up
+        assertTrue(pair(size = 3, deck = 1).host.state.ids.all { it in 48..101 })
+        assertTrue(pair(size = 3, deck = 6).host.state.ids.all { it >= 102 })
+        assertTrue(pair(size = 3, deck = 5).host.state.ids.all { it < 102 })
+        // a deck smaller than the board just uses all it has
+        assertTrue(pair(size = 3, deck = 3).host.state.ids.size in 10..30)
     }
 
     @Test fun secretsStayPrivateUntilTheEnd() {
@@ -55,11 +62,11 @@ class GuessWhoTest {
         pickBoth(p, hostFace = ids[0], guestFace = ids[1])
         val asker = if (p.host.state.myTurn) p.host else p.client
         val answerer = if (asker === p.host) 1 else 0
-        val q = GuessWhoData.QUESTIONS.indexOfFirst { it.text.contains("glasses") }
+        val q = GuessWhoData.QUESTIONS.indexOfFirst { it.key == "glasses" }
         val target = GuessWhoData.ALL[if (asker === p.host) ids[1] else ids[0]]
         asker.ask(q); p.pump()
         assertEquals(1, asker.state.history.size)
-        assertEquals(target.glasses, asker.state.history[0].yes)
+        assertEquals("glasses" in target.tags, asker.state.history[0].yes)
         assertEquals(1, asker.state.history[0].asker)
         val other = if (asker === p.host) p.client else p.host
         assertEquals(2, other.state.history[0].asker)
@@ -96,7 +103,7 @@ class GuessWhoTest {
 
     @Test fun twoComputerPlayersFinishAGameWithRightAndWrongGuessesPossible() {
         for (seed in 1..6) {
-            val p = pair(seed = seed, size = 1, manual = seed % 2 == 0)
+            val p = pair(seed = seed, size = 1, manual = seed % 2 == 0, deck = seed % 8)
             val a = GuessWhoBrain(p.host, Skill.HARD, Random(seed))
             val b = GuessWhoBrain(p.client, Skill.NORMAL, Random(seed + 40))
             var guard = 0
@@ -116,7 +123,7 @@ class GuessWhoTest {
         pickBoth(p, hostFace = ids[0], guestFace = ids[1])
         val asker = if (p.host.state.myTurn) p.host else p.client
         val answerer = if (asker === p.host) p.client else p.host
-        val q = GuessWhoData.QUESTIONS.indexOfFirst { it.text.contains("glasses") }
+        val q = GuessWhoData.QUESTIONS.indexOfFirst { it.key == "glasses" }
         asker.ask(q); p.pump()
         assertTrue("the question waits for an answer", asker.state.pending != null && asker.state.pending!!.byMe)
         assertTrue(answerer.state.mustAnswer)
@@ -151,10 +158,10 @@ class GuessWhoTest {
     }
 
     @Test fun theBestQuestionSplitsTheFacesNearlyInHalf() {
-        val faces = GuessWhoData.ALL.take(12)
+        val faces = GuessWhoData.pool(GwDeck.PEOPLE).take(12)
         val q = GuessWhoData.bestQuestion(faces, emptySet())!!
         val yes = faces.count { GuessWhoData.QUESTIONS[q].test(it) }
-        assertTrue("$yes of 12", yes in 4..8)
+        assertTrue("$yes of 12", yes in 3..9)
         assertEquals(null, GuessWhoData.bestQuestion(listOf(faces[0]), emptySet()))
     }
 

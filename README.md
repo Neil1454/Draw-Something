@@ -93,12 +93,16 @@ your last die you're out. The computer player works out the odds of each bid, an
 
 ### Guess Who?
 
-Each player secretly picks one face from the same board (12, 18 or 24 faces, chosen by the host). Take turns asking a question and **the other player answers
+Each player secretly picks one card from the same board. The host chooses **what is on the cards** (people, animals, wild animals, farm and pets, birds and sea life,
+people and animals mixed, everyday items, or everything) and **how many** (12, 24, 36 or 48; big boards use six columns). Every card differs from every other in
+at least a few ways: the 48 people vary by hair colour and style, eyes, glasses, hats, beards, moustaches, big noses, rosy cheeks, freckles, bushy eyebrows,
+big smiles, earrings, bow ties and scarves; animals and items have their own traits. Only questions that would actually split the board are listed. As in the
+real game, you ask yes/no questions and flip down what can't be it. Take turns asking a question and **the other player answers
 it themselves**: the question pops up with a big card showing their own face, and they tap **Yes** or **No**. The app makes sure the answers to the listed
 questions are true (a wrong tap shakes the card and asks you to look again), so nobody can fib their way to a win. You can also **type your own question**
 ("Do they look friendly?"), which is answered on trust.
 
-The question list is grouped into **Hair colour, Hair style, Eyes and Face & style**, with big picture chips. With the **question helper** on (a lobby
+The question list is grouped by topic (hair, eyes, face, clothes for people; what it is, where it lives, how it looks for animals; and so on), with big picture chips. With the **question helper** on (a lobby
 option), every chip shows how many of the faces still in play would be Yes and No, and a **💡 Best question** button picks the one that splits them most
 evenly. Asked questions show their answers, and the whole conversation appears as chat bubbles. Tap faces to flip them down (or turn on **auto-flip**, and the
 faces your answers rule out flip for you); a counter shows how many faces are left. When you're sure, make a guess: right wins, wrong loses on the spot.
