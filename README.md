@@ -360,8 +360,11 @@ what has been revealed, so there is nothing to peek at.
 ## Battleships (battleships)
 
 Each player has a hidden fleet (4 ships on 8×8, 5 on 10×10) and **arranges their own fleet by moving the ships on screen**: your whole fleet starts out on your sea, so
-**drag** any ship to move it (it goes back if it would overlap another), **tap** a ship to turn it round, or press **Turn it** with your other finger while you
-hold one to turn it mid-move. **Shuffle** deals a new random layout. The ships
+**drag** a ship and it lifts off the water and follows your finger from exactly where you touched it; a green outline shows where it will land (it slides to the nearest
+free spot if you drop it on another ship, and goes back where it came from only if nowhere nearby is free). **Tap** a ship (or its name in the fleet row under the board) to select it
+(it glows gold); then **↻ Turn** it a quarter turn about its middle (a **double tap** on a ship does the same), fine-tune it with the **◀ ▲ ▼ ▶** buttons one square at a time, and **↶ Undo**
+any move. **Shuffle** deals a new random layout. **Nothing is locked in until you press READY FOR BATTLE**: until then every ship can be moved and turned freely; after it, a padlock appears on each ship.
+The ships
 are drawn as real ships: carrier, battleship, cruiser, submarine and destroyer. The lobby has a **Random fleets** switch to
 skip placing. Bombs drop in from the top of the screen with splashes, fire, smoke and sinking ships.
 Take turns firing at the other player's grid:

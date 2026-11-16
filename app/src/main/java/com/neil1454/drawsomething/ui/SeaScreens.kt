@@ -54,6 +54,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.FilterChip
+import com.neil1454.drawsomething.core.SeaPlacement
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -91,7 +94,7 @@ private val Radar = Color(0xFFFFC400)
 @Composable
 fun SeaHelp() {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Each of you has a hidden fleet and places it yourself: drag each ship onto your sea (or tap to put it down), turn it with the turn button, and tap Ready. The lobby has a switch for random fleets instead.")
+        Text("Each of you has a hidden fleet and places it yourself: drag a ship and it follows your finger and drops into the nearest free spot, tap it to select it, turn it with the Turn button (or a double tap), nudge it with the arrows, undo any move, and nothing is locked in until you tap Ready for battle. The lobby has a switch for random fleets instead.")
         Text("Then take turns firing at the other's sea. Tap a square to aim, then press FIRE and watch the bomb drop in.")
         Text("• 🎯 Shot: one square. A HIT means you fire again!")
         Text("• 📡 Radar (once): a buoy drops and counts the ship squares in the 3×3 area around it. It uses your turn.")
@@ -187,6 +190,13 @@ private fun SeaBoardView(
     onDragStart: ((Int, Int) -> Unit)? = null,
     onDrag: ((Int, Int) -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
+    /** Arranging the fleet: a double tap on a square, where the finger is while dragging (in squares, fractions included), the ship being carried and where its middle is, the selected ship's squares, and whether the fleet is locked in. */
+    onDoubleTap: ((Int, Int) -> Unit)? = null,
+    onDragPos: ((Float, Float) -> Unit)? = null,
+    floating: SeaShip? = null,
+    floatAt: Offset? = null,
+    selection: List<Int> = emptyList(),
+    locked: Boolean = false,
 ) {
     val n = s.size.w
     val measurer = rememberTextMeasurer()
@@ -196,15 +206,19 @@ private fun SeaBoardView(
             Canvas(
                 Modifier.fillMaxSize()
                     .onGloballyPositioned { onBounds(it.boundsInRoot()) }
-                    .pointerInput(onTap != null, n) {
+                    .pointerInput(onTap != null, onDoubleTap != null, n) {
                         if (onTap == null) return@pointerInput
-                        detectTapGestures { p ->
+                        fun tapCell(p: Offset): Pair<Int, Int>? {
                             val m = size.width * MARGIN
                             val c = (size.width - m) / n
                             val x = ((p.x - m) / c).toInt()
                             val y = ((p.y - m) / c).toInt()
-                            if (x in 0 until n && y in 0 until n) onTap(x, y)
+                            return if (x in 0 until n && y in 0 until n) x to y else null
                         }
+                        detectTapGestures(
+                            onDoubleTap = if (onDoubleTap != null) { p -> tapCell(p)?.let { onDoubleTap(it.first, it.second) } } else null,
+                            onTap = { p -> tapCell(p)?.let { onTap(it.first, it.second) } },
+                        )
                     }
                     .pointerInput(onDragStart != null, n) {
                         if (onDragStart == null) return@pointerInput
@@ -215,9 +229,22 @@ private fun SeaBoardView(
                             val y = ((p.y - m) / c).toInt()
                             return if (x in 0 until n && y in 0 until n) x to y else null
                         }
+                        fun squaresAt(p: Offset): Offset {
+                            val m = size.width * MARGIN
+                            val c = (size.width - m) / n
+                            return Offset((p.x - m) / c, (p.y - m) / c)
+                        }
                         detectDragGestures(
-                            onDragStart = { p -> cellOf(p)?.let { onDragStart(it.first, it.second) } },
-                            onDrag = { change, _ -> cellOf(change.position)?.let { onDrag?.invoke(it.first, it.second) } },
+                            onDragStart = { p ->
+                                val q = squaresAt(p)
+                                onDragPos?.invoke(q.x, q.y)
+                                cellOf(p)?.let { onDragStart(it.first, it.second) }
+                            },
+                            onDrag = { change, _ ->
+                                val q = squaresAt(change.position)
+                                onDragPos?.invoke(q.x, q.y)
+                                cellOf(change.position)?.let { onDrag?.invoke(it.first, it.second) }
+                            },
                             onDragEnd = { onDragEnd?.invoke() },
                             onDragCancel = { onDragEnd?.invoke() },
                         )
@@ -324,11 +351,41 @@ private fun SeaBoardView(
                     for ((px, py) in cells) drawRect(tint.copy(alpha = 0.2f + 0.1f * sin(t * 6f)), Offset(m + px * c, m + py * c), Size(c, c))
                     drawReticle(centreOf(aim), c * 1.1f, t, tint)
                 }
+                // the selected ship glows, so you can see which one the buttons will move
+                if (selection.isNotEmpty()) {
+                    val x0 = selection.minOf { it % n }; val y0 = selection.minOf { it / n }
+                    val x1 = selection.maxOf { it % n }; val y1 = selection.maxOf { it / n }
+                    val glow = 0.55f + 0.45f * sin(t * 5f)
+                    val rl = Offset(m + x0 * c, m + y0 * c); val rs = Size((x1 - x0 + 1) * c, (y1 - y0 + 1) * c)
+                    drawRoundRect(Funk.Sun.copy(alpha = 0.16f * glow), rl, rs, androidx.compose.ui.geometry.CornerRadius(c * 0.3f))
+                    drawRoundRect(Funk.Sun.copy(alpha = glow), rl, rs, androidx.compose.ui.geometry.CornerRadius(c * 0.3f), style = Stroke(c * 0.08f + 1f))
+                    for (corner in listOf(rl, Offset(rl.x + rs.width, rl.y), Offset(rl.x, rl.y + rs.height), Offset(rl.x + rs.width, rl.y + rs.height))) drawCircle(Funk.Sun, c * 0.1f, corner)
+                }
                 // a ship being placed
                 if (preview.isNotEmpty()) {
                     val tint = if (previewOk) Funk.Lime else Funk.Red
                     for (cell in preview) drawRect(tint.copy(alpha = 0.35f), Offset(m + (cell % n) * c, m + (cell / n) * c), Size(c, c))
                     drawRect(tint, Offset(m + (preview.minOf { it % n }) * c, m + (preview.minOf { it / n }) * c), Size((preview.maxOf { it % n } - preview.minOf { it % n } + 1) * c, (preview.maxOf { it / n } - preview.minOf { it / n } + 1) * c), style = Stroke(c * 0.06f + 1f))
+                }
+                // the ship in the air, following the finger, with its shadow on the water below
+                if (floating != null && floatAt != null) {
+                    val centre = Offset(m + floatAt.x * c, m + floatAt.y * c)
+                    val w = if (floating.horizontal) floating.len * c else c
+                    val h = if (floating.horizontal) c else floating.len * c
+                    drawOval(Color.Black.copy(alpha = 0.28f), Offset(centre.x - w * 0.5f + c * 0.25f, centre.y - h * 0.4f + c * 0.45f), Size(w, h * 0.8f))
+                    drawShipSprite(floating, centre, c, FriendlyShip, t, 0f, c * 0.55f, 3f)
+                }
+                // locked in: a padlock on every ship, and a bluer sea
+                if (locked) {
+                    drawRect(Color(0xFF0B1F44).copy(alpha = 0.22f), Offset.Zero, size)
+                    ships.forEach { ship ->
+                        if (ship.cells.isEmpty()) return@forEach
+                        val cc = shipCentre(ship, size.width, n)
+                        val r = c * 0.26f
+                        drawArc(Color.White.copy(alpha = 0.95f), 180f, 180f, false, Offset(cc.x - r * 0.62f, cc.y - r * 1.5f), Size(r * 1.24f, r * 1.4f), style = Stroke(r * 0.28f))
+                        drawRoundRect(Funk.Sun, Offset(cc.x - r, cc.y - r * 0.55f), Size(r * 2f, r * 1.5f), androidx.compose.ui.geometry.CornerRadius(r * 0.3f))
+                        drawCircle(Color(0xFF7C2D12), r * 0.2f, Offset(cc.x, cc.y + r * 0.12f))
+                    }
                 }
                 // the one-off effects
                 fx.forEach { f ->
@@ -402,32 +459,28 @@ private fun ProjectileLayer(projs: List<Proj>, enemyRect: Rect?, mineRect: Rect?
 
 // ------------------------------------------------------------------ placing the fleet
 
-/** The squares ship [len] would cover with its first square at (x, y), moved to fit inside the sea. */
-private fun shipCells(n: Int, len: Int, x: Int, y: Int, horizontal: Boolean): List<Int> {
-    val px = if (horizontal) x.coerceIn(0, n - len) else x.coerceIn(0, n - 1)
-    val py = if (horizontal) y.coerceIn(0, n - 1) else y.coerceIn(0, n - len)
-    return List(len) { k -> if (horizontal) py * n + px + k else (py + k) * n + px }
-}
+private class Undo(val ship: Int, val x: Int, val y: Int, val horizontal: Boolean)
 
 @Composable
 fun SeaPlacingScreen(s: SeaState, act: ActSea, onLeave: () -> Unit) {
     val clock = rememberFrameClock()
     val n = s.size.w
-    // the ship I am dragging right now (-1 none) and the one I touched last (for the rotate button)
+    // the ship I am carrying (-1 none) and the one I touched last (the buttons move that one)
     var held by remember { mutableIntStateOf(-1) }
     var selected by remember { mutableIntStateOf(-1) }
-    var horizontal by remember { mutableStateOf(true) }
-    var grab by remember { mutableIntStateOf(0) }                // which square of the ship my finger is on
-    var origin by remember { mutableStateOf(Triple(0, 0, true)) } // where the ship was before I picked it up
-    var previewCell by remember { mutableIntStateOf(-1) }
+    var heldHorizontal by remember { mutableStateOf(true) }
+    var finger by remember { mutableStateOf(Offset.Zero) }            // in squares, fractions included
+    var grabOffset by remember { mutableStateOf(Offset.Zero) }        // finger minus the middle of the ship, in squares
+    var origin by remember { mutableStateOf(Triple(0, 0, true)) }     // where the carried ship came from
     var message by remember { mutableStateOf("") }
+    val history = remember { mutableStateListOf<Undo>() }
     val placedAt = remember { mutableStateMapOf<Int, Long>() }
     val lastCells = remember { mutableStateMapOf<Int, List<Int>>() }
 
     // the whole fleet starts out on the sea, so everything is arranged by moving ships about
     LaunchedEffect(s.phase, s.size, s.myShips.size) {
         if (s.phase == SeaPhase.PLACING && s.myShips.isNotEmpty() && s.myShips.all { it.cells.isEmpty() }) act { shuffleFleet() }
-        lastCells.clear(); placedAt.clear(); held = -1; selected = -1
+        lastCells.clear(); placedAt.clear(); history.clear(); held = -1; selected = -1
     }
     // a ship that has just been put down drops in with a splash
     LaunchedEffect(s.myShips) {
@@ -440,33 +493,54 @@ fun SeaPlacingScreen(s: SeaState, act: ActSea, onLeave: () -> Unit) {
 
     fun othersExcept(idx: Int) = s.myShips.filterIndexed { i, sh -> i != idx && sh.cells.isNotEmpty() }.flatMap { it.cells }.toSet()
     fun shipAt(cell: Int) = s.myShips.indexOfFirst { cell in it.cells }
+    fun headOf(ship: SeaShip) = ship.cells.min().let { it % n to it / n }
+    fun pushUndo(idx: Int) {
+        val sh = s.myShips.getOrNull(idx) ?: return
+        if (sh.cells.isEmpty()) return
+        val (x, y) = headOf(sh)
+        history.add(Undo(idx, x, y, sh.horizontal))
+        while (history.size > 40) history.removeAt(0)
+    }
+    fun moveTo(idx: Int, x: Int, y: Int, h: Boolean) { act { removeShip(idx); placeShip(idx, x, y, h) } }
 
-    /** Turn a ship on the spot, keeping its first square where it is (or sliding it back inside the sea if it would stick out). */
+    /** Turn the selected ship a quarter turn about its middle (sliding it to the nearest spot where it fits). */
     fun rotate(idx: Int) {
         val ship = s.myShips.getOrNull(idx) ?: return
-        if (ship.cells.isEmpty()) return
-        val head = ship.cells.min()
-        val nh = !ship.horizontal
-        val cells = shipCells(n, ship.len, head % n, head / n, nh)
-        if (cells.any { it in othersExcept(idx) }) {
-            message = "No room to turn it there: move it first."
-            Sfx.play(Sound.BUZZ)
-            return
-        }
-        val first = cells.first()
-        act { removeShip(idx); placeShip(idx, first % n, first / n, nh) }
-        Sfx.play(Sound.TAP)
-        message = ""
+        if (ship.cells.isEmpty() || s.iAmReady) return
+        val (hx, hy) = headOf(ship)
+        val t = SeaPlacement.turned(n, ship.len, hx, hy, ship.horizontal, othersExcept(idx))
+        if (t == null) { message = "No room to turn it there. Move it first."; Sfx.play(Sound.BUZZ); return }
+        pushUndo(idx)
+        moveTo(idx, t.first, t.second, t.third)
+        Sfx.play(Sound.FLIP); message = ""
     }
 
-    // where the held ship would sit if I let go now
+    fun nudge(dx: Int, dy: Int) {
+        val ship = s.myShips.getOrNull(selected) ?: return
+        if (ship.cells.isEmpty() || s.iAmReady) return
+        val (hx, hy) = headOf(ship)
+        val to = SeaPlacement.nudged(n, ship.len, hx, hy, ship.horizontal, dx, dy, othersExcept(selected))
+        if (to == null) { message = "It can't go any further that way."; Sfx.play(Sound.BUZZ); return }
+        pushUndo(selected)
+        moveTo(selected, to.first, to.second, ship.horizontal)
+        Sfx.play(Sound.TICK); message = ""
+    }
+
+    // the ship in the air, and where it would land if I let go now: the nearest free spot (it slides to fit), shown green; red if nowhere is free
     val heldLen = if (held >= 0) s.size.fleet[held] else 0
-    val previewCells: List<Int> = if (held >= 0 && previewCell >= 0) {
-        val px = previewCell % n
-        val py = previewCell / n
-        if (horizontal) shipCells(n, heldLen, px - grab, py, true) else shipCells(n, heldLen, px, py - grab, false)
-    } else if (held < 0 && selected >= 0 && !s.iAmReady) s.myShips.getOrNull(selected)?.cells.orEmpty() else emptyList()
-    val previewOk = held < 0 || previewCells.none { it in othersExcept(held) }
+    val floatCentre: Offset? = if (held >= 0) Offset(finger.x - grabOffset.x, finger.y - grabOffset.y) else null
+    val landing: Pair<Int, Int>? = if (floatCentre != null) {
+        val tx = (if (heldHorizontal) floatCentre.x - heldLen / 2f else floatCentre.x - 0.5f).let { kotlin.math.floor(it + 0.5f).toInt() }
+        val ty = (if (heldHorizontal) floatCentre.y - 0.5f else floatCentre.y - heldLen / 2f).let { kotlin.math.floor(it + 0.5f).toInt() }
+        SeaPlacement.nearest(n, heldLen, tx, ty, heldHorizontal, othersExcept(held), 4)
+    } else null
+    val previewCells: List<Int> = if (held >= 0 && floatCentre != null) {
+        if (landing != null) SeaPlacement.cells(n, heldLen, landing.first, landing.second, heldHorizontal)
+        else SeaPlacement.cells(n, heldLen, floatCentre.x.toInt(), floatCentre.y.toInt(), heldHorizontal)
+    } else emptyList()
+    val previewOk = landing != null
+    val floatingShip = if (held >= 0) SeaShip(heldLen, s.size.names[held], emptyList(), heldHorizontal, false) else null
+    val selection = if (held < 0 && selected >= 0 && !s.iAmReady) s.myShips.getOrNull(selected)?.cells.orEmpty() else emptyList()
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
@@ -476,79 +550,116 @@ fun SeaPlacingScreen(s: SeaState, act: ActSea, onLeave: () -> Unit) {
                 s, mine = true, clock = clock, grid = "", ships = s.myShips, hidden = emptyList(), sinkStart = emptyMap(), placedAt = placedAt,
                 fx = emptyList(), popups = emptyList(), onPopupDone = {}, aim = -1, weapon = null,
                 preview = if (s.iAmReady) emptyList() else previewCells, previewOk = previewOk, modifier = m,
-                // a tap on a ship turns it, a tap on empty water lets go of the selection
+                // a tap picks a ship out (it never turns it by accident); a tap on empty water lets go of the selection
                 onTap = { x, y ->
                     if (s.iAmReady) return@SeaBoardView
                     val i = shipAt(y * n + x)
-                    if (i >= 0) { selected = i; rotate(i) } else selected = -1
+                    if (i != selected || i < 0) Sfx.play(Sound.TICK)
+                    selected = i
                 },
-                // touching a ship picks it up where you touched it
+                // a double tap on a ship turns it
+                onDoubleTap = { x, y ->
+                    if (s.iAmReady) return@SeaBoardView
+                    val i = shipAt(y * n + x)
+                    if (i >= 0) { selected = i; rotate(i) }
+                },
+                onDragPos = { fx, fy -> finger = Offset(fx, fy) },
+                // touching a ship picks it up, and it follows the finger from exactly where you touched it
                 onDragStart = { x, y ->
                     if (s.iAmReady) return@SeaBoardView
-                    val cell = y * n + x
-                    val i = shipAt(cell)
+                    val i = shipAt(y * n + x)
                     if (i >= 0) {
                         val ship = s.myShips[i]
-                        val head = ship.cells.min()
-                        origin = Triple(head % n, head / n, ship.horizontal)
-                        horizontal = ship.horizontal
-                        grab = if (ship.horizontal) x - head % n else y - head / n
-                        held = i; selected = i; previewCell = cell
+                        val (hx, hy) = headOf(ship)
+                        origin = Triple(hx, hy, ship.horizontal)
+                        heldHorizontal = ship.horizontal
+                        val centre = if (ship.horizontal) Offset(hx + ship.len / 2f, hy + 0.5f) else Offset(hx + 0.5f, hy + ship.len / 2f)
+                        grabOffset = Offset(finger.x - centre.x, finger.y - centre.y)
+                        held = i; selected = i
                         act { removeShip(i) }
-                        Sfx.play(Sound.TAP)
+                        Sfx.play(Sound.PICKUP)
                         message = ""
                     }
                 },
-                onDrag = { x, y -> if (held >= 0) previewCell = y * n + x },
                 onDragEnd = {
                     val idx = held
                     if (idx >= 0) {
-                        val cells = previewCells
-                        if (cells.isNotEmpty() && cells.none { it in othersExcept(idx) }) {
-                            val first = cells.first()
-                            val hz = horizontal
-                            act { placeShip(idx, first % n, first / n, hz) }
+                        val land = landing
+                        val (ox, oy, oh) = origin
+                        if (land != null) {
+                            history.add(Undo(idx, ox, oy, origin.third))
+                            while (history.size > 40) history.removeAt(0)
+                            val hz = heldHorizontal
+                            act { placeShip(idx, land.first, land.second, hz) }
                             Sfx.play(Sound.DROP)
+                            message = ""
                         } else {
-                            // not a legal spot: the ship goes back where it came from
-                            val (ox, oy, oh) = origin
+                            // there is no free spot near where it was dropped: it goes back where it came from
                             act { placeShip(idx, ox, oy, oh) }
-                            message = "Ships can't overlap, so it went back."
+                            message = "No room there, so it went back."
                             Sfx.play(Sound.BUZZ)
                         }
                     }
-                    held = -1; previewCell = -1
+                    held = -1
                 },
+                floating = floatingShip, floatAt = floatCentre, selection = selection, locked = s.iAmReady,
             )
         }
         val controls: @Composable () -> Unit = {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (message.isNotEmpty()) Text(message, color = Funk.Pink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                // the fleet: tap a ship here to pick it, even when it is hard to touch on the sea
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    s.myShips.forEachIndexed { i, ship ->
+                        FilterChip(
+                            selected = i == selected && !s.iAmReady,
+                            onClick = { if (!s.iAmReady) { selected = i; Sfx.play(Sound.TICK) } },
+                            label = { Text("${ship.name} · ${ship.len}", maxLines = 1, fontSize = 12.sp) },
+                            enabled = !s.iAmReady,
+                        )
+                    }
+                }
+                val canEdit = !s.iAmReady && held < 0 && selected >= 0
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     FunkyButton(
-                        if (held >= 0) "↻ Turn it" else "↻ Turn ship",
-                        {
-                            if (held >= 0) { horizontal = !horizontal; grab = grab.coerceAtMost(heldLen - 1); Sfx.play(Sound.TAP) }
-                            else rotate(selected)
-                        },
+                        "↻ Turn",
+                        { if (held >= 0) { heldHorizontal = !heldHorizontal; grabOffset = Offset(-grabOffset.y, grabOffset.x); Sfx.play(Sound.FLIP) } else rotate(selected) },
                         Modifier.weight(1f), listOf(Funk.Orange, Funk.Pink), enabled = !s.iAmReady && (held >= 0 || selected >= 0), fontSize = 14.sp,
                     )
-                    FunkyButton("🎲 Shuffle", { act { shuffleFleet() }; selected = -1; Sfx.play(Sound.POP) }, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), enabled = !s.iAmReady, fontSize = 14.sp)
+                    FunkyButton(
+                        "↶ Undo",
+                        {
+                            val u = history.removeLastOrNull()
+                            if (u != null) { moveTo(u.ship, u.x, u.y, u.horizontal); selected = u.ship; Sfx.play(Sound.WHOOSH); message = "" }
+                        },
+                        Modifier.weight(1f), listOf(Funk.Blue, Funk.Cyan), enabled = !s.iAmReady && held < 0 && history.isNotEmpty(), fontSize = 14.sp,
+                    )
+                    FunkyButton("🎲 Shuffle", { act { shuffleFleet() }; history.clear(); selected = -1; message = ""; Sfx.play(Sound.POP) }, Modifier.weight(1f), listOf(Funk.Violet, Funk.Blue), enabled = !s.iAmReady, fontSize = 14.sp)
+                }
+                // fine adjustment: one square at a time
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    FunkyButton("◀", { nudge(-1, 0) }, Modifier.weight(1f), listOf(Color(0xFF334155), Color(0xFF475569)), enabled = canEdit, fontSize = 18.sp)
+                    FunkyButton("▲", { nudge(0, -1) }, Modifier.weight(1f), listOf(Color(0xFF334155), Color(0xFF475569)), enabled = canEdit, fontSize = 18.sp)
+                    FunkyButton("▼", { nudge(0, 1) }, Modifier.weight(1f), listOf(Color(0xFF334155), Color(0xFF475569)), enabled = canEdit, fontSize = 18.sp)
+                    FunkyButton("▶", { nudge(1, 0) }, Modifier.weight(1f), listOf(Color(0xFF334155), Color(0xFF475569)), enabled = canEdit, fontSize = 18.sp)
                 }
                 FunkyButton(
-                    if (s.iAmReady) "✓ Ready" else if (s.allPlaced) "⚓ READY FOR BATTLE!" else "Put every ship on the sea",
-                    { act { ready() }; Sfx.play(Sound.GO) }, Modifier.fillMaxWidth(), listOf(Funk.Mint, Funk.Cyan), enabled = s.allPlaced && !s.iAmReady && held < 0,
+                    if (s.iAmReady) "🔒 Fleet locked in" else if (s.allPlaced) "⚓ READY FOR BATTLE!" else "Put every ship on the sea",
+                    { selected = -1; act { ready() }; Sfx.play(Sound.GO) }, Modifier.fillMaxWidth(), listOf(Funk.Mint, Funk.Cyan), enabled = s.allPlaced && !s.iAmReady && held < 0,
                 )
+                if (!s.iAmReady) {
+                    Text("Nothing is locked in until you press READY FOR BATTLE, so keep moving and turning ships as much as you like.", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center)
+                }
                 if (s.iAmReady && !s.theyAreReady) {
                     CircularProgressIndicator(Modifier.size(24.dp))
-                    Text("Waiting for ${s.theirName} to place their fleet…")
+                    Text("Your fleet is locked in. Waiting for ${s.theirName} to place theirs…")
                 } else if (!s.iAmReady && s.theyAreReady) {
                     Text("${s.theirName} is ready and waiting for you!", fontWeight = FontWeight.Bold, color = Funk.Sun)
                 }
                 TextButton(onClick = onLeave) { Text("Leave") }
             }
         }
-        val howTo = "Drag a ship to move it. Tap a ship to turn it round. While you hold one, press Turn it with your other finger. Only you can see your fleet."
+        val howTo = "Drag a ship and it follows your finger, then drops into the nearest free spot. Tap a ship (or its name below) to select it, then use ↻ Turn (or double-tap the ship) and the arrows to fine-tune. Only you can see your fleet."
         if (!landscape) {
             Column(Modifier.fillMaxSize().padding(10.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 GradientText("🚢 Arrange your fleet", fontSize = 26.sp, colors = listOf(Funk.Cyan, Funk.Blue, Funk.Mint))
@@ -559,7 +670,7 @@ fun SeaPlacingScreen(s: SeaState, act: ActSea, onLeave: () -> Unit) {
         } else {
             Row(Modifier.fillMaxSize().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 board(Modifier.weight(1f).fillMaxHeight())
-                Column(Modifier.width(300.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.width(320.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     GradientText("🚢 Arrange your fleet", fontSize = 22.sp, colors = listOf(Funk.Cyan, Funk.Blue, Funk.Mint))
                     Text(howTo, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                     controls()
