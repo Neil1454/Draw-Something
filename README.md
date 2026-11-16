@@ -109,9 +109,15 @@ guest's phone until it is turned over.
 your bust chance, and **Ask for a tip** (one per use from your allowance) says what basic strategy would do and why, and makes that
 button glow. Tips are private: your partner's allowance and tips are their own.
 
+### The control pad (Arkanoid, Space Invaders, Centipede)
+
+In the games where you move something along the bottom with your finger, there is now a marked **control pad under the screen**: put your finger anywhere
+on it and slide, and your paddle or ship follows your finger's position across the pad. Your hand never covers the playing area. Holding a finger
+down on the pad also fires (and, in Arkanoid, fires the lasers). Your ship's position is shown on the pad, and arrows hint at what to do until you touch it.
+
 ### Arkanoid
 
-Slide your finger left and right to move your paddle. Bricks come in colours (one hit), grey (two or three hits), gold (unbreakable)
+Slide your finger left and right on the pad under the screen to move your paddle. Every level has its own look (deep space, neon city, volcano, arctic, jungle), with glossy bevelled bricks, a sweeping shine, metallic paddles with running lights, glowing balls with trails and a flaming fireball. Bricks come in colours (one hit), grey (two or three hits), gold (unbreakable)
 and red (explodes its neighbours). Power-ups fall from broken bricks: **W** wide paddle, **L** lasers (keep your finger down),
 **M** three balls, **S** slow motion, **F** fireball, **♥** extra life. Lives are shared by the team; the higher score wins.
 

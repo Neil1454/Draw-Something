@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -162,7 +164,11 @@ class Smooth {
  * things (enemies, shields...) in field units.
  */
 /** The words an arcade screen uses, so a game that isn't about waves and rapid fire can say its own thing. */
-class ArcadeWords(val level: String = "WAVE", val rapid: String = "⚡ RAPID", val triple: String = "🔱 TRIPLE")
+class ArcadeWords(
+    val level: String = "WAVE", val rapid: String = "⚡ RAPID", val triple: String = "🔱 TRIPLE",
+    /** The words on the control pad under the screen, and whether it moves you across only (0) or across and up and down (1). */
+    val pad: String = "SLIDE HERE TO FLY · HOLD TO FIRE", val padAxis: Int = 1,
+)
 
 @Composable
 fun ArcadeScreen(
@@ -219,29 +225,19 @@ fun ArcadeScreen(
 
     Box(
         Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF05061A), Color(0xFF0B0F33), Color(0xFF1A0B3A))))
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    fire = true
-                    var last = down.position
-                    val unit = size.height / 160f
-                    do {
-                        val ev = awaitPointerEvent()
-                        val ch = ev.changes.firstOrNull() ?: break
-                        val d = ch.position - last
-                        last = ch.position
-                        ctl = Offset((ctl.x + d.x / unit * 1.1f).coerceIn(3f, 97f), (ctl.y + d.y / unit * 1.1f).coerceIn(112f, 134f))
-                        ch.consume()
-                    } while (ev.changes.any { it.pressed })
-                    fire = false
-                }
-            },
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscape = maxWidth > maxHeight
-            val fieldH = if (landscape) maxHeight - 10.dp else (maxHeight - 64.dp)
+            val padH = if (landscape) 74.dp else 112.dp
+            val fieldH = if (landscape) maxHeight - 10.dp - padH - 8.dp else (maxHeight - 64.dp - padH - 8.dp)
             val fieldW = minOf(fieldH * (100f / 140f), maxWidth - 8.dp)
             val fieldHeight = fieldW * (140f / 100f)
+            val pad: @Composable () -> Unit = {
+                ControlPad(
+                    fieldW, padH, ctl, fire, c.mine, mineCol, words, frameMs,
+                    onMove = { ctl = it }, onFire = { fire = it },
+                )
+            }
             val hud: @Composable (Modifier) -> Unit = { m -> Hud(c, theirName, isHost, title, m, words) }
             if (landscape) {
                 Row(Modifier.fillMaxSize().padding(4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -249,7 +245,11 @@ fun ArcadeScreen(
                         SidePill("You", c.mine, mineCol, true)
                         PowerChips(c.mine, words)
                     }
-                    Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint, drawShips, words)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint, drawShips, words)
+                        Spacer(Modifier.height(8.dp))
+                        pad()
+                    }
                     Column(Modifier.weight(1f).fillMaxHeight().padding(8.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                         SidePill(theirName, c.theirs, theirCol, false)
                         Text(title, fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f), modifier = Modifier.padding(top = 10.dp))
@@ -260,7 +260,11 @@ fun ArcadeScreen(
                 Column(Modifier.fillMaxSize().padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     hud(Modifier.fillMaxWidth().padding(top = 2.dp))
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint, drawShips, words)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Field(c, isHost, fieldW, fieldHeight, ctl, fx, smooth, frameMs, background, world, hint, drawShips, words)
+                            Spacer(Modifier.height(8.dp))
+                            pad()
+                        }
                     }
                 }
             }
@@ -275,6 +279,76 @@ fun ArcadeScreen(
                 onPlayAgain = onPlayAgain, onBackToGames = onBackToGames, onLeave = onLeave,
             )
         }
+    }
+}
+
+/**
+ * The area under the screen where you move your ship or paddle: put your finger anywhere on the pad and slide. Your thing follows
+ * your finger's position across it, and the playing area itself is never covered by your hand. Holding a finger down also fires.
+ */
+@Composable
+private fun ControlPad(
+    w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, ctl: Offset, touching: Boolean, me: ShipView, col: Color, words: ArcadeWords,
+    frameMs: androidx.compose.runtime.MutableLongState, onMove: (Offset) -> Unit, onFire: (Boolean) -> Unit,
+) {
+    val shape = RoundedCornerShape(18.dp)
+    val twoAxis = words.padAxis != 0
+    Box(
+        Modifier.size(w, h).clip(shape)
+            .background(Brush.verticalGradient(listOf(col.copy(alpha = if (touching) 0.34f else 0.18f), Color(0xFF0B1030))))
+            .border(if (touching) 3.dp else 2.dp, col.copy(alpha = if (touching) 0.95f else 0.55f), shape)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    onFire(true)
+                    fun at(p: Offset) = Offset(
+                        3f + (p.x / size.width).coerceIn(0f, 1f) * 94f,
+                        if (twoAxis) 112f + (p.y / size.height).coerceIn(0f, 1f) * 22f else 130f,
+                    )
+                    onMove(at(down.position))
+                    do {
+                        val ev = awaitPointerEvent()
+                        val ch = ev.changes.firstOrNull() ?: break
+                        onMove(at(ch.position))
+                        ch.consume()
+                    } while (ev.changes.any { it.pressed })
+                    onFire(false)
+                }
+            },
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val t = frameMs.longValue / 1000f
+            // ruler marks so it feels like a track
+            val n = 24
+            for (i in 0..n) {
+                val x = size.width * i / n
+                drawLine(Color.White.copy(alpha = if (i % 6 == 0) 0.30f else 0.12f), Offset(x, size.height * 0.80f), Offset(x, size.height * (if (i % 6 == 0) 0.62f else 0.70f)), 2f)
+            }
+            if (twoAxis) for (j in 1..3) drawLine(Color.White.copy(alpha = 0.06f), Offset(0f, size.height * j / 4f), Offset(size.width, size.height * j / 4f), 1.5f)
+            // where your ship is right now, shown on the pad
+            val px = ((ctl.x - 3f) / 94f).coerceIn(0f, 1f) * size.width
+            val py = if (twoAxis) ((ctl.y - 112f) / 22f).coerceIn(0f, 1f) * size.height else size.height * 0.46f
+            drawCircle(Brush.radialGradient(listOf(col.copy(alpha = 0.55f), Color.Transparent), Offset(px, py), size.height * 0.55f), size.height * 0.55f, Offset(px, py))
+            drawCircle(col, size.height * 0.11f, Offset(px, py))
+            drawCircle(Color.White, size.height * 0.11f, Offset(px, py), style = Stroke(3f))
+            if (!touching) {
+                // idle: arrows slide to show what to do
+                val sway = sin(t * 2.6f) * size.width * 0.05f
+                val a = Color.White.copy(alpha = 0.35f + 0.2f * sin(t * 2.6f))
+                for (dir in listOf(-1f, 1f)) {
+                    val cx = size.width / 2f + dir * size.width * 0.34f + sway * dir
+                    val p = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(cx + dir * 14f, size.height * 0.46f - 14f); lineTo(cx - dir * 6f, size.height * 0.46f); lineTo(cx + dir * 14f, size.height * 0.46f + 14f)
+                    }
+                    drawPath(p, a, style = Stroke(5f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                }
+            }
+        }
+        Text(
+            if (touching) "✋ MOVING" + (if (twoAxis) "  ·  HOLDING = FIRING" else "") else "👆 ${words.pad}",
+            Modifier.align(Alignment.TopCenter).padding(top = 6.dp), fontSize = 11.sp, fontWeight = FontWeight.Black,
+            color = Color.White.copy(alpha = if (touching) 1f else 0.8f), letterSpacing = 1.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }
 

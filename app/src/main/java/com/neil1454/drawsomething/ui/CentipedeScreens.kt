@@ -125,7 +125,7 @@ fun CentipedeScreen(
     }
     ArcadeScreen(
         c = c, theirName = engine.theirName, isHost = engine.isHost, title = "Centipede",
-        hint = "Slide your finger to fly · hold it down to fire",
+        hint = "Use the pad under the screen: slide to fly, hold to fire",
         endTitle = when (c.result) { 1 -> "🏆 YOU WIN!"; 2 -> "🏆 ${engine.theirName.uppercase()} WINS!"; else -> "🤝 IT'S A DRAW!" },
         endHow = how, colors = listOf(Color(0xFF2E7D32), Color(0xFFE91E63)),
         onInput = { x, y, f -> engine.input(x, y, f) },
