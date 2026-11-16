@@ -61,6 +61,7 @@ private fun DrawScope.drawGameIcon(kind: GameKind) {
         GameKind.GUESSWHO -> guessWho()
         GameKind.KALAH -> kalahIcon()
         GameKind.LIARSDICE -> liarIcon()
+        GameKind.SLOTS -> slotsIcon()
         GameKind.DEALNODEAL -> dealIcon()
         GameKind.TRIVIA -> triviaIcon()
         GameKind.HOCKEY -> hockeyIcon()

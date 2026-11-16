@@ -26,6 +26,7 @@ enum class GameKind(val label: String, val emoji: String, val blurb: String) {
     SHOWDOWN("Stakes Showdown", "🎰", "Play for the stakes you each put up. Every stake is its own contest, picked on turn, and the winner claims it."),
     BLACKJACK("Blackjack", "🂡", "Beat the dealer to 21. Double down, win 3 to 2 on blackjack, and switch on the coach for tips."),
     ARKANOID("Arkanoid", "🧱", "Bounce the ball and smash the bricks together. Catch power-ups: lasers, multi-ball, fireball."),
+    SLOTS("Slot Machine", "🎰", "A five-reel, nine-line slot machine for two. Wilds, scatters, free spins, the gamble feature and a 7-7-7-7-7 jackpot. Most credits wins."),
     DEALNODEAL("Deal or No Deal", "🎁", "The UK TV game for two. Pick a box, open the rest, and decide whether to take the Bankers deal. Biggest winnings win."),
     TRIVIA("Trivia", "🧠", "A head-to-head quiz on general knowledge, science, pop culture and the UK. Quickest correct answer wins."),
     HOCKEY("Air Hockey and Pong", "🏒", "A real-time duel. Slide your mallet round the table and smash the puck into their goal, or play classic Pong."),

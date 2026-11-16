@@ -34,6 +34,7 @@ object Outcomes {
         is InvadersState -> sync(state.phase, GameKind.INVADERS, state.myScore, state.theirScore, state.result)
         is KalahState -> sync(state.phase, GameKind.KALAH, state.myStore, state.theirStore, state.result)
         is LiarState -> sync(state.phase, GameKind.LIARSDICE, state.myCount, state.theirCount, state.result)
+        is SlotsState -> sync(state.phase, GameKind.SLOTS, state.myCredits, state.theirCredits, state.result)
         is DndState -> sync(state.phase, GameKind.DEALNODEAL, state.myScore, state.theirScore, state.result)
         is HockeyState -> sync(state.phase, GameKind.HOCKEY, state.myScore, state.theirScore, state.result)
         is HangmanState -> sync(state.phase, GameKind.HANGMAN, state.myScore, state.theirScore, state.result)

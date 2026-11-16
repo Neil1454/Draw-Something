@@ -159,6 +159,7 @@ fun GameKind.colors(): List<Color> = when (this) {
     GameKind.CENTIPEDE -> listOf(Color(0xFF2E7D32), Color(0xFFE91E63))
     GameKind.KALAH -> listOf(Color(0xFF7C4A1E), Color(0xFFE0A33A))
     GameKind.LIARSDICE -> listOf(Color(0xFF7F1D1D), Color(0xFF1E293B))
+    GameKind.SLOTS -> listOf(Color(0xFF7F1D1D), Color(0xFFFACC15))
     GameKind.DEALNODEAL -> listOf(Color(0xFF1B1464), Color(0xFFFFD23F))
     GameKind.TRIVIA -> listOf(Color(0xFF6D28D9), Color(0xFFF59E0B))
     GameKind.HOCKEY -> listOf(Color(0xFF0B2545), Color(0xFF22D3EE))

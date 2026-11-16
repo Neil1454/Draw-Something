@@ -310,6 +310,7 @@ fun GameInfoDialog(kind: GameKind, onClose: () -> Unit) {
                     GameKind.GUESSWHO -> GuessWhoHelp()
                     GameKind.KALAH -> KalahHelp()
                     GameKind.LIARSDICE -> LiarDiceHelp()
+                    GameKind.SLOTS -> SlotsHelp()
                     GameKind.DEALNODEAL -> DealNoDealHelp()
                     GameKind.TRIVIA -> TriviaHelp()
                     GameKind.HOCKEY -> HockeyHelp()
@@ -593,6 +594,7 @@ fun GameBrowser(
             GameKind.GUESSWHO -> GuessWhoLobby(ui, connected, onSettings, onStartSync)
             GameKind.KALAH -> KalahLobby(ui, connected, onSettings, onStartSync)
             GameKind.LIARSDICE -> LiarDiceLobby(ui, connected, onSettings, onStartSync)
+            GameKind.SLOTS -> SlotsLobby(ui, connected, onSettings, onStartSync)
             GameKind.DEALNODEAL -> DealNoDealLobby(ui, connected, onSettings, onStartSync)
             GameKind.TRIVIA -> TriviaLobby(ui, connected, onSettings, onStartSync)
             GameKind.HOCKEY -> HockeyLobby(ui, connected, onSettings, onStartSync)
@@ -1046,6 +1048,15 @@ private fun DealNoDealLobby(ui: UiState, connected: Boolean, onSettings: (LobbyS
     SyncLobby(ui, connected, GameKind.DEALNODEAL, { DealNoDealHelp() }, {
         Text("22 boxes, from 1p to £250,000. Each of you keeps one box, you take turns opening the rest, and the Banker makes you both an offer after every round.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }) { onStart(GameKind.DEALNODEAL, JSONObject()) }
+}
+
+@Composable
+private fun SlotsLobby(ui: UiState, connected: Boolean, onSettings: (LobbySettings) -> Unit, onStart: (GameKind, JSONObject) -> Unit) {
+    val set = ui.settings
+    SyncLobby(ui, connected, GameKind.SLOTS, { SlotsHelp() }, {
+        ChipRow("Spins each", listOf("10", "15", "25"), set.slotsSpins) { onSettings(set.copy(slotsSpins = it)) }
+        Text("You each start with 1,000 credits. Most credits after all the spins wins.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+    }) { onStart(GameKind.SLOTS, JSONObject().put("spins", set.slotsSpins)) }
 }
 
 @Composable

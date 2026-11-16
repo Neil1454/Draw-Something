@@ -27,6 +27,7 @@ import com.neil1454.drawsomething.core.BlackjackEngine
 import com.neil1454.drawsomething.core.GuessWhoEngine
 import com.neil1454.drawsomething.core.KalahEngine
 import com.neil1454.drawsomething.core.LiarDiceEngine
+import com.neil1454.drawsomething.core.SlotsEngine
 import com.neil1454.drawsomething.core.DealNoDealEngine
 import com.neil1454.drawsomething.core.HockeyEngine
 import com.neil1454.drawsomething.core.HangmanEngine
@@ -131,6 +132,7 @@ data class LobbySettings(
     val kalahSeeds: Int = 1,
     val liarDice: Int = 1,
     val liarWild: Boolean = false,
+    val slotsSpins: Int = 0,
     val triviaPack: String = "",
     val triviaLen: Int = 1,
     val triviaSecs: Int = 1,
@@ -750,6 +752,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             GuessWhoEngine(me, partner, host, sendG, clock = clock),
             KalahEngine(me, partner, host, sendG, clock = clock),
             LiarDiceEngine(me, partner, host, sendG, clock = clock),
+            SlotsEngine(me, partner, host, sendG, clock = clock),
             DealNoDealEngine(me, partner, host, sendG, clock = clock),
             HolidayEngine(me, partner, host, sendG, clock = clock, quizKind = GameKind.TRIVIA),
             HockeyEngine(me, partner, host, sendG, clock = clock),

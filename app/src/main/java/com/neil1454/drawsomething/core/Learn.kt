@@ -104,6 +104,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> Unit
             GameKind.KALAH -> h.kalah.start(JSONObject().put("seeds", 0))
             GameKind.LIARSDICE -> h.liardice.start(JSONObject().put("dice", 0).put("wild", false))
+            GameKind.SLOTS -> h.slots.start(JSONObject().put("spins", 0))
             GameKind.DEALNODEAL -> h.dealnodeal.start(JSONObject())
             GameKind.TRIVIA -> h.trivia.start(JSONObject().put("len", 0).put("secs", 30))
             GameKind.HOCKEY -> h.hockey.start(JSONObject().put("mode", 0).put("target", 0))
@@ -431,6 +432,16 @@ class LearnSession(val kind: GameKind, val seed: Int) {
                     }
                 }
                 if (s.stage == "OFFER" && lastSeq != s.round) { lastSeq = s.round; say("📞 The Banker rings! Offers: you ${DndRules.money(s.myOffer)}, Player 2 ${DndRules.money(s.theirOffer)}. Deal or no deal? Each player chooses in secret and the answers are shown together.") }
+                if (s.phase == GPhase.OVER) finish(outro(kind))
+            }
+            GameKind.SLOTS -> {
+                val s = duel.host.slots.state
+                if (s.spinNo != last) {
+                    last = s.spinNo
+                    val who = if (s.lastBy == 1) "You" else "Player 2"
+                    if (s.spinNo == 1) say("A five-reel slot machine with nine paylines. You take turns pulling the lever. Matching symbols from the left pay along a line; the stake for a spin is nine lines' worth.")
+                    else say(if (s.total > 0) "$who won ${s.total} credits${if (s.jackpot) ": JACKPOT!" else "."}" + tip(listOf("⭐ Wilds stand in for any symbol.", "Three 💰 scatters anywhere start free spins, and every win in free spins is doubled.", "After a win you can gamble it on a card: double it or lose it. Be careful!"), s.spinNo / 3) else "$who didn't win that time.")
+                }
                 if (s.phase == GPhase.OVER) finish(outro(kind))
             }
             GameKind.LIARSDICE -> {
@@ -781,6 +792,7 @@ class LearnSession(val kind: GameKind, val seed: Int) {
             GameKind.SHOWDOWN -> "🎰 Stakes Showdown needs two real players."
             GameKind.KALAH -> "🌰 Mancala: sow seeds round the board, grab extra turns and capture your rival's seeds. You are Player 1 (the bottom row)."
             GameKind.LIARSDICE -> "🎭 Liar's Dice: each player shakes hidden dice. Bid how many of a face are on the whole table, or call your rival a liar. You are Player 1."
+            GameKind.SLOTS -> "🎰 Slot Machine: take turns on a five-reel machine and finish with more credits than your rival. You are Player 1."
             GameKind.DEALNODEAL -> "🎁 Deal or No Deal: 22 sealed boxes with 1p to £250,000. Each player keeps one, you open the rest, and the Banker makes offers. You are Player 1."
             GameKind.TRIVIA -> "🧠 Trivia: a head-to-head general knowledge quiz. You are Player 1; the quickest correct answer wins the most points."
             GameKind.HOCKEY -> "🏒 Air Hockey: a real-time duel. Slide your mallet round your half and knock the puck into their goal. You are Player 1 (the bottom)."
