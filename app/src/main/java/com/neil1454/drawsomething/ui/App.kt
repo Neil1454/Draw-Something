@@ -198,6 +198,7 @@ fun DrawSomethingApp(vm: GameViewModel, onHost: () -> Unit, onJoin: () -> Unit) 
             LeaveCorner(Modifier.align(Alignment.TopEnd)) { confirmLeave = true }
             StakesCorner(ui, Modifier.align(Alignment.TopStart))
             if (showdown == null) finishedResult(ui)?.let { StakeResultBanner(ui, it, Modifier.align(Alignment.TopCenter)) }
+            if (showdown == null) finishedResult(ui)?.let { WinnerBanner(it, ui.partnerName, ui.solo) }
         }
     }
 
