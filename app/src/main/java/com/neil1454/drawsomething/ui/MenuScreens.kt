@@ -1092,13 +1092,13 @@ private fun GuessWhoLobby(ui: UiState, connected: Boolean, onSettings: (LobbySet
 
 @Composable
 private fun ShowdownLobby(ui: UiState, connected: Boolean, onStart: (GameKind, JSONObject) -> Unit) {
-    val ready = ui.myStakes.isNotEmpty() && ui.theirStakes.isNotEmpty()
+    val ready = true // stakes are optional: anyone without one plays for bragging rights
     SyncLobby(ui, connected, GameKind.SHOWDOWN, { ShowdownHelp() }, {
         Text(
-            if (ready) "${ui.myStakes.size + ui.theirStakes.size} stakes are up for grabs: ${ui.myStakes.size} yours and ${ui.theirStakes.size} from ${ui.partnerName}."
-            else "You each need at least one stake. Set yours in the Stakes card above and ask ${ui.partnerName} to set theirs.",
+            if (ui.myStakes.isEmpty() && ui.theirStakes.isEmpty()) "No stakes set, so you're playing for bragging rights. You can add stakes in the Stakes card above if you like."
+            else "Stakes up for grabs: ${ui.myStakes.size} yours and ${ui.theirStakes.size} from ${ui.partnerName}. Anyone without a stake plays for bragging rights.",
             fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-            color = if (ready) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+            color = MaterialTheme.colorScheme.tertiary,
         )
     }) { if (ready) onStart(GameKind.SHOWDOWN, showdownOptions(ui)) }
 }

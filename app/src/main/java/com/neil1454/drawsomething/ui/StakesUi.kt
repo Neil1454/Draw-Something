@@ -56,6 +56,8 @@ fun showdownOptions(ui: UiState): JSONObject {
     ui.myStakes.forEach { mine.put(JSONArray().put(it.text).put(if (it.shown) 1 else 0)) }
     val theirs = JSONArray()
     ui.theirStakes.forEach { theirs.put(JSONArray().put(if (it.shown) it.text else "").put(if (it.shown) 1 else 0)) }
+    // Stakes are optional: a player with none puts up bragging rights instead
+    for (a in listOf(mine, theirs)) if (a.length() == 0) repeat(3) { a.put(JSONArray().put("Bragging rights \uD83C\uDFC6").put(1)) }
     return JSONObject().put("mine", mine).put("theirs", theirs)
 }
 
