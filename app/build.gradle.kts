@@ -61,6 +61,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    lint {
+        // This lint check crashes on the newer lifecycle library; the app does not use LiveData at all.
+        disable += "NullSafeMutableLiveData"
+    }
     buildFeatures {
         compose = true
     }
@@ -76,8 +80,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     // The Nearby library drags in a very old Fragment; pin a current one so permission requests behave.
     implementation("androidx.fragment:fragment:1.8.6")
 
