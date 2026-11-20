@@ -684,7 +684,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
             is TransportEvent.Failure -> _ui.update { it.copy(connectingTo = null, pairing = null, pairingConfirmed = false, notice = e.message) }
 
-            is TransportEvent.Received -> when (val p = Packet.decode(e.bytes)) {
+            // A malformed or hostile packet is dropped; it can never crash the app.
+            is TransportEvent.Received -> try { handlePacket(Packet.decode(e.bytes)) } catch (ex: Exception) { }
+        }
+    }
+
+    private fun handlePacket(packet: Packet?) {
+        run {
+            when (val p = packet) {
                 is Packet.Lobby -> _ui.update { it.copy(lobbyGame = p.game) }
                 is Packet.Stakes -> _ui.update { it.copy(theirStakes = p.list) }
                 is Packet.Draw -> {
